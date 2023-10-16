@@ -1,6 +1,5 @@
 $:.unshift File.dirname(__FILE__)
-$:.unshift File.join(File.dirname(__FILE__), '../ade_express')
-$:.unshift './ade_express'
+$:.unshift File.join(File.dirname(__FILE__), './ade_express')
 require 'alb_lib'
 $:.unshift '.'
 require 'compact_model'
