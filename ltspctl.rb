@@ -820,7 +820,6 @@ EOF
         x_data = PyCall.eval "list(l.time_raw)"
       else
         if node_list[0].downcase == 'time'
-          puts 'time!!!'
           x_data = @ltspice.getTime()
         else
           x_data = @ltspice.time_raw
