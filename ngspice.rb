@@ -10,10 +10,14 @@ require 'ffi'
 module Invoker
   extend FFI::Library
   if /mswin32|mingw|cygwin/ =~ RUBY_PLATFORM
-    # ffi_lib "c:/'Program Files'/KiCad/bin/libngspice-0.dll"
-    Dir.chdir("c:/Program Files/KiCad/bin"){ 
-      ffi_lib "libngspice-0.dll"
+    ffi_lib "c:/Program Files/KiCad/7.0/bin/ngspice.dll"
+=begin
+    require 'byebug'
+    Dir.chdir("c:/Program Files/KiCad/7.0/bin"){ 
+      debugger
+      ffi_lib "ngspice.dll"
     }
+=end
   else
     ffi_lib '/home/anagix/ngspice/lib/libngspice.so'
   end
