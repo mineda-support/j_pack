@@ -798,7 +798,7 @@ EOS
     device = 'subcircuit' if @symbol_type == 'BLOCK'
     device = device.to_sym if device
     result =<<EOS
-v {xschem version=3.0.0 file_version=1.1}
+v {xschem version=3.4.4 file_version=1.1}
 G {type=#{device}
 #{XSCHEM_GLOBAL_PROP[device]}
 }
@@ -1177,7 +1177,7 @@ EOS
       @wires = @wires - global_pins
       index = 0
       global_pins.each{|w|
-        f.puts "C {lab_pin.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}\n}"
+        f.puts "C {iopin.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}\n}"
         index = index + 1
       }
       index = 0
