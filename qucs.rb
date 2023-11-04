@@ -829,7 +829,7 @@ EOS
     }
     @portsyms.sort{|a,b| a[:SpiceOrder] <=> b[:SpiceOrder]}.each{|p|
       x, y = p[:xy]
-      result << "B 5 #{q2x(x)-2} #{q2x(y)-2} #{q2x(x)+2} #{q2x(y)+2} {name=#{p[:PinName]} dir=in}\n"
+      result << "B 5 #{q2x(x)-2} #{q2x(y)-2} #{q2x(x)+2} #{q2x(y)+2} {name=#{p[:PinName]} dir=inout}\n"
       orientation = 0
       case p[:angle]
       when 0
@@ -1159,6 +1159,15 @@ class QucsSchematic
     }
   end
     
+  def wrap_with_quote(value)
+    if value =~ / +/
+      '"' + value + '"'
+    else
+      value
+    end
+  end
+  private :wrap_with_quote
+
   def xschem_schema_out file
     File.open(file, 'w'){|f|
       f.puts <<EOS    
@@ -1213,7 +1222,7 @@ EOS
             if value.include? 'type=sine'
               attributes << " value=\"#{get_sine(value)}\""
             else
-              attributes << " value=#{value}"
+              attributes << " value=#{wrap_with_quote(value)}"
             end
           end
         elsif c[:name] =~ /[io]pin/
@@ -1223,12 +1232,12 @@ EOS
           if c[:symattr]
             if value = c[:symattr]['Value']
               if value.include? '='
-                attributes << " value=\"#{value}\""
+                attributes << " value=#{wrap_with_quote(value)}"
               else
                 if c[:symattr]['Value2'] 
                   attributes << " model=#{value}"
                 else
-                  attributes << " value=#{value}"
+                  attributes << " value=#{wrap_with_quote(value)}"
                 end
               end
             else
@@ -1237,7 +1246,7 @@ EOS
               end
             end
             if value2 = c[:symattr]['Value2'] 
-              attributes << ' ' + value2
+              attributes << ' ' + wrap_with_quote(value2).sub('L=', 'l=').sub('W=', 'w=')
             end
           end
         end

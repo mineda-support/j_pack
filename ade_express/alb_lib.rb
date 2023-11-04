@@ -944,7 +944,7 @@ end
 
 if RUBY_VERSION < '3.0' && RUBY_PLATFORM=~/mswin32|mingw|cygwin/
   require 'Win32API'
-  GetShortPathName = Win32API.new('kernel32','GetShortPathName','ppi','i')
+  getShortPathName = Win32API.new('kernel32','GetShortPathName','ppi','i')
   def get_short_path_name(long_name)
     return long_name if RUBY_VERSION == '1.8.7'
     unless File.exist? long_name
@@ -955,10 +955,10 @@ if RUBY_VERSION < '3.0' && RUBY_PLATFORM=~/mswin32|mingw|cygwin/
         return long_name
       end
     end
-    len = GetShortPathName.call(long_name.dup, nil, 0)
+    len = getShortPathName.call(long_name.dup, nil, 0)
     raise "File not found: #{long_name}" if len.zero?
     short_name = "\0" * len
-    GetShortPathName.call(long_name.dup, short_name, len)
+    getShortPathName.call(long_name.dup, short_name, len)
     short_name.gsub!(/\0/, '') # avoid string contains null byte error
     short_name.tr!('/', '\\')
     #    puts "Windows #{RUBY_VERSION}: #{long_name} => #{short_name}"
