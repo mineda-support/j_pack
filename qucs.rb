@@ -1246,7 +1246,7 @@ EOS
               end
             end
             if value2 = c[:symattr]['Value2'] 
-              attributes << ' ' + wrap_with_quote(value2).sub('L=', 'l=').sub('W=', 'w=')
+              attributes << ' ' + value2.sub('L=', 'l=').sub('W=', 'w=')
             end
           end
         end
