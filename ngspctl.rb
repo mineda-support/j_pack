@@ -621,11 +621,15 @@ class NgspiceControl < LTspiceControl
   def xschem_path
     if ENV['Xschem_path'] 
       return ENV['Xschem_path'] 
-    elsif File.exist?( path =  "#{ENV['PROGRAMFILES']}\\LTC\\XschemXVII\\XVIIx64.exe")
+    elsif File.exist?( path =  "#{ENV['PROGRAMFILES']}\\Xschem\\bin\\Xschem.exe")
       return path
+=begin
     elsif File.exist?( path =  "#{ENV['PROGRAMFILES']}\\LTC\\XschemXVII\\XVIIx86.exe")
       return path
     elsif File.exist?( path =  "#{ENV['ProgramFiles(x86)']}\\LTC\\XschemIV\\scad3.exe")
+      return path
+=end
+    else
       raise 'Cannot find Xschem executable. Please set Xschem_path'
     end                     
   end
