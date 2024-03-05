@@ -581,7 +581,7 @@ EOS
     }
   end
 
-  def eeschema_symbol_in desc
+  def eeschema5_symbol_in desc
     desc && desc.each_line{|l|
       if l =~ /^S (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+)/
         @rectangles << [e2q($1), e2q($2), e2q($3), e2q($4)] 
@@ -619,6 +619,54 @@ EOS
       elsif l =~ /^F *1 +\S+ +(\S+) +(\S+) +(\S+)/
         @label_pos = [e2q($1.to_i), -e2q($2.to_i)]
       end
+    }
+  end
+
+  def eeschema_symbol_in blk
+    symbol = {}
+    @rectangles = []
+    #@lines = []
+    @circles = []
+    #@portsyms = []
+    @prefix
+    @name_pos
+    @label_pos
+    blk[1][1] =~ /(\S+):(\S+)/
+    symbol['lib'] = $1
+    symbol['name'] = $2
+    blk[1..-1].each{|sym|
+      @lines = []
+      @portsyms = []
+      sym[2..-1].each{|prop|
+        case prop[0] 
+        when :property
+          symbol[prop[1]] = prop[2]
+        when :symbol
+          puts "#{prop[1]} == #{symbol['name']}_0_1"
+          # debugger
+          if prop[1] == symbol['name'] + '_0_1'
+            prop[2..-1].each{|line|
+              #puts "line[0]=#{line[0]}"
+              case line[0]
+              when :polyline
+                @lines << [line[1][1][1], line[1][1][2], line[1][2][1], line[1][2][2]] 
+              end
+            }
+          elsif prop[1] == symbol['name'] + '_1_1'
+            prop[2..-1].each{|pin|
+              case pin[0]
+              when :pin
+                @pin = {:xy => [pin[3][1], pin[3][2]], :angle => pin[3][3],
+                        :SpiceOrder => pin[6][1]} 
+              end
+            }
+            @portsyms << @pin
+          end
+        end
+      }
+      puts "@lines: #{@lines.inspect}" if @lines.size > 0
+      puts "@portsyms: #{@portsyms.inspect}" if @portsyms.size > 0
+      puts symbol   
     }
   end
 
@@ -1019,7 +1067,7 @@ class QucsSchematic
     desc['Paintings']
   end
 
-  def eeschema_schema_in
+  def eeschema5_schema_in
     desc = extract_eeschema_cell(File.read(@cell+'.sch').encode('UTF-8'))
     #c = QucsComponent.new @cell
     #c.eeschema_comp_in desc
@@ -1098,6 +1146,127 @@ class QucsSchematic
     desc['Paintings']
   end
 
+  def eeschema_schema_in
+    require 'sxp'
+    eescm = SXP.read(File.read(@cell+'.sch').encode('UTF-8'))
+
+    eescm[1..-1].each{|blk|
+      case blk[0]
+      when :lib_symbols
+        c = QucsComponent.new @cell
+        c.eeschema_comp_in blk 
+        @symbol = c.symbol
+      when :junction
+      when :wire
+        wire = blk[1]
+        @wires << [wire[1][1], wire[1][2], wire[2][1], wire[2][2]]
+      when :text
+      when :hierarchical_label
+      when :symbol
+        @component = {:type => 'Lib'}
+        inst = {}
+        blk[1..-1].each{|item|
+          @component[:lib_path] = blk[1][1]
+          @component[:label_pos]
+          @component[:rotation]
+          case item[0]
+          when 'at'
+            @component[:x] = item[1]
+            @component[:y] = item[2]
+            inst['rotation'] = item[3]
+          when :mirror
+            inst['mirror'] = item[3]
+          when :property
+            inst[item[1]] = item[2] # item[1] == 'Reference'
+          when :pin
+            inst[:pin] ||= {}
+            inst[item[1]] = item[2][1] # item[1] == '1'
+          when :instances
+          end
+          @component[:name] = inst['Reference']
+          @component[:symattr] ||= {}
+          @component[:symattr]['Values'] = inst['Value']
+          @component[:symattr]['Value2'] = inst['Spice_Model'] 
+        }
+
+      end
+      @components << @component if @component
+    }
+
+    desc['Components'] && desc['Components'].each{|lines|
+      @component = {:type => 'Lib'}
+      lines.each_line{|l|
+        if l =~ /^L (\S+):(\S+) (\S+)/ # Simulation_SPICE:VSIN V1
+          @component[:lib_path] = $1
+          @component[:name] = $2
+          @lib_info[@component[:name]] = 'circuits'
+          @component[:symattr] = {'InstName'=> $3}
+          @component[:type] = 'Lib'
+        elsif l =~ /^P (\S+) (\S+)/
+          @component[:x] = e2q($1)
+          @component[:y] = e2q($2)
+        elsif l =~ /F 0 \"(\S+)\" \S+ (\S+) (\S+)/
+          @component[:name_pos] = [e2q($2), e2q($3)]
+          # @component[:name] = $1 # [:symattr][InstName] already set
+        elsif l =~ /F 1 \"(\S+)\" \S+ (\S+) (\S+)/
+          @component[:symattr]['Value'] = $1
+          @component[:label_pos] = [e2q($2), e2q($3)]
+        elsif l =~ /F 5 \"([^\"]*)\"/
+          @component[:symattr]['Value2'] = $1
+        elsif l =~ /\s*((\S+) (\S+) (\S+) (\S+))/
+          case $1
+          when '1 0 0 -1' # 'R0'
+            @component[:rotation] = 'R0'
+          when '0 1 1 0'  # 'R90'
+            @component[:rotation] = 'R90' 
+          when '-1 0 0 1' # 'R180'
+            @component[:rotation] = 'R180'
+          when '0 -1 -1 0' # 'R270'
+            @component[:rotation] = 'R270' 
+          when '-1 0 0 -1' # 'M0'
+            @component[:rotation] = 'M0'
+          when '0 -1 1 0' # 'M90'
+            @component[:rotation] = 'M90' 
+          when '1 0 0 1' # 'M180'
+            @component[:rotation] = 'M180'
+          when '0 1 -1 0' # 'M270'
+            @component[:rotation] = 'M270'
+          end
+        end
+      }
+      # c =~ /<(\S+) +(\S+) +\S+ +(\S+) +(\S+) +0 +0 +(\S+) +(\S+) +"(\S+)" 0 "(\S+)"/
+      # @component = {:type=> $1, :name=>$2, :x=>q2c($3), :y=>q2c($4), :mirror=>$5.to_i, :rotation=>$6.to_i, :lib_path=>$7, :cell_name=>$8}
+      @components << @component
+    }
+    desc['Wires'] && desc['Wires'].each{|w|
+      w =~ /(\S+) +(\S+) +(\S+) +(\S+)/ 
+      @wires << [e2q($1), e2q($2), e2q($3), e2q($4)]
+    }
+    desc['Texts'] && desc['Texts'].each{|l|
+      l =~ /Text +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) ~ 0\n(.*)$/
+      if $1 == 'GLabel'
+        @wires << [e2q($2), e2q($3), e2q($2), e2q($3), $7]
+      elsif $1 == 'HLabel'
+        case $6
+        when 'Output'
+          inst_name = 'out'
+        when 'Input'
+          inst_name= 'in'
+        when 'BiDi'
+          inst_name = 'inout'
+        else
+          inst_name = nil
+        end
+        @component = {:type=> 'Port', :name=>inst_name, :x=>e2q($2), :y=>e2q($3), :symattr=>{"InstName" => $7}}
+        @components << @component
+      else
+        @texts << [e2q($2), e2q($3), $4||"0", $5||"50", $6]
+      end
+    }
+    desc['Diagrams']
+    desc['Paintings']
+  end
+  
   def xschem_schema_in
     @lib_info = {}
     File.read(@cell+'.sch').each_line{|l|
