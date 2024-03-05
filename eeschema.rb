@@ -1,6 +1,6 @@
 # Copyright Anagix Corporation 2009-2020
 
-require '/home/anagix/work/alb2/lib/qucs' if $0 == __FILE__
+require './qucs' if $0 == __FILE__
 
 class EEschema
   def get_cells_and_symbols
@@ -285,9 +285,9 @@ end
 if $0 == __FILE__
 #  current = EEschema.new
 #  current.get_cells_and_symbols # run eeschema.rb in the eeschama directory
-  eeschema2cdraw '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2cdraw'
+  eeschema2cdraw 'c:/Users/seiji/work/4817', 'c:/Users/seiji/work/4817/eeschema2cdraw'
   ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
-  eeschema2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
+#  eeschema2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
 
 end
 
