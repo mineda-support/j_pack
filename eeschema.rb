@@ -28,14 +28,14 @@ class EEschema
         end
       }
     }
-    cells = Dir.glob("*.sch").map{|a| a.sub('.sch','')}
+    cells = Dir.glob("*.kicad_sch").map{|a| a.sub('.kicad_sch','')}
     [cells, symbols, base_props]
   end
 
   def search_symbols cell
     symbols = []
     #  File.exist?(cell) && File.read(cell).each_line{|l|
-    File.exist?(cell+'.sch') && File.read(cell+'.sch').each_line{|l|
+    File.exist?(cell+'.kicad_sch') && File.read(cell+'.kicad_sch').each_line{|l|
       if l =~ /^L ((\S+):(\S+))/
         symbols << $2
       end
@@ -68,42 +68,11 @@ class EEschemaLibrary < QucsLibrary
     @component_is_symbol = {}
   end
 
-=begin
-  def eeschema_lib_in lib
-    symbol_info = {}
-    FileUtils.mkdir lib unless File.directory? lib
-    Dir.chdir(lib){
-      symbols = Dir.glob('*.sym').map{|a| a.sub('.sym','')}
-      cells = Dir.glob('*.sch').map{|a| a.sub('.sch','')}
-      topcells = cells - symbols
-      symbols = symbols - cells
-      cells = cells - topcells
-      puts "library: #{lib}"
-      puts "topcells: #{topcells.inspect}"
-      puts "cells: #{cells.inspect}"
-      puts "symbols: #{symbols.inspect}"
-
-      cells.each{|sym|
-        comp = EEschemaComponent.new sym
-        comp.eeschema_comp_in
-        @components << comp
-      }
-      symbols.each{|sym|
-        comp = EEschemaComponent.new sym
-        comp.eeschema_comp_in
-        @components << comp
-        @component_is_symbol[comp] = true
-        symbol_info[sym] = comp.symbol
-      }
-    }
-    symbol_info
-  end
-=end  
   def eeschema_lib_in lib
     symbol_info = {}
     Dir.chdir(lib){
       symbols = Dir.glob('*.sym').map{|a| a.sub('.sym','')}
-      cells = Dir.glob('*.sch').map{|a| a.sub('.sch','')}
+      cells = Dir.glob('*.kicad_sch').map{|a| a.sub('.kicad_sch','')}
       topcells = cells - symbols
       symbols = symbols - cells
       cells = cells - topcells
@@ -176,7 +145,8 @@ class EEschemaSchematic <QucsSchematic
   end
 
   def eeschema_schema_in
-    @desc = File.read(@cell+'.sch').encode('UTF-8')
+    require 'sxp'
+    @desc = SXP.read(File.read(@cell+'.kicad_sch').encode('UTF-8'))
   end
 
   def eeschema_schema_out file
@@ -207,11 +177,11 @@ def alb2eeschema work_dir, eeschema_dir
     }
     libraries.each{|lib|
       Dir.chdir(lib){
-        cells = Dir.glob('*.sch').map{|a| a.sub('.sch','')}
+        cells = Dir.glob('*.kicad_sch').map{|a| a.sub('.kicad_sch','')}
         cells.each{|cell|
           c = EEschemaSchematic.new cell
           c.eeschema_schema_in
-          c.eeschema_schema_out File.join(eeschema_dir, cell + '.sch')
+          c.eeschema_schema_out File.join(eeschema_dir, cell + '.kicad_sch')
         }
       }
     }
@@ -225,6 +195,7 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
 
   Dir.chdir(eeschema_dir){
     symbols = {}
+=begin
     Dir.glob('*.lib').each{|lib|
       #l = EEschemaLibrary.new lib, eeschema_dir
       l = QucsLibrary.new lib, eeschema_dir
@@ -232,8 +203,9 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
       symbols.merge! l.eeschema_lib_in(lib)
       l.cdraw_lib_out cdraw_dir
     }
-    Dir.glob('*.sch').each{|sch_file|
-      c = QucsSchematic.new sch_file.sub('.sch', '')
+=end
+    Dir.glob('*.kicad_sch').each{|sch_file|
+      c = QucsSchematic.new sch_file.sub('.kicad_sch', '')
       c.eeschema_schema_in 
       c.cdraw_schema_out cdraw_dir
     }
@@ -252,12 +224,12 @@ def eeschema2qucs eeschema_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_
       l.qucs_lib_out
     }
     proj_dir = File.join(qucs_dir, "circuits_prj")
-    cells = Dir.glob('*.sch').map{|a| a.sub('.sch','')}
+    cells = Dir.glob('*.kicad_sch').map{|a| a.sub('.kicad_sch','')}
     cells.each{|cell|
       c = QucsSchematic.new cell
       c.eeschema_schema_in
       FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
-      c.qucs_schema_out File.join(proj_dir, cell + '.sch')
+      c.qucs_schema_out File.join(proj_dir, cell + '.kicad_sch')
     }
   }
 end
@@ -274,8 +246,8 @@ def eeschema2xschem eeschema_dir, xschem_dir
       symbols.merge! l.eeschema_lib_in
       l.xschem_lib_out xschem_dir
     }
-    Dir.glob('*.sch').each{|sch_file|
-      c = QucsSchematic.new sch_file.sub('.sch', '')
+    Dir.glob('*.kicad_sch').each{|sch_file|
+      c = QucsSchematic.new sch_file.sub('.kicad_sch', '')
       c.eeschema_schema_in 
       c.xschem_schema_out File.join(xschem_dir, sch_file)
     }

@@ -23,8 +23,7 @@ def q2e str
 end
 
 def e2q str
-  i = str.to_i
-  i/5
+  i = ((str.to_f*200/0.125).to_i)/200
 end
 
 def q2x str
@@ -54,6 +53,7 @@ class QucsComponent
   end
   
   def eeschema_comp_in desc
+    puts desc.inspect
     @symbol = QucsSymbol.new @name
     @symbol.eeschema_symbol_in desc
   end
@@ -1068,7 +1068,7 @@ class QucsSchematic
   end
 
   def eeschema5_schema_in
-    desc = extract_eeschema_cell(File.read(@cell+'.sch').encode('UTF-8'))
+    desc = extract_eeschema_cell(File.read(@cell+'.kicad_sch').encode('UTF-8'))
     #c = QucsComponent.new @cell
     #c.eeschema_comp_in desc
     #@symbol = c.symbol
@@ -1148,7 +1148,7 @@ class QucsSchematic
 
   def eeschema_schema_in
     require 'sxp'
-    eescm = SXP.read(File.read(@cell+'.sch').encode('UTF-8'))
+    eescm = SXP.read(File.read(@cell+'.kicad_sch').encode('UTF-8'))
 
     eescm[1..-1].each{|blk|
       case blk[0]
@@ -1159,7 +1159,7 @@ class QucsSchematic
       when :junction
       when :wire
         wire = blk[1]
-        @wires << [wire[1][1], wire[1][2], wire[2][1], wire[2][2]]
+        @wires << [e2q(wire[1][1]), e2q(wire[1][2]), e2q(wire[2][1]), e2q(wire[2][2])]
       when :text
       when :hierarchical_label
       when :symbol
@@ -1167,12 +1167,11 @@ class QucsSchematic
         inst = {}
         blk[1..-1].each{|item|
           @component[:lib_path] = blk[1][1]
-          @component[:label_pos]
-          @component[:rotation]
+          @component[:label_pos] # to be filled
           case item[0]
-          when 'at'
-            @component[:x] = item[1]
-            @component[:y] = item[2]
+          when :at
+            @component[:x] = e2q(item[1])
+            @component[:y] = e2q(item[2])
             inst['rotation'] = item[3]
           when :mirror
             inst['mirror'] = item[3]
@@ -1183,65 +1182,23 @@ class QucsSchematic
             inst[item[1]] = item[2][1] # item[1] == '1'
           when :instances
           end
-          @component[:name] = inst['Reference']
-          @component[:symattr] ||= {}
-          @component[:symattr]['Values'] = inst['Value']
-          @component[:symattr]['Value2'] = inst['Spice_Model'] 
         }
-
+        @component[:name] = inst['Value']
+        @component[:symattr] ||= {}
+        @component[:symattr]['Values'] # to be set? 
+        @component[:symattr]['Value2'] = inst['Spice_Model'] 
+        @component[:symattr]['InstName'] = inst['Reference']
+        @component[:symattr]['Prefix'] = inst['Description']        
+        if inst['mirror'] == :x
+          @component[:rotation] = 'R' + (inst['rotation'] || '').to_s
+        else # :y
+          @component[:rotation] = 'M' + (inst['rotation'] || '').to_s
+        end
       end
       @components << @component if @component
     }
 
-    desc['Components'] && desc['Components'].each{|lines|
-      @component = {:type => 'Lib'}
-      lines.each_line{|l|
-        if l =~ /^L (\S+):(\S+) (\S+)/ # Simulation_SPICE:VSIN V1
-          @component[:lib_path] = $1
-          @component[:name] = $2
-          @lib_info[@component[:name]] = 'circuits'
-          @component[:symattr] = {'InstName'=> $3}
-          @component[:type] = 'Lib'
-        elsif l =~ /^P (\S+) (\S+)/
-          @component[:x] = e2q($1)
-          @component[:y] = e2q($2)
-        elsif l =~ /F 0 \"(\S+)\" \S+ (\S+) (\S+)/
-          @component[:name_pos] = [e2q($2), e2q($3)]
-          # @component[:name] = $1 # [:symattr][InstName] already set
-        elsif l =~ /F 1 \"(\S+)\" \S+ (\S+) (\S+)/
-          @component[:symattr]['Value'] = $1
-          @component[:label_pos] = [e2q($2), e2q($3)]
-        elsif l =~ /F 5 \"([^\"]*)\"/
-          @component[:symattr]['Value2'] = $1
-        elsif l =~ /\s*((\S+) (\S+) (\S+) (\S+))/
-          case $1
-          when '1 0 0 -1' # 'R0'
-            @component[:rotation] = 'R0'
-          when '0 1 1 0'  # 'R90'
-            @component[:rotation] = 'R90' 
-          when '-1 0 0 1' # 'R180'
-            @component[:rotation] = 'R180'
-          when '0 -1 -1 0' # 'R270'
-            @component[:rotation] = 'R270' 
-          when '-1 0 0 -1' # 'M0'
-            @component[:rotation] = 'M0'
-          when '0 -1 1 0' # 'M90'
-            @component[:rotation] = 'M90' 
-          when '1 0 0 1' # 'M180'
-            @component[:rotation] = 'M180'
-          when '0 1 -1 0' # 'M270'
-            @component[:rotation] = 'M270'
-          end
-        end
-      }
-      # c =~ /<(\S+) +(\S+) +\S+ +(\S+) +(\S+) +0 +0 +(\S+) +(\S+) +"(\S+)" 0 "(\S+)"/
-      # @component = {:type=> $1, :name=>$2, :x=>q2c($3), :y=>q2c($4), :mirror=>$5.to_i, :rotation=>$6.to_i, :lib_path=>$7, :cell_name=>$8}
-      @components << @component
-    }
-    desc['Wires'] && desc['Wires'].each{|w|
-      w =~ /(\S+) +(\S+) +(\S+) +(\S+)/ 
-      @wires << [e2q($1), e2q($2), e2q($3), e2q($4)]
-    }
+=begin
     desc['Texts'] && desc['Texts'].each{|l|
       l =~ /Text +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) ~ 0\n(.*)$/
       if $1 == 'GLabel'
@@ -1265,11 +1222,12 @@ class QucsSchematic
     }
     desc['Diagrams']
     desc['Paintings']
+=end
   end
   
   def xschem_schema_in
     @lib_info = {}
-    File.read(@cell+'.sch').each_line{|l|
+    File.read(@cell+'.kicad_sch').each_line{|l|
       if l =~ /^N +(\S+) +(\S+) +(\S+) +(\S+)/ #  {lab=(\S+)}/ 
         @wires << [x2q($1), x2q($2), x2q($3), x2q($4)]
       elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}/
@@ -1931,7 +1889,7 @@ EOS
             result << " \"#{lib_path}\" 0 \"#{c[:name]}\" 0>\n"
           end
         else
-          result << " \"\#{ENV['QUCS_DIR']}/#{File.join @lib_info[c[:name]]+'_prj', c[:name]+'.sch'}\" 0>\n"
+          result << " \"\#{ENV['QUCS_DIR']}/#{File.join @lib_info[c[:name]]+'_prj', c[:name]+'.kicad_sch'}\" 0>\n"
         end
       else
         result << ">\n"
@@ -2082,9 +2040,9 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
           if target == 'qucs'
             proj_dir = File.join(target_dir, "#{lib}_prj")
             FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
-            c.qucs_schema_out File.join(proj_dir, cell + '.sch')
+            c.qucs_schema_out File.join(proj_dir, cell + '.kicad_sch')
           elsif target == 'eeschema'
-            c.eeschema_schema_out File.join(target_dir, cell + '.sch')
+            c.eeschema_schema_out File.join(target_dir, cell + '.kicad_sch')
           elsif target == 'xschem'
             c.xschem_schema_out File.join(target_dir, cell + '.sch')
           end
