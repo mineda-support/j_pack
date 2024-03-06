@@ -71,7 +71,7 @@ class EEschemaLibrary < QucsLibrary
   def eeschema_lib_in lib
     symbol_info = {}
     Dir.chdir(lib){
-      symbols = Dir.glob('*.sym').map{|a| a.sub('.sym','')}
+      symbols = Dir.glob('*.kicad_sym').map{|a| a.sub('.kicad_sym','')}
       cells = Dir.glob('*.kicad_sch').map{|a| a.sub('.kicad_sch','')}
       topcells = cells - symbols
       symbols = symbols - cells
@@ -195,15 +195,15 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
 
   Dir.chdir(eeschema_dir){
     symbols = {}
-=begin
-    Dir.glob('*.lib').each{|lib|
+
+    Dir.glob('*.kicad_sym').each{|lib|
       #l = EEschemaLibrary.new lib, eeschema_dir
       l = QucsLibrary.new lib, eeschema_dir
       
       symbols.merge! l.eeschema_lib_in(lib)
       l.cdraw_lib_out cdraw_dir
     }
-=end
+
     Dir.glob('*.kicad_sch').each{|sch_file|
       c = QucsSchematic.new sch_file.sub('.kicad_sch', '')
       c.eeschema_schema_in 
@@ -257,7 +257,7 @@ end
 if $0 == __FILE__
 #  current = EEschema.new
 #  current.get_cells_and_symbols # run eeschema.rb in the eeschama directory
-  eeschema2cdraw 'c:/Users/seiji/work/4817', 'c:/Users/seiji/work/4817/eeschema2cdraw'
+  eeschema2cdraw File.join(ENV['HOME'], 'work/4817'), File.join(ENV['HOME'], 'work/4817/eeschema2cdraw')
   ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
 #  eeschema2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
 

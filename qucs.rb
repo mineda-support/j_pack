@@ -14,7 +14,8 @@ end
 
 def q2c str
   i=str.to_i
-  i*16/10
+  #i*16/10
+  i/10*16
 end
 
 def q2e str
@@ -23,7 +24,7 @@ def q2e str
 end
 
 def e2q str
-  i = ((str.to_f*200/0.125).to_i)/200
+  i = (str.to_f*8.0-0.5).to_i
 end
 
 def q2x str
