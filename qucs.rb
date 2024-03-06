@@ -20,7 +20,7 @@ end
 
 def q2e str
   i = str.to_i
-  i*5
+  i.to_f/8.0
 end
 
 def e2q str
@@ -623,8 +623,7 @@ EOS
     }
   end
 
-  def eeschema_symbol_in blk
-    symbol = {}
+  def eeschema_symbol_in sym
     @rectangles = []
     #@lines = []
     @circles = []
@@ -632,39 +631,35 @@ EOS
     @prefix
     @name_pos
     @label_pos
-    blk[1][1] =~ /(\S+):(\S+)/
-    symbol['lib'] = $1
-    symbol['name'] = $2
-    blk[1..-1].each{|sym|
-      @lines = []
-      @portsyms = []
-      sym[2..-1].each{|prop|
-        case prop[0] 
-        when :property
-          symbol[prop[1]] = prop[2]
-        when :symbol
-          puts "#{prop[1]} == #{symbol['name']}_0_1"
-          # debugger
-          if prop[1] == symbol['name'] + '_0_1'
-            prop[2..-1].each{|line|
-              #puts "line[0]=#{line[0]}"
-              case line[0]
-              when :polyline
-                @lines << [line[1][1][1], line[1][1][2], line[1][2][1], line[1][2][2]] 
-              end
-            }
-          elsif prop[1] == symbol['name'] + '_1_1'
-            prop[2..-1].each{|pin|
-              case pin[0]
-              when :pin
-                @pin = {:xy => [pin[3][1], pin[3][2]], :angle => pin[3][3],
-                        :SpiceOrder => pin[6][1]} 
-              end
-            }
-            @portsyms << @pin
-          end
+    
+    @lines = []
+    @portsyms = []
+    sym[2..-1].each{|prop|
+      case prop[0] 
+      when :property
+        symbol[prop[1]] = prop[2]
+      when :symbol
+        puts "#{prop[1]} == #{symbol['name']}_0_1"
+        # debugger
+        if prop[1] == symbol['name'] + '_0_1'
+          prop[2..-1].each{|line|
+            #puts "line[0]=#{line[0]}"
+            case line[0]
+            when :polyline
+              @lines << [line[1][1][1], line[1][1][2], line[1][2][1], line[1][2][2]] 
+            end
+          }
+        elsif prop[1] == symbol['name'] + '_1_1'
+          prop[2..-1].each{|pin|
+            case pin[0]
+            when :pin
+              @pin = {:xy => [pin[3][1], pin[3][2]], :angle => pin[3][3],
+                      :SpiceOrder => pin[6][1]} 
+            end
+          }
+          @portsyms << @pin
         end
-      }
+      end
       puts "@lines: #{@lines.inspect}" if @lines.size > 0
       puts "@portsyms: #{@portsyms.inspect}" if @portsyms.size > 0
       puts symbol   
@@ -1154,9 +1149,15 @@ class QucsSchematic
     eescm[1..-1].each{|blk|
       case blk[0]
       when :lib_symbols
-        c = QucsComponent.new @cell
-        c.eeschema_comp_in blk 
-        @symbol = c.symbol
+        symbol = {}
+        blk[1][1] =~ /(\S+):(\S+)/
+        symbol['lib'] = $1
+        symbol['name'] = $2
+        blk[1..-1].each{|sym|
+          c = QucsComponent.new @cell = symbol['name']
+          c.eeschema_comp_in sym
+          @symbol = c.symbol
+        }
       when :junction
       when :wire
         wire = blk[1]

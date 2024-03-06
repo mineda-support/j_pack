@@ -143,12 +143,12 @@ class EEschemaSchematic <QucsSchematic
     @lines = [] 
     @lib_info = {}
   end
-
+=begin
   def eeschema_schema_in
     require 'sxp'
     @desc = SXP.read(File.read(@cell+'.kicad_sch').encode('UTF-8'))
   end
-
+=end
   def eeschema_schema_out file
     File.open(file, 'w'){|f|
       f.puts @desc
@@ -196,18 +196,19 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
   Dir.chdir(eeschema_dir){
     symbols = {}
 
+    Dir.glob('*.kicad_sch').each{|sch_file|
+      c = QucsSchematic.new sch_file.sub('.kicad_sch', '')
+      c.eeschema_schema_in 
+      c.cdraw_schema_out cdraw_dir
+    }
+
     Dir.glob('*.kicad_sym').each{|lib|
       #l = EEschemaLibrary.new lib, eeschema_dir
       l = QucsLibrary.new lib, eeschema_dir
       
       symbols.merge! l.eeschema_lib_in(lib)
+      debugger
       l.cdraw_lib_out cdraw_dir
-    }
-
-    Dir.glob('*.kicad_sch').each{|sch_file|
-      c = QucsSchematic.new sch_file.sub('.kicad_sch', '')
-      c.eeschema_schema_in 
-      c.cdraw_schema_out cdraw_dir
     }
   }
 end
