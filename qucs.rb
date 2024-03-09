@@ -634,6 +634,10 @@ EOS
     
     @lines = []
     @portsyms = []
+    symbol = {}
+    sym[1] =~ /(\S+):(\S+)/
+    symbol['lib'] = $1
+    symbol['name'] = $2
     sym[2..-1].each{|prop|
       case prop[0] 
       when :property
@@ -664,6 +668,7 @@ EOS
       puts "@portsyms: #{@portsyms.inspect}" if @portsyms.size > 0
       puts symbol   
     }
+    symbol
   end
 
   def xschem_symbol_in desc
@@ -1149,14 +1154,14 @@ class QucsSchematic
     eescm[1..-1].each{|blk|
       case blk[0]
       when :lib_symbols
-        symbol = {}
-        blk[1][1] =~ /(\S+):(\S+)/
-        symbol['lib'] = $1
-        symbol['name'] = $2
         blk[1..-1].each{|sym|
-          c = QucsComponent.new @cell = symbol['name']
-          c.eeschema_comp_in sym
-          @symbol = c.symbol
+          sym[1] =~ /(\S+):(\S+)/
+          lib = $1
+          sym_name = $2
+          c = QucsComponent.new sym_name
+          comp = c.eeschema_comp_in sym
+         #@symbol = c.symbol
+          @components << comp
         }
       when :junction
       when :wire
@@ -1727,6 +1732,7 @@ EOS
         f.puts "WIRE #{w.map{|a| q2c(a).to_s}.join(' ')}"
       }
       @components.each{|c|
+        debugger if c.class == Array
         if c[:name] && c[:name].downcase == 'gnd' 
           f.puts "FLAG #{q2c(c[:x])} #{q2c(c[:y])} 0"
           next

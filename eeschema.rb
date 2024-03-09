@@ -1,6 +1,6 @@
 # Copyright Anagix Corporation 2009-2020
-
-require './qucs' if $0 == __FILE__
+puts Dir.pwd
+require './j_pack/qucs' if $0 == __FILE__
 
 class EEschema
   def get_cells_and_symbols
@@ -207,7 +207,7 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
       l = QucsLibrary.new lib, eeschema_dir
       
       symbols.merge! l.eeschema_lib_in(lib)
-      debugger
+      # debugger
       l.cdraw_lib_out cdraw_dir
     }
   }
