@@ -27,6 +27,10 @@ def e2q str
   i = (str.to_f*8.0-0.5).to_i
 end
 
+def e2q_sym str
+  i = (str.to_f*80.0).to_i/10
+end
+
 def q2x str
   i = str.to_i
 end
@@ -634,7 +638,7 @@ EOS
     
     @lines = []
     @portsyms = []
-    symbol = {}
+    symbol = {} # type: 'symbol'}
     sym[1] =~ /(\S+):(\S+)/
     symbol['lib'] = $1
     symbol['name'] = $2
@@ -650,18 +654,18 @@ EOS
             #puts "line[0]=#{line[0]}"
             case line[0]
             when :polyline
-              @lines << [line[1][1][1], line[1][1][2], line[1][2][1], line[1][2][2]] 
+              @lines << [e2q_sym(line[1][1][1]), e2q_sym(line[1][1][2]), e2q_sym(line[1][2][1]), e2q_sym(line[1][2][2])] 
             end
           }
         elsif prop[1] == symbol['name'] + '_1_1'
           prop[2..-1].each{|pin|
             case pin[0]
             when :pin
-              @pin = {:xy => [pin[3][1], pin[3][2]], :angle => pin[3][3],
+              @pin = {:xy => [e2q(pin[3][1]), e2q(pin[3][2])], :angle => pin[3][3],
                       :SpiceOrder => pin[6][1]} 
+              @portsyms << @pin
             end
           }
-          @portsyms << @pin
         end
       end
       puts "@lines: #{@lines.inspect}" if @lines.size > 0
@@ -1150,7 +1154,7 @@ class QucsSchematic
   def eeschema_schema_in
     require 'sxp'
     eescm = SXP.read(File.read(@cell+'.kicad_sch').encode('UTF-8'))
-
+    symbols = {}
     eescm[1..-1].each{|blk|
       case blk[0]
       when :lib_symbols
@@ -1159,9 +1163,9 @@ class QucsSchematic
           lib = $1
           sym_name = $2
           c = QucsComponent.new sym_name
-          comp = c.eeschema_comp_in sym
+          c.eeschema_comp_in sym
          #@symbol = c.symbol
-          @components << comp
+          symbols[sym_name] = c.symbol
         }
       when :junction
       when :wire
@@ -1204,32 +1208,7 @@ class QucsSchematic
       end
       @components << @component if @component
     }
-
-=begin
-    desc['Texts'] && desc['Texts'].each{|l|
-      l =~ /Text +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) ~ 0\n(.*)$/
-      if $1 == 'GLabel'
-        @wires << [e2q($2), e2q($3), e2q($2), e2q($3), $7]
-      elsif $1 == 'HLabel'
-        case $6
-        when 'Output'
-          inst_name = 'out'
-        when 'Input'
-          inst_name= 'in'
-        when 'BiDi'
-          inst_name = 'inout'
-        else
-          inst_name = nil
-        end
-        @component = {:type=> 'Port', :name=>inst_name, :x=>e2q($2), :y=>e2q($3), :symattr=>{"InstName" => $7}}
-        @components << @component
-      else
-        @texts << [e2q($2), e2q($3), $4||"0", $5||"50", $6]
-      end
-    }
-    desc['Diagrams']
-    desc['Paintings']
-=end
+    symbols
   end
   
   def xschem_schema_in
@@ -1738,6 +1717,7 @@ EOS
           next
         end
         name = nil
+        puts "c[:type]=#{c[:type]}"
         case c[:type]
         when 'Port'
           case c[:name]
