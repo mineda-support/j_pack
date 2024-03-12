@@ -203,7 +203,7 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
 
     Dir.glob('*.kicad_sch').each{|sch_file|
       c = QucsSchematic.new sch_file.sub('.kicad_sch', '')
-      symbols = c.eeschema_schema_in 
+      symbols.merge! c.eeschema_schema_in 
       c.cdraw_schema_out cdraw_dir
     }
     symbols.each_pair{|sym_name, symbol|

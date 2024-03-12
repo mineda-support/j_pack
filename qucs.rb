@@ -654,7 +654,12 @@ EOS
             #puts "line[0]=#{line[0]}"
             case line[0]
             when :polyline
-              @lines << [e2q_sym(line[1][1][1]), e2q_sym(line[1][1][2]), e2q_sym(line[1][2][1]), e2q_sym(line[1][2][2])] 
+              puts [line[1][1][1], -line[1][1][2], 
+                    line[1][2][1]-line[1][1][1], -(line[1][2][2]-line[1][1][2])].inspect
+              puts '=>', [e2q_sym(line[1][1][1]), -e2q_sym(line[1][1][2]), 
+              e2q_sym(line[1][2][1]-line[1][1][1]), -e2q_sym(line[1][2][2]-line[1][1][2])].inspect
+              @lines << [e2q_sym(line[1][1][1]), -e2q_sym(line[1][1][2]), 
+                         e2q_sym(line[1][2][1]-line[1][1][1]), -e2q_sym(line[1][2][2]-line[1][1][2])] 
             end
           }
         elsif prop[1] == symbol['name'] + '_1_1'
@@ -1717,7 +1722,7 @@ EOS
           next
         end
         name = nil
-        puts "c[:type]=#{c[:type]}"
+        # puts "c[:type]=#{c[:type]}"
         case c[:type]
         when 'Port'
           case c[:name]
