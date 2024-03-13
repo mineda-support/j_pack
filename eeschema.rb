@@ -1,6 +1,8 @@
 # Copyright Anagix Corporation 2009-2020
 puts Dir.pwd
-require './j_pack/qucs' if $0 == __FILE__
+$:.unshift '.'
+$:.unshift './j_pack'
+require 'qucs' if $0 == __FILE__
 
 class EEschema
   def get_cells_and_symbols

@@ -24,11 +24,14 @@ def q2e str
 end
 
 def e2q str
-  i = (str.to_f*8.0-0.5).to_i
+  #i = (str.to_f*8.0-0.5).to_i
+  i = (str.to_f/0.127).to_i
 end
 
 def e2q_sym str
-  i = (str.to_f*80.0).to_i/10
+  #i = (str.to_f*800.0).to_i/100
+  #i = (str.to_f*8.0-0.5)*100.0.to_i/100
+  i = (str.to_f/0.127).to_i
 end
 
 def q2x str
