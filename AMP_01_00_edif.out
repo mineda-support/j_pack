@@ -1,0 +1,4326 @@
+(edif CADENCE_EDIF
+ (edifVersion 2 0 0)
+ (edifLevel 0)
+ (keywordMap (keywordLevel 0))
+  (status
+  (written     (timeStamp 2024  3 11 18 24 46)
+   (author "Cadence Design Systems")
+   (dataOrigin "IC_DESIGN03")
+   (program "edifout" (version "t version 6.1.8-64b 12/03/2019 21:36 (ip-172-18-22-58) $"))))
+ (library IP62_ip
+  (edifLevel 0)
+  (technology
+   (numberDefinition
+    (scale 160 (E 25400 -6) (unit DISTANCE)))
+   (figureGroup DLBGRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 181))
+    (property priority (integer 191)))
+   (figureGroup y5
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 212))
+    (property priority (integer 83)))
+   (figureGroup PSD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 9))
+    (property priority (integer 15)))
+   (figureGroup Row
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 201))
+    (property priority (integer 120)))
+   (figureGroup M1
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 13))
+    (property priority (integer 18)))
+   (figureGroup background
+     (color 0 0 0)
+    (visible (true))
+    (property layerNumber (integer 254))
+    (property priority (integer 0)))
+   (figureGroup M3
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 125))
+    (property priority (integer 35)))
+   (figureGroup L
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 3))
+    (property priority (integer 11)))
+   (figureGroup y8
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 215))
+    (property priority (integer 86)))
+   (figureGroup NSD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 28))
+    (property priority (integer 25)))
+   (figureGroup solderMaskBottom
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 241))
+    (property priority (integer 124)))
+   (figureGroup device
+     (color 0 20 10)
+    (pathWidth 0)
+    (visible (true))
+    (property layerNumber (integer 231))
+    (property priority (integer 62)))
+   (figureGroup DLRC
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 186))
+    (property priority (integer 196)))
+   (figureGroup DLBGMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 177))
+    (property priority (integer 187)))
+   (figureGroup spike
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 223))
+    (property priority (integer 102)))
+   (figureGroup DNBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 117))
+    (property priority (integer 38)))
+   (figureGroup DLRNHV
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 164))
+    (property priority (integer 174)))
+   (figureGroup SG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 8))
+    (property priority (integer 14)))
+   (figureGroup wirebondFingerGuide
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 248))
+    (property priority (integer 131)))
+   (figureGroup y9
+     (color 21 23 25)
+    (visible (true))
+    (property layerNumber (integer 216))
+    (property priority (integer 87)))
+   (figureGroup prBoundary
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 235))
+    (property priority (integer 52)))
+   (figureGroup DLDNE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 172))
+    (property priority (integer 182)))
+   (figureGroup DLPW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 149))
+    (property priority (integer 36)))
+   (figureGroup HPBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 144))
+    (property priority (integer 7)))
+   (figureGroup DLRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 163))
+    (property priority (integer 173)))
+   (figureGroup DCBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 119))
+    (property priority (integer 40)))
+   (figureGroup DLMPE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 169))
+    (property priority (integer 179)))
+   (figureGroup PRO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 14))
+    (property priority (integer 19)))
+   (figureGroup grid
+     (color 14 14 16)
+    (visible (true))
+    (property layerNumber (integer 251))
+    (property priority (integer 1)))
+   (figureGroup DLBGMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 179))
+    (property priority (integer 189)))
+   (figureGroup DLBGMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 178))
+    (property priority (integer 188)))
+   (figureGroup CG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 41))
+    (property priority (integer 31)))
+   (figureGroup HPM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 33))
+    (property priority (integer 26)))
+   (figureGroup DLBGRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 182))
+    (property priority (integer 192)))
+   (figureGroup DLDPE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 171))
+    (property priority (integer 181)))
+   (figureGroup marker
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 238))
+    (property priority (integer 118)))
+   (figureGroup hilite
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 253))
+    (property priority (integer 88)))
+   (figureGroup DLMNOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 174))
+    (property priority (integer 184)))
+   (figureGroup CL
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 143))
+    (property priority (integer 6)))
+   (figureGroup DLWLRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 153))
+    (property priority (integer 163)))
+   (figureGroup changedLayer
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 220))
+    (property priority (integer 116)))
+   (figureGroup select
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 239))
+    (property priority (integer 98)))
+   (figureGroup stretch
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 218))
+    (property priority (integer 77)))
+   (figureGroup y4
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 211))
+    (property priority (integer 82)))
+   (figureGroup PSUB
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 140))
+    (property priority (integer 27)))
+   (figureGroup NM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 7))
+    (property priority (integer 13)))
+   (figureGroup DLCONT
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 184))
+    (property priority (integer 194)))
+   (figureGroup DLMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 160))
+    (property priority (integer 170)))
+   (figureGroup DLMPOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 173))
+    (property priority (integer 183)))
+   (figureGroup DLWLRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 155))
+    (property priority (integer 165)))
+   (figureGroup y1
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 208))
+    (property priority (integer 79)))
+   (figureGroup M2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 20))
+    (property priority (integer 21)))
+   (figureGroup internalGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 243))
+    (property priority (integer 126)))
+   (figureGroup DLDMPOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 175))
+    (property priority (integer 185)))
+   (figureGroup annotate
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 237))
+    (property priority (integer 123)))
+   (figureGroup DLMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 159))
+    (property priority (integer 169)))
+   (figureGroup supply
+     (color 0 25 0)
+    (visible (true))
+    (property layerNumber (integer 227))
+    (property priority (integer 103)))
+   (figureGroup border
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 232))
+    (property priority (integer 61)))
+   (figureGroup TC2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 124))
+    (property priority (integer 34)))
+   (figureGroup DLDN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 168))
+    (property priority (integer 178)))
+   (figureGroup Unrouted
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 200))
+    (property priority (integer 127)))
+   (figureGroup y3
+     (color 25 0 25)
+    (visible (true))
+    (property layerNumber (integer 210))
+    (property priority (integer 81)))
+   (figureGroup DLDMNOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 176))
+    (property priority (integer 186)))
+   (figureGroup PBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 146))
+    (property priority (integer 9)))
+   (figureGroup Canplace
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 204))
+    (property priority (integer 126)))
+   (figureGroup y6
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 213))
+    (property priority (integer 84)))
+   (figureGroup PF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 26))
+    (property priority (integer 23)))
+   (figureGroup DLWLRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 154))
+    (property priority (integer 164)))
+   (figureGroup unset
+     (color 3 14 10)
+    (visible (true))
+    (property layerNumber (integer 221))
+    (property priority (integer 105)))
+   (figureGroup TC
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 19))
+    (property priority (integer 20)))
+   (figureGroup DLBGMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 180))
+    (property priority (integer 190)))
+   (figureGroup DLDPESD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 187))
+    (property priority (integer 197)))
+   (figureGroup NW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 36))
+    (property priority (integer 29)))
+   (figureGroup unknown
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 222))
+    (property priority (integer 104)))
+   (figureGroup y2
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 209))
+    (property priority (integer 80)))
+   (figureGroup hardFence
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 205))
+    (property priority (integer 56)))
+   (figureGroup align
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 234))
+    (property priority (integer 55)))
+   (figureGroup solderMaskTop
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 245))
+    (property priority (integer 128)))
+   (figureGroup edgeLayer
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 219))
+    (property priority (integer 74)))
+   (figureGroup DLWLDMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 156))
+    (property priority (integer 166)))
+   (figureGroup PRO2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 126))
+    (property priority (integer 32)))
+   (figureGroup wire
+     (color 5 19 25)
+    (pathWidth 0)
+    (textHeight 10)
+    (visible (true))
+    (property layerNumber (integer 228))
+    (property priority (integer 67)))
+   (figureGroup DPBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 116))
+    (property priority (integer 37)))
+   (figureGroup R
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 12))
+    (property priority (integer 17)))
+   (figureGroup HVNW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 141))
+    (property priority (integer 4)))
+   (figureGroup drill
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 246))
+    (property priority (integer 129)))
+   (figureGroup DLWLMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 152))
+    (property priority (integer 162)))
+   (figureGroup DLWLMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 151))
+    (property priority (integer 161)))
+   (figureGroup hiz
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 224))
+    (property priority (integer 100)))
+   (figureGroup pin
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 229))
+    (property priority (integer 70)))
+   (figureGroup DLRS
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 165))
+    (property priority (integer 175)))
+   (figureGroup DLRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 162))
+    (property priority (integer 172)))
+   (figureGroup Group
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 202))
+    (property priority (integer 122)))
+   (figureGroup softFence
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 206))
+    (property priority (integer 57)))
+   (figureGroup NF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 25))
+    (property priority (integer 22)))
+   (figureGroup DLRHHV
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 185))
+    (property priority (integer 195)))
+   (figureGroup DLCSIO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 166))
+    (property priority (integer 176)))
+   (figureGroup RHP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 148))
+    (property priority (integer 30)))
+   (figureGroup assemblyBoundary
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 249))
+    (property priority (integer 132)))
+   (figureGroup S
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 4))
+    (property priority (integer 12)))
+   (figureGroup DLDP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 167))
+    (property priority (integer 177)))
+   (figureGroup DLWLMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 150))
+    (property priority (integer 160)))
+   (figureGroup designFlow
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 217))
+    (property priority (integer 106)))
+   (figureGroup drive
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 226))
+    (property priority (integer 99)))
+   (figureGroup axis
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 252))
+    (property priority (integer 73)))
+   (figureGroup DLMNE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 170))
+    (property priority (integer 180)))
+   (figureGroup instance
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 236))
+    (property priority (integer 50)))
+   (figureGroup DLMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 157))
+    (property priority (integer 167)))
+   (figureGroup PF2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 142))
+    (property priority (integer 5)))
+   (figureGroup y0
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 207))
+    (property priority (integer 78)))
+   (figureGroup DRBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 118))
+    (property priority (integer 39)))
+   (figureGroup PM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 35))
+    (property priority (integer 28)))
+   (figureGroup endGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 244))
+    (property priority (integer 127)))
+   (figureGroup text
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 230))
+    (property priority (integer 58)))
+   (figureGroup snap
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 233))
+    (property priority (integer 76)))
+   (figureGroup CONT
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 11))
+    (property priority (integer 16)))
+   (figureGroup HNBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 145))
+    (property priority (integer 8)))
+   (figureGroup DLRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 161))
+    (property priority (integer 171)))
+   (figureGroup DLMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 158))
+    (property priority (integer 168)))
+   (figureGroup y7
+     (color 21 20 0)
+    (visible (true))
+    (property layerNumber (integer 214))
+    (property priority (integer 85)))
+   (figureGroup Cannotoccupy
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 203))
+    (property priority (integer 124)))
+   (figureGroup CH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 27))
+    (property priority (integer 24)))
+   (figureGroup resist
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 225))
+    (property priority (integer 101)))
+   (figureGroup TF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 123))
+    (property priority (integer 33)))
+   (figureGroup NBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 147))
+    (property priority (integer 10)))
+   (figureGroup DLBGRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 183))
+    (property priority (integer 193)))
+   (figureGroup wirebond
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 247))
+    (property priority (integer 130)))
+   (figureGroup beginGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 242))
+    (property priority (integer 125))))
+  (cell gndpin (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt -20 -11) (pt 20 11)))
+       (commentGraphics (annotate (stringDisplay "GND"
+	(display (figureGroupOverride device (textHeight 10))
+	(justify LOWERCENTER)
+	(orientation R0)
+	(origin (pt 0 -20)))))))
+	(property zonesWhereUsed (string ""))
+	(property instNamePrefix (string "PIN"))
+	(property (rename pin_35_ "pin#") (integer 5) (owner "Cadence"))))
+  (cell ipin (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt -31 -11) (pt 0 11))))
+	(property zonesWhereUsed (string ""))
+	(property instNamePrefix (string "PIN"))
+	(property (rename pin_35_ "pin#") (integer 4) (owner "Cadence"))))
+  (cell opin (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt 0 -11) (pt 31 11))))
+	(property zonesWhereUsed (string ""))
+	(property instNamePrefix (string "PIN"))
+	(property (rename pin_35_ "pin#") (integer 8) (owner "Cadence"))))
+  (cell vccpin (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt -20 -11) (pt 20 11)))
+       (commentGraphics (annotate (stringDisplay "VCC"
+	(display (figureGroupOverride device (textHeight 10))
+	(justify LOWERCENTER)
+	(orientation R0)
+	(origin (pt 0 -20)))))))
+	(property zonesWhereUsed (string ""))
+	(property instNamePrefix (string "PIN"))
+	(property (rename pin_35_ "pin#") (integer 4) (owner "Cadence")))))
+ (library basic
+  (edifLevel 0)
+  (technology
+   (numberDefinition
+    (scale 160 (E 25400 -6) (unit DISTANCE)))
+   (figureGroup y5
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 212))
+    (property priority (integer 47)))
+   (figureGroup Row
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 201))
+    (property priority (integer 84)))
+   (figureGroup background
+     (color 0 0 0)
+    (visible (true))
+    (property layerNumber (integer 254))
+    (property priority (integer 0)))
+   (figureGroup y8
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 215))
+    (property priority (integer 50)))
+   (figureGroup solderMaskBottom
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 241))
+    (property priority (integer 124)))
+   (figureGroup device
+     (color 0 20 10)
+    (pathWidth 0)
+    (visible (true))
+    (property layerNumber (integer 231))
+    (property priority (integer 25)))
+   (figureGroup spike
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 223))
+    (property priority (integer 66)))
+   (figureGroup wirebondFingerGuide
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 248))
+    (property priority (integer 131)))
+   (figureGroup y9
+     (color 21 23 25)
+    (visible (true))
+    (property layerNumber (integer 216))
+    (property priority (integer 51)))
+   (figureGroup prBoundary
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 235))
+    (property priority (integer 15)))
+   (figureGroup grid
+     (color 14 14 16)
+    (visible (true))
+    (property layerNumber (integer 251))
+    (property priority (integer 1)))
+   (figureGroup marker
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 238))
+    (property priority (integer 82)))
+   (figureGroup hilite
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 253))
+    (property priority (integer 52)))
+   (figureGroup changedLayer
+     (color 25 0 0)
+    (visible (false))
+    (property layerNumber (integer 220))
+    (property priority (integer 80)))
+   (figureGroup select
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 239))
+    (property priority (integer 62)))
+   (figureGroup stretch
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 218))
+    (property priority (integer 41)))
+   (figureGroup y4
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 211))
+    (property priority (integer 46)))
+   (figureGroup y1
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 208))
+    (property priority (integer 43)))
+   (figureGroup internalGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 243))
+    (property priority (integer 126)))
+   (figureGroup annotate
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 237))
+    (property priority (integer 123)))
+   (figureGroup supply
+     (color 0 25 0)
+    (visible (true))
+    (property layerNumber (integer 227))
+    (property priority (integer 67)))
+   (figureGroup border
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 232))
+    (property priority (integer 24)))
+   (figureGroup Unrouted
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 200))
+    (property priority (integer 91)))
+   (figureGroup y3
+     (color 25 0 25)
+    (visible (true))
+    (property layerNumber (integer 210))
+    (property priority (integer 45)))
+   (figureGroup Canplace
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 204))
+    (property priority (integer 90)))
+   (figureGroup y6
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 213))
+    (property priority (integer 48)))
+   (figureGroup unset
+     (color 3 14 10)
+    (visible (true))
+    (property layerNumber (integer 221))
+    (property priority (integer 69)))
+   (figureGroup unknown
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 222))
+    (property priority (integer 68)))
+   (figureGroup y2
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 209))
+    (property priority (integer 44)))
+   (figureGroup hardFence
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 205))
+    (property priority (integer 19)))
+   (figureGroup align
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 234))
+    (property priority (integer 18)))
+   (figureGroup solderMaskTop
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 245))
+    (property priority (integer 128)))
+   (figureGroup edgeLayer
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 219))
+    (property priority (integer 37)))
+   (figureGroup wire
+     (color 5 19 25)
+    (pathWidth 0)
+    (textHeight 10)
+    (visible (true))
+    (property layerNumber (integer 228))
+    (property priority (integer 30)))
+   (figureGroup drill
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 246))
+    (property priority (integer 129)))
+   (figureGroup hiz
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 224))
+    (property priority (integer 64)))
+   (figureGroup pin
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 229))
+    (property priority (integer 33)))
+   (figureGroup Group
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 202))
+    (property priority (integer 86)))
+   (figureGroup softFence
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 206))
+    (property priority (integer 20)))
+   (figureGroup assemblyBoundary
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 249))
+    (property priority (integer 132)))
+   (figureGroup designFlow
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 217))
+    (property priority (integer 70)))
+   (figureGroup drive
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 226))
+    (property priority (integer 63)))
+   (figureGroup axis
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 252))
+    (property priority (integer 36)))
+   (figureGroup instance
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 236))
+    (property priority (integer 13)))
+   (figureGroup y0
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 207))
+    (property priority (integer 42)))
+   (figureGroup endGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 244))
+    (property priority (integer 127)))
+   (figureGroup text
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 230))
+    (property priority (integer 21)))
+   (figureGroup snap
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 233))
+    (property priority (integer 39)))
+   (figureGroup y7
+     (color 21 20 0)
+    (visible (true))
+    (property layerNumber (integer 214))
+    (property priority (integer 49)))
+   (figureGroup Cannotoccupy
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 203))
+    (property priority (integer 88)))
+   (figureGroup resist
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 225))
+    (property priority (integer 65)))
+   (figureGroup wirebond
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 247))
+    (property priority (integer 130)))
+   (figureGroup beginGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 242))
+    (property priority (integer 125))))
+  (cell iopin (cellType GENERIC)
+   (view symbolr (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt -20 -10) (pt 10 10)))
+       (figure annotate (polygon (pointList
+	 (pt 10 0) (pt 1 9)
+	 (pt -11 9) (pt -20 0)
+	 (pt -11 -9) (pt 1 -9)))))
+	(property instNamePrefix (string "PIN"))
+	(property zonesWhereUsed (string ""))
+	(property (rename pin_35_ "pin#") (integer 2) (owner "Cadence")))))
+ (library US_8ths
+  (edifLevel 0)
+  (technology
+   (numberDefinition
+    (scale 160 (E 25400 -6) (unit DISTANCE)))
+   (figureGroup y5
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 212))
+    (property priority (integer 47)))
+   (figureGroup Row
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 201))
+    (property priority (integer 84)))
+   (figureGroup background
+     (color 0 0 0)
+    (visible (true))
+    (property layerNumber (integer 254))
+    (property priority (integer 0)))
+   (figureGroup y8
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 215))
+    (property priority (integer 50)))
+   (figureGroup solderMaskBottom
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 241))
+    (property priority (integer 124)))
+   (figureGroup device
+     (color 0 20 10)
+    (pathWidth 0)
+    (visible (true))
+    (property layerNumber (integer 231))
+    (property priority (integer 25)))
+   (figureGroup spike
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 223))
+    (property priority (integer 66)))
+   (figureGroup wirebondFingerGuide
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 248))
+    (property priority (integer 131)))
+   (figureGroup y9
+     (color 21 23 25)
+    (visible (true))
+    (property layerNumber (integer 216))
+    (property priority (integer 51)))
+   (figureGroup prBoundary
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 235))
+    (property priority (integer 15)))
+   (figureGroup grid
+     (color 14 14 16)
+    (visible (true))
+    (property layerNumber (integer 251))
+    (property priority (integer 1)))
+   (figureGroup marker
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 238))
+    (property priority (integer 82)))
+   (figureGroup hilite
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 253))
+    (property priority (integer 52)))
+   (figureGroup changedLayer
+     (color 25 0 0)
+    (visible (false))
+    (property layerNumber (integer 220))
+    (property priority (integer 80)))
+   (figureGroup select
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 239))
+    (property priority (integer 62)))
+   (figureGroup stretch
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 218))
+    (property priority (integer 41)))
+   (figureGroup y4
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 211))
+    (property priority (integer 46)))
+   (figureGroup y1
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 208))
+    (property priority (integer 43)))
+   (figureGroup internalGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 243))
+    (property priority (integer 126)))
+   (figureGroup annotate
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 237))
+    (property priority (integer 123)))
+   (figureGroup supply
+     (color 0 25 0)
+    (visible (true))
+    (property layerNumber (integer 227))
+    (property priority (integer 67)))
+   (figureGroup border
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 232))
+    (property priority (integer 24)))
+   (figureGroup Unrouted
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 200))
+    (property priority (integer 91)))
+   (figureGroup y3
+     (color 25 0 25)
+    (visible (true))
+    (property layerNumber (integer 210))
+    (property priority (integer 45)))
+   (figureGroup Canplace
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 204))
+    (property priority (integer 90)))
+   (figureGroup y6
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 213))
+    (property priority (integer 48)))
+   (figureGroup unset
+     (color 3 14 10)
+    (visible (true))
+    (property layerNumber (integer 221))
+    (property priority (integer 69)))
+   (figureGroup unknown
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 222))
+    (property priority (integer 68)))
+   (figureGroup y2
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 209))
+    (property priority (integer 44)))
+   (figureGroup hardFence
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 205))
+    (property priority (integer 19)))
+   (figureGroup align
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 234))
+    (property priority (integer 18)))
+   (figureGroup solderMaskTop
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 245))
+    (property priority (integer 128)))
+   (figureGroup edgeLayer
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 219))
+    (property priority (integer 37)))
+   (figureGroup wire
+     (color 5 19 25)
+    (pathWidth 0)
+    (textHeight 10)
+    (visible (true))
+    (property layerNumber (integer 228))
+    (property priority (integer 30)))
+   (figureGroup drill
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 246))
+    (property priority (integer 129)))
+   (figureGroup hiz
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 224))
+    (property priority (integer 64)))
+   (figureGroup pin
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 229))
+    (property priority (integer 33)))
+   (figureGroup Group
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 202))
+    (property priority (integer 86)))
+   (figureGroup softFence
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 206))
+    (property priority (integer 20)))
+   (figureGroup assemblyBoundary
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 249))
+    (property priority (integer 132)))
+   (figureGroup designFlow
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 217))
+    (property priority (integer 70)))
+   (figureGroup drive
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 226))
+    (property priority (integer 63)))
+   (figureGroup axis
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 252))
+    (property priority (integer 36)))
+   (figureGroup instance
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 236))
+    (property priority (integer 13)))
+   (figureGroup y0
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 207))
+    (property priority (integer 42)))
+   (figureGroup endGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 244))
+    (property priority (integer 127)))
+   (figureGroup text
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 230))
+    (property priority (integer 21)))
+   (figureGroup snap
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 233))
+    (property priority (integer 39)))
+   (figureGroup y7
+     (color 21 20 0)
+    (visible (true))
+    (property layerNumber (integer 214))
+    (property priority (integer 49)))
+   (figureGroup Cannotoccupy
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 203))
+    (property priority (integer 88)))
+   (figureGroup resist
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 225))
+    (property priority (integer 65)))
+   (figureGroup wirebond
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 247))
+    (property priority (integer 130)))
+   (figureGroup beginGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 242))
+    (property priority (integer 125))))
+  (cell Sup_CDEFHJK (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt 0 0) (pt 760 60)))
+       (figure (figureGroupOverride border (pathWidth 5) (endType TRUNCATE)) (path (pointList
+	 (pt 140 0) (pt 760 0)
+	 (pt 760 60) (pt 0 60)
+	 (pt 0 0) (pt 140 0))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 670 0) (pt 670 60))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 600 0) (pt 600 60))))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 670 60) (pt 670 0))))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 120 0) (pt 120 60))))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 600 0) (pt 600 60))))
+       (commentGraphics (annotate (stringDisplay "[@dwg_no]"
+	(display (figureGroupOverride text (textHeight 38))
+	(justify CENTERLEFT)
+	(orientation R0)
+	(origin (pt 191 27))))))
+       (commentGraphics (annotate (stringDisplay "DWG NO."
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 126 42))))))
+       (commentGraphics (annotate (stringDisplay "REV"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 678 40))))))
+       (commentGraphics (annotate (stringDisplay "[@sheetNumber]"
+	(display (figureGroupOverride text (textHeight 25))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 635 23))))))
+       (commentGraphics (annotate (stringDisplay "[@CAGE]"
+	(display (figureGroupOverride text (textHeight 25))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 57 24))))))
+       (commentGraphics (annotate (stringDisplay "[@rev]"
+	(display (figureGroupOverride text (textHeight 25))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 716 22))))))
+       (commentGraphics (annotate (stringDisplay "CAGE NO."
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 6 42))))))
+       (commentGraphics (annotate (stringDisplay "SH"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 607 41)))))))
+	(property schSheetTitles (string "(((%34%company%34% %34%string%34%) (%34%dwg_no%34% %34%string%34%) (%34%CAGE%34% %34%string%34%)) ((%34%rev%34% %34%string%34%) (%34%title%34% %34%string%34%) (%34%title1%34% %34%string%34%)))"))
+	(property nlAction (string "ignore"))
+	(property schType (string "border") (owner "Cadence"))))
+  (cell Title (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt 0 0) (pt 1000 280)))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 320 0) (pt 320 280))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 0 50) (pt 320 50)
+	 (pt 320 101) (pt 0 101)
+	 (pt 0 151) (pt 320 151)
+	 (pt 320 202) (pt 0 202))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 320 200) (pt 1000 200))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 730 0) (pt 730 40))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 939 40) (pt 939 100))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 381 40) (pt 381 100))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 1000 40) (pt 320 40))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 490 0) (pt 490 40))))
+       (figure (figureGroupOverride border (pathWidth 5) (endType TRUNCATE)) (path (pointList
+	 (pt 320 0) (pt 0 0)
+	 (pt 0 280) (pt 1000 280)
+	 (pt 1000 0) (pt 320 0))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 320 101) (pt 1000 101))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 560 40) (pt 560 100))))
+       (commentGraphics (annotate (stringDisplay "CHECKED"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 6 86))))))
+       (commentGraphics (annotate (stringDisplay "[@title]"
+	(display (figureGroupOverride text (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 660 178))))))
+       (commentGraphics (annotate (stringDisplay "[@CAGE]"
+	(display (figureGroupOverride text (textHeight 35))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 469 63))))))
+       (commentGraphics (annotate (stringDisplay "DWG NO."
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 565 85))))))
+       (commentGraphics (annotate (stringDisplay "SIZE"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 327 85))))))
+       (commentGraphics (annotate (stringDisplay "UPDATED"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 6 264))))))
+       (commentGraphics (annotate (stringDisplay "[@scale]"
+	(display (figureGroupOverride text (textHeight 20))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 397 11))))))
+       (commentGraphics (annotate (stringDisplay "[@title1]"
+	(display (figureGroupOverride text (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 660 125))))))
+       (commentGraphics (annotate (stringDisplay "SHEET"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERLEFT)
+	(orientation R0)
+	(origin (pt 734 20))))))
+       (commentGraphics (annotate (stringDisplay "[@company]"
+	(display (figureGroupOverride text (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 660 240))))))
+       (commentGraphics (annotate (stringDisplay "[@sheetSize]"
+	(display (figureGroupOverride text (textHeight 35))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 350 62))))))
+       (commentGraphics (annotate (stringDisplay "CAGE NO."
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 383 85))))))
+       (commentGraphics (annotate (stringDisplay "[@maxSheets]"
+	(display (figureGroupOverride text (textHeight 20))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 934 21))))))
+       (commentGraphics (annotate (stringDisplay "[@rev]"
+	(display (figureGroupOverride text (textHeight 35))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 990 65))))))
+       (commentGraphics (annotate (stringDisplay "[@weight]"
+	(display (figureGroupOverride text (textHeight 20))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 540 11))))))
+       (commentGraphics (annotate (stringDisplay "SCALE"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERLEFT)
+	(orientation R0)
+	(origin (pt 326 20))))))
+       (commentGraphics (annotate (stringDisplay "ISSUED"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 7 33))))))
+       (commentGraphics (annotate (stringDisplay "DRAWN"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 6 186))))))
+       (commentGraphics (annotate (stringDisplay "OF"
+	(display (figureGroupOverride text (textHeight 20))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 880 21))))))
+       (commentGraphics (annotate (stringDisplay "[@dwg_no]"
+	(display (figureGroupOverride text (textHeight 35))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 777 66))))))
+       (commentGraphics (annotate (stringDisplay "REV"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERCENTER)
+	(orientation R0)
+	(origin (pt 970 85))))))
+       (commentGraphics (annotate (stringDisplay "[@sheetNumber]"
+	(display (figureGroupOverride text (textHeight 20))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 844 21))))))
+       (commentGraphics (annotate (stringDisplay "CHECKED"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 6 135)))))))
+	(property schSheetTitles (string "(((%34%company%34% %34%string%34%) (%34%dwg_no%34% %34%string%34%) (%34%CAGE%34% %34%string%34%)) ((%34%rev%34% %34%string%34%) (%34%title%34% %34%string%34%) (%34%title1%34% %34%string%34%)))"))
+	(property nlAction (string "ignore"))
+	(property schType (string "border") (owner "Cadence"))))
+  (cell revBlock (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt 0 0) (pt 880 120)))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 141 0) (pt 141 80))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 0 80) (pt 880 80))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 880 0) (pt 880 120)
+	 (pt 0 120) (pt 0 0))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 80 80) (pt 80 0))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 579 0) (pt 579 80))))
+       (figure (figureGroupOverride border (pathWidth 5) (endType TRUNCATE)) (path (pointList
+	 (pt 0 120) (pt 880 120)
+	 (pt 880 0))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 720 0) (pt 720 80))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 880 40) (pt 0 40))))
+       (commentGraphics (annotate (stringDisplay "REVISIONS"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 440 100))))))
+       (commentGraphics (annotate (stringDisplay "ZONE"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 40 60))))))
+       (commentGraphics (annotate (stringDisplay "DESCRIPTION"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 360 60))))))
+       (commentGraphics (annotate (stringDisplay "REV"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 110 60))))))
+       (commentGraphics (annotate (stringDisplay "DATE"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 650 60))))))
+       (commentGraphics (annotate (stringDisplay "APPROVED"
+	(display (figureGroupOverride text (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 800 60)))))))
+	(property schSheetTitles (string "(((%34%company%34% %34%string%34%) (%34%dwg_no%34% %34%string%34%) (%34%FSCM%34% %34%string%34%)) ((%34%rev%34% %34%string%34%) (%34%title%34% %34%string%34%) (%34%title1%34% %34%string%34%)))"))
+	(property nlAction (string "ignore"))
+	(property schType (string "border") (owner "Cadence"))))
+  (cell Csize (cellType GENERIC)
+   (view symbol (viewType GRAPHIC)
+    (interface)
+     (contents
+     (boundingBox (rectangle (pt 2440 120) (pt 3440 400)))
+      (commentGraphics
+      (instance &5
+       (viewRef symbol (cellRef Sup_CDEFHJK))
+       (transform (orientation R90) (origin (pt 3500 520)))))
+      (commentGraphics
+      (instance &6
+       (viewRef symbol (cellRef Title))
+       (transform (origin (pt 2440 120)))
+	(property sheetSize (string "C") (owner "Cadence"))))
+      (commentGraphics
+      (instance &0
+       (viewRef symbol (cellRef revBlock))
+       (transform (origin (pt 2560 2480)))))
+       (commentGraphics (annotate (stringDisplay "if( isCallable('dbGetDatabaseType) then%10%    if( dbGetDatabaseType() == %34%CDBA%34% then%10%       ilInst~>cellView~>instancesLastChanged%10%    else%10%       ilInst~>cellView~>fileTimeStamp%10%    )%10%else%10%    ilInst~>cellView~>instancesLastChanged%10%)"
+	(display (figureGroupOverride text (textHeight 18))
+	(justify CENTERLEFT)
+	(orientation R0)
+	(origin (pt 2440 350))))))
+       (figure border (polygon (pointList
+	 (pt 1750 87) (pt 1760 119)
+	 (pt 1770 87))))
+       (figure (figureGroupOverride border (pathWidth 5) (endType TRUNCATE)) (path (pointList
+	 (pt 160 120) (pt 80 120)
+	 (pt 80 2600) (pt 3440 2600)
+	 (pt 3440 120) (pt 160 120))))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 1760 2623) (pt 1760 2663))))
+       (figure border (polygon (pointList
+	 (pt 45 1350) (pt 77 1360)
+	 (pt 45 1370))))
+       (commentGraphics (annotate (stringDisplay "C"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 40 1700))))))
+       (commentGraphics (annotate (stringDisplay "A"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 41 340))))))
+       (commentGraphics (annotate (stringDisplay "D"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 3480 2380))))))
+       (commentGraphics (annotate (stringDisplay "3"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 1320 2660))))))
+       (commentGraphics (annotate (stringDisplay "2"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 2200 2660))))))
+       (commentGraphics (annotate (stringDisplay "2"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 2200 60))))))
+       (commentGraphics (annotate (stringDisplay "3"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 1320 60))))))
+       (commentGraphics (annotate (stringDisplay "1"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 3080 2660))))))
+       (commentGraphics (annotate (stringDisplay "A"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 3481 340))))))
+       (commentGraphics (annotate (stringDisplay "D"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 40 2380))))))
+       (commentGraphics (annotate (stringDisplay "B"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 40 1020))))))
+       (commentGraphics (annotate (stringDisplay "4"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 440 60))))))
+       (commentGraphics (annotate (stringDisplay "C"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 3480 1700))))))
+       (commentGraphics (annotate (stringDisplay "1"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 3080 60))))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 80 680) (pt 20 680))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 880 2600) (pt 880 2660))))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 3460 1360) (pt 3500 1360))))
+       (figure border (polygon (pointList
+	 (pt 1770 2635) (pt 1760 2603)
+	 (pt 1750 2635))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 80 2040) (pt 20 2040))))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 1760 99) (pt 1760 59))))
+       (figure (figureGroupOverride border (pathWidth 4) (endType TRUNCATE)) (path (pointList
+	 (pt 57 1360) (pt 17 1360))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 3440 2040) (pt 3500 2040))))
+       (figure border (polygon (pointList
+	 (pt 3472 1350) (pt 3440 1360)
+	 (pt 3472 1370))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 2640 2660) (pt 2640 2600))))
+       (commentGraphics (annotate (stringDisplay "4"
+	(display (figureGroupOverride border (textHeight 40))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 440 2660))))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 0 0) (pt 3520 0)
+	 (pt 3520 2720) (pt 0 2720)
+	 (pt 0 0))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 2640 60) (pt 2640 120))))
+       (figure (figureGroupOverride border (pathWidth 0)) (path (pointList
+	 (pt 880 120) (pt 880 60)))))
+	(property schSheetTitles (string "(((%34%company%34% %34%string%34%) (%34%dwg_no%34% %34%string%34%) (%34%CAGE%34% %34%string%34%)) ((%34%rev%34% %34%string%34%) (%34%title%34% %34%string%34%) (%34%title1%34% %34%string%34%)))"))
+	(property (rename instance_35_ "instance#") (integer 7) (owner "Cadence"))
+	(property nlAction (string "ignore"))
+	(property sheetHasZones (string "(4 3 2 1) (D C B A)"))
+	(property schType (string "border") (owner "Cadence")))))
+ (library IP62_2_analog
+  (edifLevel 0)
+  (technology
+   (numberDefinition
+    (scale 160 (E 25400 -6) (unit DISTANCE)))
+   (figureGroup DLBGRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 181))
+    (property priority (integer 191)))
+   (figureGroup y5
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 212))
+    (property priority (integer 83)))
+   (figureGroup PSD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 9))
+    (property priority (integer 15)))
+   (figureGroup Row
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 201))
+    (property priority (integer 120)))
+   (figureGroup M1
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 13))
+    (property priority (integer 18)))
+   (figureGroup background
+     (color 0 0 0)
+    (visible (true))
+    (property layerNumber (integer 254))
+    (property priority (integer 0)))
+   (figureGroup M3
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 125))
+    (property priority (integer 35)))
+   (figureGroup L
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 3))
+    (property priority (integer 11)))
+   (figureGroup y8
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 215))
+    (property priority (integer 86)))
+   (figureGroup NSD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 28))
+    (property priority (integer 25)))
+   (figureGroup solderMaskBottom
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 241))
+    (property priority (integer 124)))
+   (figureGroup device
+     (color 0 20 10)
+    (pathWidth 0)
+    (visible (true))
+    (property layerNumber (integer 231))
+    (property priority (integer 62)))
+   (figureGroup DLRC
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 186))
+    (property priority (integer 196)))
+   (figureGroup DLBGMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 177))
+    (property priority (integer 187)))
+   (figureGroup spike
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 223))
+    (property priority (integer 102)))
+   (figureGroup DNBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 117))
+    (property priority (integer 38)))
+   (figureGroup DLRNHV
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 164))
+    (property priority (integer 174)))
+   (figureGroup SG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 8))
+    (property priority (integer 14)))
+   (figureGroup wirebondFingerGuide
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 248))
+    (property priority (integer 131)))
+   (figureGroup y9
+     (color 21 23 25)
+    (visible (true))
+    (property layerNumber (integer 216))
+    (property priority (integer 87)))
+   (figureGroup prBoundary
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 235))
+    (property priority (integer 52)))
+   (figureGroup DLDNE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 172))
+    (property priority (integer 182)))
+   (figureGroup DLPW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 149))
+    (property priority (integer 36)))
+   (figureGroup HPBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 144))
+    (property priority (integer 7)))
+   (figureGroup DLRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 163))
+    (property priority (integer 173)))
+   (figureGroup DCBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 119))
+    (property priority (integer 40)))
+   (figureGroup DLMPE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 169))
+    (property priority (integer 179)))
+   (figureGroup PRO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 14))
+    (property priority (integer 19)))
+   (figureGroup grid
+     (color 14 14 16)
+    (visible (true))
+    (property layerNumber (integer 251))
+    (property priority (integer 1)))
+   (figureGroup DLBGMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 179))
+    (property priority (integer 189)))
+   (figureGroup DLBGMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 178))
+    (property priority (integer 188)))
+   (figureGroup CG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 41))
+    (property priority (integer 31)))
+   (figureGroup HPM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 33))
+    (property priority (integer 26)))
+   (figureGroup DLBGRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 182))
+    (property priority (integer 192)))
+   (figureGroup DLDPE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 171))
+    (property priority (integer 181)))
+   (figureGroup marker
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 238))
+    (property priority (integer 118)))
+   (figureGroup hilite
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 253))
+    (property priority (integer 88)))
+   (figureGroup DLMNOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 174))
+    (property priority (integer 184)))
+   (figureGroup CL
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 143))
+    (property priority (integer 6)))
+   (figureGroup DLWLRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 153))
+    (property priority (integer 163)))
+   (figureGroup changedLayer
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 220))
+    (property priority (integer 116)))
+   (figureGroup select
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 239))
+    (property priority (integer 98)))
+   (figureGroup stretch
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 218))
+    (property priority (integer 77)))
+   (figureGroup y4
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 211))
+    (property priority (integer 82)))
+   (figureGroup PSUB
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 140))
+    (property priority (integer 27)))
+   (figureGroup NM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 7))
+    (property priority (integer 13)))
+   (figureGroup DLCONT
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 184))
+    (property priority (integer 194)))
+   (figureGroup DLMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 160))
+    (property priority (integer 170)))
+   (figureGroup DLMPOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 173))
+    (property priority (integer 183)))
+   (figureGroup DLWLRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 155))
+    (property priority (integer 165)))
+   (figureGroup y1
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 208))
+    (property priority (integer 79)))
+   (figureGroup M2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 20))
+    (property priority (integer 21)))
+   (figureGroup internalGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 243))
+    (property priority (integer 126)))
+   (figureGroup DLDMPOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 175))
+    (property priority (integer 185)))
+   (figureGroup annotate
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 237))
+    (property priority (integer 123)))
+   (figureGroup DLMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 159))
+    (property priority (integer 169)))
+   (figureGroup supply
+     (color 0 25 0)
+    (visible (true))
+    (property layerNumber (integer 227))
+    (property priority (integer 103)))
+   (figureGroup border
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 232))
+    (property priority (integer 61)))
+   (figureGroup TC2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 124))
+    (property priority (integer 34)))
+   (figureGroup DLDN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 168))
+    (property priority (integer 178)))
+   (figureGroup Unrouted
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 200))
+    (property priority (integer 127)))
+   (figureGroup y3
+     (color 25 0 25)
+    (visible (true))
+    (property layerNumber (integer 210))
+    (property priority (integer 81)))
+   (figureGroup DLDMNOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 176))
+    (property priority (integer 186)))
+   (figureGroup PBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 146))
+    (property priority (integer 9)))
+   (figureGroup Canplace
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 204))
+    (property priority (integer 126)))
+   (figureGroup y6
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 213))
+    (property priority (integer 84)))
+   (figureGroup PF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 26))
+    (property priority (integer 23)))
+   (figureGroup DLWLRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 154))
+    (property priority (integer 164)))
+   (figureGroup unset
+     (color 3 14 10)
+    (visible (true))
+    (property layerNumber (integer 221))
+    (property priority (integer 105)))
+   (figureGroup TC
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 19))
+    (property priority (integer 20)))
+   (figureGroup DLBGMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 180))
+    (property priority (integer 190)))
+   (figureGroup DLDPESD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 187))
+    (property priority (integer 197)))
+   (figureGroup NW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 36))
+    (property priority (integer 29)))
+   (figureGroup unknown
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 222))
+    (property priority (integer 104)))
+   (figureGroup y2
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 209))
+    (property priority (integer 80)))
+   (figureGroup hardFence
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 205))
+    (property priority (integer 56)))
+   (figureGroup align
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 234))
+    (property priority (integer 55)))
+   (figureGroup solderMaskTop
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 245))
+    (property priority (integer 128)))
+   (figureGroup edgeLayer
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 219))
+    (property priority (integer 74)))
+   (figureGroup DLWLDMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 156))
+    (property priority (integer 166)))
+   (figureGroup PRO2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 126))
+    (property priority (integer 32)))
+   (figureGroup wire
+     (color 5 19 25)
+    (pathWidth 0)
+    (textHeight 10)
+    (visible (true))
+    (property layerNumber (integer 228))
+    (property priority (integer 67)))
+   (figureGroup DPBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 116))
+    (property priority (integer 37)))
+   (figureGroup R
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 12))
+    (property priority (integer 17)))
+   (figureGroup HVNW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 141))
+    (property priority (integer 4)))
+   (figureGroup drill
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 246))
+    (property priority (integer 129)))
+   (figureGroup DLWLMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 152))
+    (property priority (integer 162)))
+   (figureGroup DLWLMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 151))
+    (property priority (integer 161)))
+   (figureGroup hiz
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 224))
+    (property priority (integer 100)))
+   (figureGroup pin
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 229))
+    (property priority (integer 70)))
+   (figureGroup DLRS
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 165))
+    (property priority (integer 175)))
+   (figureGroup DLRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 162))
+    (property priority (integer 172)))
+   (figureGroup Group
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 202))
+    (property priority (integer 122)))
+   (figureGroup softFence
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 206))
+    (property priority (integer 57)))
+   (figureGroup NF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 25))
+    (property priority (integer 22)))
+   (figureGroup DLRHHV
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 185))
+    (property priority (integer 195)))
+   (figureGroup DLCSIO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 166))
+    (property priority (integer 176)))
+   (figureGroup RHP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 148))
+    (property priority (integer 30)))
+   (figureGroup assemblyBoundary
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 249))
+    (property priority (integer 132)))
+   (figureGroup S
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 4))
+    (property priority (integer 12)))
+   (figureGroup DLDP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 167))
+    (property priority (integer 177)))
+   (figureGroup DLWLMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 150))
+    (property priority (integer 160)))
+   (figureGroup designFlow
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 217))
+    (property priority (integer 106)))
+   (figureGroup drive
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 226))
+    (property priority (integer 99)))
+   (figureGroup axis
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 252))
+    (property priority (integer 73)))
+   (figureGroup DLMNE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 170))
+    (property priority (integer 180)))
+   (figureGroup instance
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 236))
+    (property priority (integer 50)))
+   (figureGroup DLMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 157))
+    (property priority (integer 167)))
+   (figureGroup PF2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 142))
+    (property priority (integer 5)))
+   (figureGroup y0
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 207))
+    (property priority (integer 78)))
+   (figureGroup DRBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 118))
+    (property priority (integer 39)))
+   (figureGroup PM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 35))
+    (property priority (integer 28)))
+   (figureGroup endGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 244))
+    (property priority (integer 127)))
+   (figureGroup text
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 230))
+    (property priority (integer 58)))
+   (figureGroup snap
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 233))
+    (property priority (integer 76)))
+   (figureGroup CONT
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 11))
+    (property priority (integer 16)))
+   (figureGroup HNBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 145))
+    (property priority (integer 8)))
+   (figureGroup DLRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 161))
+    (property priority (integer 171)))
+   (figureGroup DLMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 158))
+    (property priority (integer 168)))
+   (figureGroup y7
+     (color 21 20 0)
+    (visible (true))
+    (property layerNumber (integer 214))
+    (property priority (integer 85)))
+   (figureGroup Cannotoccupy
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 203))
+    (property priority (integer 124)))
+   (figureGroup CH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 27))
+    (property priority (integer 24)))
+   (figureGroup resist
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 225))
+    (property priority (integer 101)))
+   (figureGroup TF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 123))
+    (property priority (integer 33)))
+   (figureGroup NBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 147))
+    (property priority (integer 10)))
+   (figureGroup DLBGRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 183))
+    (property priority (integer 193)))
+   (figureGroup wirebond
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 247))
+    (property priority (integer 130)))
+   (figureGroup beginGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 242))
+    (property priority (integer 125))))
+  (cell CSIO (cellType GENERIC)
+   (view symbol (viewType SCHEMATIC)
+    (interface
+     (port PLUS (direction INPUT))
+     (port MINUS (direction INPUT))
+	(property (rename pin_35_ "pin#") (integer 3) (owner "Cadence"))
+	(property instNamePrefix (string "C"))
+     (symbol
+     (boundingBox (rectangle (pt -20 -60) (pt 20 0)))
+       (figure device (circle (pt 3 -20) (pt -3 -20)))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%PLUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -10 -10))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%MINUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -10 -60))))))
+       (commentGraphics (annotate (stringDisplay "cdsName()"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 10 -10))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(3)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 15 -55))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(1)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 15 -25))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(2)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 15 -40))))))
+       (figure device (path (pointList
+	 (pt 10 -20) (pt -10 -20))))
+       (figure device (path (pointList
+	 (pt 0 0) (pt 0 -22))))
+       (figure device (path (pointList
+	 (pt 0 -32) (pt 0 -60))))
+       (figure device (path (pointList
+	 (pt 10 -32) (pt -10 -32))))
+      (portImplementation MINUS
+	(connectLocation
+	 (figure pin (dot (pt 0 -60))))
+       (figure device (circle (pt 1 -60) (pt -1 -60))))
+      (portImplementation PLUS
+	(connectLocation
+	 (figure pin (dot (pt 0 0))))
+       (figure device (circle (pt 1 0) (pt -1 0)))))))
+	(property cdfVersion (number (E 11000 -4))))
+  (cell DN (cellType GENERIC)
+   (view symbol (viewType SCHEMATIC)
+    (interface
+     (port PLUS (direction INOUT))
+     (port MINUS (direction INOUT))
+	(property (rename pin_35_ "pin#") (integer 3) (owner "Cadence"))
+	(property instNamePrefix (string "D"))
+     (symbol
+     (boundingBox (rectangle (pt -20 -60) (pt 20 0)))
+       (commentGraphics (annotate (stringDisplay "N"
+	(display (figureGroupOverride device (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 20 -30))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%PLUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -5 -60))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%MINUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -5 -9))))))
+       (commentGraphics (annotate (stringDisplay "cdsName()"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 20 -10))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(3)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 25 -55))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(2)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 25 -40))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(1)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 25 -25))))))
+       (figure device (path (pointList
+	 (pt 10 -25) (pt -10 -25))))
+       (figure device (polygon (pointList
+	 (pt 10 -40) (pt -10 -40)
+	 (pt 0 -25))))
+       (figure device (path (pointList
+	 (pt 0 -60) (pt 0 0))))
+      (portImplementation MINUS
+	(connectLocation
+	 (figure pin (dot (pt 0 0))))
+       (figure device (circle (pt 1 0) (pt -1 0))))
+      (portImplementation PLUS
+	(connectLocation
+	 (figure pin (dot (pt 0 -60))))
+       (figure device (circle (pt 1 -60) (pt -1 -60))))))))
+  (cell DP (cellType GENERIC)
+   (view symbol (viewType SCHEMATIC)
+    (interface
+     (port PLUS (direction INOUT))
+     (port MINUS (direction INOUT))
+	(property instNamePrefix (string "D"))
+	(property (rename pin_35_ "pin#") (integer 4) (owner "Cadence"))
+     (symbol
+     (boundingBox (rectangle (pt -20 -60) (pt 20 0)))
+       (commentGraphics (annotate (stringDisplay "P"
+	(display (figureGroupOverride device (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt 20 -30))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(2)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 25 -40))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(3)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 25 -55))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(1)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 25 -25))))))
+       (commentGraphics (annotate (stringDisplay "cdsName()"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 20 -10))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%PLUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -5 -59))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%MINUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -5 -10))))))
+       (figure device (polygon (pointList
+	 (pt 10 -40) (pt -10 -40)
+	 (pt 0 -24))))
+       (figure device (path (pointList
+	 (pt 0 -24) (pt 0 -60))))
+       (figure device (path (pointList
+	 (pt 10 -24) (pt -10 -24))))
+       (figure device (path (pointList
+	 (pt 0 0) (pt 0 -24))))
+      (portImplementation MINUS
+	(connectLocation
+	 (figure pin (dot (pt 0 0))))
+       (figure device (circle (pt 1 0) (pt -1 0))))
+      (portImplementation PLUS
+	(connectLocation
+	 (figure pin (dot (pt 0 -60))))
+       (figure device (circle (pt 1 -60) (pt -1 -60))))))))
+  (cell MN (cellType GENERIC)
+   (view symbol (viewType SCHEMATIC)
+    (interface
+     (port BG (direction INOUT))
+     (port D (direction INOUT))
+     (port G (direction INOUT))
+     (port S (direction INOUT))
+	(property instNamePrefix (string "M"))
+	(property (rename pin_35_ "pin#") (integer 5) (owner "Cadence"))
+     (symbol
+     (boundingBox (rectangle (pt 0 -30) (pt 40 30)))
+       (figure device (polygon (pointList
+	 (pt 20 0) (pt 28 5)
+	 (pt 28 -5))))
+       (figure device (path (pointList
+	 (pt 20 -15) (pt 40 -15)
+	 (pt 40 -30))))
+       (figure device (path (pointList
+	 (pt 20 0) (pt 40 0))))
+       (figure device (path (pointList
+	 (pt 15 15) (pt 15 -15))))
+       (figure device (path (pointList
+	 (pt 0 0) (pt 15 0))))
+       (figure device (path (pointList
+	 (pt 20 20) (pt 20 -20))))
+       (figure device (path (pointList
+	 (pt 20 15) (pt 40 15)
+	 (pt 40 30))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%S%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt 35 -44))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%G%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt 5 -4))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%BG%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 40 6))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%D%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt 35 35))))))
+       (commentGraphics (annotate (stringDisplay "cdsName()"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 20))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(1)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 -15))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(3)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 -45))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(2)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 -30))))))
+      (portImplementation S
+	(connectLocation
+	 (figure pin (dot (pt 40 -30))))
+       (figure device (circle (pt 41 -30) (pt 39 -30))))
+      (portImplementation G
+	(connectLocation
+	 (figure pin (dot (pt 0 0))))
+       (figure device (circle (pt 1 0) (pt -1 0))))
+      (portImplementation D
+	(connectLocation
+	 (figure pin (dot (pt 40 30))))
+       (figure device (circle (pt 41 30) (pt 39 30))))
+      (portImplementation BG
+	(connectLocation
+	 (figure pin (dot (pt 40 0))))
+       (figure device (circle (pt 41 0) (pt 39 0))))))
+    (contents
+     (page SH1
+      (commentGraphics
+      (instance sheet
+       (viewRef symbol (cellRef Csize (libraryRef US_8ths)))
+       (transform)
+	(property sheetNumber (integer 1))
+	(property maxSheets (integer 1) (owner "Cadence"))))
+      (portImplementation
+	 (name S
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 375 760))))
+	(connectLocation
+	 (figure pin (dot (pt 400 760))))
+      (instance PIN3
+       (viewRef symbolr (cellRef iopin (libraryRef basic)))
+       (transform (origin (pt 400 760)))))
+      (portImplementation
+	 (name G
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 375 720))))
+	(connectLocation
+	 (figure pin (dot (pt 400 720))))
+      (instance PIN2
+       (viewRef symbolr (cellRef iopin (libraryRef basic)))
+       (transform (origin (pt 400 720)))))
+      (portImplementation
+	 (name D
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 375 680))))
+	(connectLocation
+	 (figure pin (dot (pt 400 680))))
+      (instance PIN1
+       (viewRef symbolr (cellRef iopin (libraryRef basic)))
+       (transform (origin (pt 400 680)))))
+      (portImplementation
+	 (name BG
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 375 640))))
+	(connectLocation
+	 (figure pin (dot (pt 400 640))))
+      (instance PIN0
+       (viewRef symbolr (cellRef iopin (libraryRef basic)))
+       (transform (origin (pt 400 640)))))
+      (net BG (joined
+	 (portRef  BG))
+       (criticality 0))
+      (net D (joined
+	 (portRef  D))
+       (criticality 0))
+      (net G (joined
+	 (portRef  G))
+       (criticality 0))
+      (net S (joined
+	 (portRef  S))
+       (criticality 0))))))
+  (cell MP (cellType GENERIC)
+   (view symbol (viewType SCHEMATIC)
+    (interface
+     (port BG (direction INOUT))
+     (port D (direction INOUT))
+     (port G (direction INOUT))
+     (port S (direction INOUT))
+	(property instNamePrefix (string "M"))
+	(property (rename pin_35_ "pin#") (integer 5) (owner "Cadence"))
+     (symbol
+     (boundingBox (rectangle (pt 0 -30) (pt 40 30)))
+       (figure device (polygon (pointList
+	 (pt 39 0) (pt 31 -5)
+	 (pt 31 5))))
+       (figure device (path (pointList
+	 (pt 20 20) (pt 20 -20))))
+       (figure device (path (pointList
+	 (pt 20 0) (pt 40 0))))
+       (figure device (path (pointList
+	 (pt 0 0) (pt 15 0))))
+       (figure device (path (pointList
+	 (pt 20 15) (pt 40 15)
+	 (pt 40 30))))
+       (figure device (path (pointList
+	 (pt 20 -15) (pt 40 -15)
+	 (pt 40 -30))))
+       (figure device (path (pointList
+	 (pt 15 15) (pt 15 -15))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%D%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt 35 -44))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%S%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt 35 35))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%BG%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 40 6))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%G%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt 5 -4))))))
+       (commentGraphics (annotate (stringDisplay "cdsName()"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 20))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(2)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 -30))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(3)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 -45))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(1)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 45 -15))))))
+      (portImplementation S
+	(connectLocation
+	 (figure pin (dot (pt 40 30))))
+       (figure device (circle (pt 41 30) (pt 39 30))))
+      (portImplementation G
+	(connectLocation
+	 (figure pin (dot (pt 0 0))))
+       (figure device (circle (pt 1 0) (pt -1 0))))
+      (portImplementation D
+	(connectLocation
+	 (figure pin (dot (pt 40 -30))))
+       (figure device (circle (pt 41 -30) (pt 39 -30))))
+      (portImplementation BG
+	(connectLocation
+	 (figure pin (dot (pt 40 0))))
+       (figure device (circle (pt 41 0) (pt 39 0))))))))
+  (cell (rename RR_W2_46_8 "RR_W2.8") (cellType GENERIC)
+   (view symbol (viewType SCHEMATIC)
+    (interface
+     (port MINUS (direction INOUT))
+     (port PLUS (direction INOUT))
+     (port SUB (direction INOUT))
+	(property instNamePrefix (string "R"))
+	(property (rename pin_35_ "pin#") (integer 6) (owner "Cadence"))
+     (symbol
+     (boundingBox (rectangle (pt -20 -60) (pt 20 0)))
+       (commentGraphics (annotate (stringDisplay "+"
+	(display (figureGroupOverride device (textHeight 10))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 10 -10))))))
+       (commentGraphics (annotate (stringDisplay "(w=2.8)"
+	(display (figureGroupOverride device (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt -40 -40))))))
+       (commentGraphics (annotate (stringDisplay "RR"
+	(display (figureGroupOverride device (textHeight 10))
+	(justify CENTERCENTER)
+	(orientation R0)
+	(origin (pt -20 -30))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%SUB%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt 50 -20))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%PLUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -10 -10))))))
+       (commentGraphics (annotate (stringDisplay "cdsTerm(%34%MINUS%34%)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERRIGHT)
+	(orientation R0)
+	(origin (pt -10 -60))))))
+       (commentGraphics (annotate (stringDisplay "cdsName()"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 30 -10))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(1)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 30 -35))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(3)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 30 -65))))))
+       (commentGraphics (annotate (stringDisplay "cdsParam(2)"
+	(display (figureGroupOverride annotate (textHeight 8))
+	(justify LOWERLEFT)
+	(orientation R0)
+	(origin (pt 30 -50))))))
+       (figure device (path (pointList
+	 (pt 20 -30) (pt 10 -30))))
+       (figure device (path (pointList
+	 (pt 0 -60) (pt 0 -48)
+	 (pt -10 -45) (pt 10 -39)
+	 (pt -10 -33) (pt 10 -27)
+	 (pt -10 -21) (pt 10 -15)
+	 (pt 0 -12) (pt 0 0))))
+      (portImplementation SUB
+	(connectLocation
+	 (figure pin (dot (pt 20 -30))))
+       (figure device (circle (pt 21 -30) (pt 19 -30))))
+      (portImplementation PLUS
+	(connectLocation
+	 (figure pin (dot (pt 0 0))))
+       (figure device (circle (pt 1 0) (pt -1 0))))
+      (portImplementation MINUS
+	(connectLocation
+	 (figure pin (dot (pt 0 -60))))
+       (figure device (circle (pt 1 -60) (pt -1 -60)))))))))
+ (library test
+  (edifLevel 0)
+  (technology
+   (numberDefinition
+    (scale 160 (E 25400 -6) (unit DISTANCE)))
+   (figureGroup DLBGRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 181))
+    (property priority (integer 73)))
+   (figureGroup PSD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 9))
+    (property priority (integer 19)))
+   (figureGroup y5
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 212))
+    (property priority (integer 47)))
+   (figureGroup M1
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 13))
+    (property priority (integer 24)))
+   (figureGroup Row
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 201))
+    (property priority (integer 84)))
+   (figureGroup background
+     (color 0 0 0)
+    (visible (true))
+    (property layerNumber (integer 254))
+    (property priority (integer 0)))
+   (figureGroup M3
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 122))
+    (property priority (integer 39)))
+   (figureGroup L
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 3))
+    (property priority (integer 5)))
+   (figureGroup NSD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 28))
+    (property priority (integer 20)))
+   (figureGroup solderMaskBottom
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 241))
+    (property priority (integer 124)))
+   (figureGroup y8
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 215))
+    (property priority (integer 50)))
+   (figureGroup device
+     (color 0 20 10)
+    (pathWidth 0)
+    (visible (true))
+    (property layerNumber (integer 231))
+    (property priority (integer 25)))
+   (figureGroup DLRC
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 186))
+    (property priority (integer 105)))
+   (figureGroup DNBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 117))
+    (property priority (integer 96)))
+   (figureGroup TXM2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 49))
+    (property priority (integer 93)))
+   (figureGroup DLBGMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 177))
+    (property priority (integer 69)))
+   (figureGroup spike
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 223))
+    (property priority (integer 66)))
+   (figureGroup DLRNHV
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 164))
+    (property priority (integer 60)))
+   (figureGroup SG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 8))
+    (property priority (integer 13)))
+   (figureGroup wirebondFingerGuide
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 248))
+    (property priority (integer 131)))
+   (figureGroup prBoundary
+     (color 15 0 23)
+    (visible (true))
+    (property layerNumber (integer 235))
+    (property priority (integer 44)))
+   (figureGroup y9
+     (color 21 23 25)
+    (visible (true))
+    (property layerNumber (integer 216))
+    (property priority (integer 51)))
+   (figureGroup DLPW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 149))
+    (property priority (integer 99)))
+   (figureGroup DLDNE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 172))
+    (property priority (integer 68)))
+   (figureGroup HPBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 144))
+    (property priority (integer 10)))
+   (figureGroup DCBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 119))
+    (property priority (integer 98)))
+   (figureGroup DLRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 163))
+    (property priority (integer 59)))
+   (figureGroup DLMPE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 169))
+    (property priority (integer 65)))
+   (figureGroup PRO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 14))
+    (property priority (integer 43)))
+   (figureGroup grid
+     (color 14 14 16)
+    (visible (true))
+    (property layerNumber (integer 251))
+    (property priority (integer 1)))
+   (figureGroup CG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 41))
+    (property priority (integer 109)))
+   (figureGroup DLBGMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 179))
+    (property priority (integer 71)))
+   (figureGroup DLBGMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 178))
+    (property priority (integer 70)))
+   (figureGroup HPM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 33))
+    (property priority (integer 14)))
+   (figureGroup hilite
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 253))
+    (property priority (integer 111)))
+   (figureGroup DLBGRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 182))
+    (property priority (integer 74)))
+   (figureGroup DLDPE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 171))
+    (property priority (integer 67)))
+   (figureGroup marker
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 238))
+    (property priority (integer 82)))
+   (figureGroup DLMNOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 174))
+    (property priority (integer 102)))
+   (figureGroup CL
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 143))
+    (property priority (integer 12)))
+   (figureGroup DLWLRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 153))
+    (property priority (integer 50)))
+   (figureGroup changedLayer
+     (color 25 0 0)
+    (visible (false))
+    (property layerNumber (integer 220))
+    (property priority (integer 80)))
+   (figureGroup select
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 239))
+    (property priority (integer 62)))
+   (figureGroup stretch
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 218))
+    (property priority (integer 41)))
+   (figureGroup NM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 7))
+    (property priority (integer 17)))
+   (figureGroup PSUB
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 140))
+    (property priority (integer 2)))
+   (figureGroup y4
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 211))
+    (property priority (integer 46)))
+   (figureGroup DLCONT
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 184))
+    (property priority (integer 76)))
+   (figureGroup DLMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 160))
+    (property priority (integer 56)))
+   (figureGroup DLMPOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 173))
+    (property priority (integer 101)))
+   (figureGroup DLWLRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 155))
+    (property priority (integer 52)))
+   (figureGroup M2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 20))
+    (property priority (integer 32)))
+   (figureGroup y1
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 208))
+    (property priority (integer 43)))
+   (figureGroup internalGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 243))
+    (property priority (integer 126)))
+   (figureGroup DLDMPOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 175))
+    (property priority (integer 103)))
+   (figureGroup annotate
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 237))
+    (property priority (integer 3)))
+   (figureGroup DLMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 159))
+    (property priority (integer 55)))
+   (figureGroup M4
+     (color 25 25 25)
+    (visible (false))
+    (property layerNumber (integer 125))
+    (property priority (integer 42)))
+   (figureGroup TC2
+     (color 25 25 25)
+    (visible (false))
+    (property layerNumber (integer 124))
+    (property priority (integer 35)))
+   (figureGroup supply
+     (color 0 25 0)
+    (visible (true))
+    (property layerNumber (integer 227))
+    (property priority (integer 67)))
+   (figureGroup border
+     (color 25 23 19)
+    (visible (true))
+    (property layerNumber (integer 232))
+    (property priority (integer 24)))
+   (figureGroup DLDN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 168))
+    (property priority (integer 64)))
+   (figureGroup Unrouted
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 200))
+    (property priority (integer 91)))
+   (figureGroup y3
+     (color 25 0 25)
+    (visible (true))
+    (property layerNumber (integer 210))
+    (property priority (integer 45)))
+   (figureGroup DLDMNOE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 176))
+    (property priority (integer 104)))
+   (figureGroup FR1
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 191))
+    (property priority (integer 81)))
+   (figureGroup PBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 146))
+    (property priority (integer 8)))
+   (figureGroup FR2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 192))
+    (property priority (integer 82)))
+   (figureGroup MASK
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 190))
+    (property priority (integer 80)))
+   (figureGroup PF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 26))
+    (property priority (integer 7)))
+   (figureGroup Canplace
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 204))
+    (property priority (integer 90)))
+   (figureGroup y6
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 213))
+    (property priority (integer 48)))
+   (figureGroup DLWLRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 154))
+    (property priority (integer 51)))
+   (figureGroup unset
+     (color 3 14 10)
+    (visible (true))
+    (property layerNumber (integer 221))
+    (property priority (integer 69)))
+   (figureGroup TC
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 19))
+    (property priority (integer 28)))
+   (figureGroup DLBGMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 180))
+    (property priority (integer 72)))
+   (figureGroup DLDPESD
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 187))
+    (property priority (integer 78)))
+   (figureGroup NW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 36))
+    (property priority (integer 3)))
+   (figureGroup DLRAL2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 40))
+    (property priority (integer 88)))
+   (figureGroup solderMaskTop
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 245))
+    (property priority (integer 128)))
+   (figureGroup unknown
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 222))
+    (property priority (integer 68)))
+   (figureGroup y2
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 209))
+    (property priority (integer 44)))
+   (figureGroup hardFence
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 205))
+    (property priority (integer 19)))
+   (figureGroup align
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 234))
+    (property priority (integer 18)))
+   (figureGroup DLRAL1
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 22))
+    (property priority (integer 87)))
+   (figureGroup edgeLayer
+     (color 19 19 19)
+    (visible (true))
+    (property layerNumber (integer 219))
+    (property priority (integer 37)))
+   (figureGroup PRO2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 126))
+    (property priority (integer 110)))
+   (figureGroup DLWLDMNO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 156))
+    (property priority (integer 100)))
+   (figureGroup DPBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 116))
+    (property priority (integer 95)))
+   (figureGroup R
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 12))
+    (property priority (integer 18)))
+   (figureGroup HVNW
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 141))
+    (property priority (integer 4)))
+   (figureGroup drill
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 246))
+    (property priority (integer 129)))
+   (figureGroup wire
+     (color 5 19 25)
+    (pathWidth 0)
+    (textHeight 10)
+    (visible (true))
+    (property layerNumber (integer 228))
+    (property priority (integer 30)))
+   (figureGroup TC23
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 121))
+    (property priority (integer 36)))
+   (figureGroup DLWLMPO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 152))
+    (property priority (integer 49)))
+   (figureGroup DLWLMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 151))
+    (property priority (integer 48)))
+   (figureGroup hiz
+     (color 25 12 0)
+    (visible (true))
+    (property layerNumber (integer 224))
+    (property priority (integer 64)))
+   (figureGroup pin
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 229))
+    (property priority (integer 33)))
+   (figureGroup FR3
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 193))
+    (property priority (integer 83)))
+   (figureGroup DLRS
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 165))
+    (property priority (integer 61)))
+   (figureGroup TS
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 16))
+    (property priority (integer 0)))
+   (figureGroup DLRR
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 162))
+    (property priority (integer 58)))
+   (figureGroup NF
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 25))
+    (property priority (integer 6)))
+   (figureGroup Group
+     (color 0 20 10)
+    (visible (true))
+    (property layerNumber (integer 202))
+    (property priority (integer 86)))
+   (figureGroup softFence
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 206))
+    (property priority (integer 20)))
+   (figureGroup DLRHHV
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 185))
+    (property priority (integer 77)))
+   (figureGroup DLCSIO
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 166))
+    (property priority (integer 62)))
+   (figureGroup RHP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 148))
+    (property priority (integer 15)))
+   (figureGroup assemblyBoundary
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 249))
+    (property priority (integer 132)))
+   (figureGroup S
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 4))
+    (property priority (integer 107)))
+   (figureGroup TXM1
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 48))
+    (property priority (integer 91)))
+   (figureGroup TXSG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 47))
+    (property priority (integer 89)))
+   (figureGroup DLDP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 167))
+    (property priority (integer 63)))
+   (figureGroup DLWLMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 150))
+    (property priority (integer 47)))
+   (figureGroup designFlow
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 217))
+    (property priority (integer 70)))
+   (figureGroup drive
+     (color 0 0 25)
+    (visible (true))
+    (property layerNumber (integer 226))
+    (property priority (integer 63)))
+   (figureGroup axis
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 252))
+    (property priority (integer 36)))
+   (figureGroup DLMNE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 170))
+    (property priority (integer 66)))
+   (figureGroup ESI
+     (color 25 25 25)
+    (visible (false))
+    (property layerNumber (integer 51))
+    (property priority (integer 1)))
+   (figureGroup instance
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 236))
+    (property priority (integer 13)))
+   (figureGroup DLMP
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 157))
+    (property priority (integer 53)))
+   (figureGroup TC3
+     (color 25 25 25)
+    (visible (false))
+    (property layerNumber (integer 127))
+    (property priority (integer 31)))
+   (figureGroup PF2
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 142))
+    (property priority (integer 106)))
+   (figureGroup DRBG
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 118))
+    (property priority (integer 97)))
+   (figureGroup y0
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 207))
+    (property priority (integer 42)))
+   (figureGroup PM
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 35))
+    (property priority (integer 16)))
+   (figureGroup endGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 244))
+    (property priority (integer 127)))
+   (figureGroup text
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 230))
+    (property priority (integer 21)))
+   (figureGroup CONT
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 11))
+    (property priority (integer 21)))
+   (figureGroup snap
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 233))
+    (property priority (integer 39)))
+   (figureGroup HNBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 145))
+    (property priority (integer 11)))
+   (figureGroup DLSCRB
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 80))
+    (property priority (integer 79)))
+   (figureGroup FR4
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 194))
+    (property priority (integer 84)))
+   (figureGroup DLRH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 161))
+    (property priority (integer 57)))
+   (figureGroup DLMN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 158))
+    (property priority (integer 54)))
+   (figureGroup y7
+     (color 21 20 0)
+    (visible (true))
+    (property layerNumber (integer 214))
+    (property priority (integer 49)))
+   (figureGroup CH
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 27))
+    (property priority (integer 108)))
+   (figureGroup Cannotoccupy
+     (color 25 0 0)
+    (visible (true))
+    (property layerNumber (integer 203))
+    (property priority (integer 88)))
+   (figureGroup TF
+     (color 25 25 25)
+    (visible (false))
+    (property layerNumber (integer 123))
+    (property priority (integer 27)))
+   (figureGroup NBE
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 147))
+    (property priority (integer 9)))
+   (figureGroup resist
+     (color 0 25 25)
+    (visible (true))
+    (property layerNumber (integer 225))
+    (property priority (integer 65)))
+   (figureGroup DLBGRN
+     (color 25 25 25)
+    (visible (true))
+    (property layerNumber (integer 183))
+    (property priority (integer 75)))
+   (figureGroup wirebond
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 247))
+    (property priority (integer 130)))
+   (figureGroup beginGenericLayer
+     (color 25 25 0)
+    (visible (true))
+    (property layerNumber (integer 242))
+    (property priority (integer 125))))
+  (cell AMP_01_00 (cellType GENERIC)
+   (view schematic (viewType SCHEMATIC)
+    (interface
+     (port GND (direction INOUT))
+     (port VREG2 (direction INOUT))
+     (port (rename VIN_45_ "VIN-") (direction INPUT))
+     (port IREF (direction INPUT))
+     (port VOUT (direction OUTPUT))
+     (port (rename VIN_43_ "VIN+") (direction INPUT))
+	(property schGeometryLastUpdated (integer 10685))
+	(property connectivityLastUpdated (integer 10685))
+	(property (rename pin_35_ "pin#") (integer 43) (owner "Cadence"))
+	(property (rename net_35_ "net#") (integer 46))
+	(property schXtrVersion (string "sch.10.0") (owner "Cadence"))
+	(property lastSchematicExtraction (string "Mon Feb 26 11:29:28 2024%10%") (owner "Cadence"))
+	(property schGeometryVersion (string "sch.ds.gm.1.4"))
+	(property &_cmxVersion (integer 500)))
+    (contents
+     (page SH1
+      (instance M1
+       (viewRef symbol (cellRef MP (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1710 -130)))
+	(property w (string "40u"))
+	(property permuteRule (string "(p S D)"))
+	(property lxUseCell (string "1_616342_0_parts MP_05_40"))
+	(property fing_w (string "40u"))
+	(property l (string "5u")))
+      (instance M3
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1920 -700)))
+	(property l (string "5u"))
+	(property permuteRule (string "(p S D)"))
+	(property lxUseCell (string "1_616342_0_parts MN_05_08"))
+	(property m (string "8"))
+	(property fing_w (string "8u"))
+	(property w (string "8u")))
+      (instance M52
+       (viewRef symbol (cellRef MP (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1560 -130)))
+	(property permuteRule (string "(p S D)"))
+	(property m (string "2"))
+	(property w (string "40u"))
+	(property l (string "5u"))
+	(property fing_w (string "40u"))
+	(property lxUseCell (string "1_616342_0_parts MP_05_40")))
+      (instance M0
+       (viewRef symbol (cellRef MP (libraryRef IP62_2_analog)))
+       (transform (orientation MY) (origin (pt 1350 -140)))
+	(property l (string "5u"))
+	(property lxUseCell (string "1_616342_0_parts MP_05_40"))
+	(property permuteRule (string "(p S D)"))
+	(property fing_w (string "40u"))
+	(property w (string "40u")))
+      (instance M2
+       (viewRef symbol (cellRef MP (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1980 -110)))
+	(property w (string "40u"))
+	(property permuteRule (string "(p S D)"))
+	(property lxUseCell (string "1_616342_0_parts MP_01_40"))
+	(property l (string "1u"))
+	(property m (string "4"))
+	(property fing_w (string "40u")))
+      (instance M50
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (orientation MY) (origin (pt 1640 -380)))
+	(property permuteRule (string "(p S D)"))
+	(property fing_w (string "40u"))
+	(property m (string "2"))
+	(property l (string "8u"))
+	(property w (string "40u"))
+	(property lxUseCell (string "1_616342_0_parts MN_08_40")))
+      (instance R4
+       (viewRef symbol (cellRef RR_W2_46_8 (libraryRef IP62_2_analog)))
+       (transform (orientation MXR90) (origin (pt 1900 -510)))
+	(property sp (string "parallel"))
+	(property r (string "6.34358K"))
+	(property num (integer 1))
+	(property entryMode (string "l & w"))
+	(property permuteRule (string "(p PLUS MINUS)"))
+	(property lxUseCell (string "1_616342_0_parts RR_028_2041_6K"))
+	(property re (string "6K"))
+	(property l (string "20.6u")))
+      (instance M36
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 2040 -670)))
+	(property permuteRule (string "(p S D)"))
+	(property l (string "5u"))
+	(property w (string "8u"))
+	(property fing_w (string "8u"))
+	(property m (string "10"))
+	(property lxUseCell (string "1_616342_0_parts MN_05_08")))
+      (instance D3
+       (viewRef symbol (cellRef DP (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1910 -130)))
+	(property lxUseCell (string "1_616342_0_parts DN")))
+      (instance M51
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (orientation MY) (origin (pt 1700 -450)))
+	(property permuteRule (string "(p S D)"))
+	(property l (string "8u"))
+	(property fing_w (string "40u"))
+	(property m (string "2"))
+	(property w (string "40u"))
+	(property lxUseCell (string "1_616342_0_parts MN_08_40")))
+      (instance M42
+       (viewRef symbol (cellRef MP (libraryRef IP62_2_analog)))
+       (transform (origin (pt 2040 -220)))
+	(property permuteRule (string "(p S D)"))
+	(property w (string "40u"))
+	(property fing_w (string "40u"))
+	(property m (string "2"))
+	(property l (string "1u"))
+	(property lxUseCell (string "1_616342_0_parts MP_01_40")))
+      (instance M47
+       (viewRef symbol (cellRef MP (libraryRef IP62_2_analog)))
+       (transform (orientation MY) (origin (pt 1480 -130)))
+	(property permuteRule (string "(p S D)"))
+	(property l (string "5u"))
+	(property w (string "40u"))
+	(property m (string "2"))
+	(property fing_w (string "40u"))
+	(property lxUseCell (string "1_616342_0_parts MP_05_40")))
+      (instance C12
+       (viewRef symbol (cellRef CSIO (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1260 -700)))
+	(property permuteRule (string "(p PLUS MINUS)"))
+	(property SUB (string "GND"))
+	(property l (string "46.5u"))
+	(property w (string "46.5u"))
+	(property c (string "1p"))
+	(property lxUseCell (string "1_616342_0_parts CSIO"))
+	(property inh_SUB (string "GND") (owner "CADENCE-netSetType")))
+      (instance R2
+       (viewRef symbol (cellRef RR_W2_46_8 (libraryRef IP62_2_analog)))
+       (transform (orientation R90) (origin (pt 1150 -590)))
+	(property sp (string "parallel"))
+	(property r (string "4.326946K"))
+	(property num (integer 1))
+	(property entryMode (string "l & w"))
+	(property lxUseCell (string "1_616342_0_parts RR_028_1625_4K"))
+	(property l (string "16.4u")))
+      (instance R0
+       (viewRef symbol (cellRef RR_W2_46_8 (libraryRef IP62_2_analog)))
+       (transform (orientation MXR90) (origin (pt 1900 -380)))
+	(property permuteRule (string "(p PLUS MINUS)"))
+	(property r (string "6.34358K"))
+	(property num (integer 1))
+	(property entryMode (string "l & w"))
+	(property sp (string "parallel"))
+	(property l (string "20.6u"))
+	(property re (string "6K"))
+	(property lxUseCell (string "1_616342_0_parts RR_028_2041_6K")))
+      (instance M45
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1340 -450)))
+	(property permuteRule (string "(p S D)"))
+	(property w (string "40u"))
+	(property fing_w (string "40u"))
+	(property m (string "2"))
+	(property l (string "8u"))
+	(property lxUseCell (string "1_616342_0_parts MN_08_40")))
+      (instance D0
+       (viewRef symbol (cellRef DN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1200 -700)))
+	(property lxUseCell (string "1_616342_0_parts DN")))
+      (instance D1
+       (viewRef symbol (cellRef DN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1300 -500)))
+	(property lxUseCell (string "1_616342_0_parts DN")))
+      (instance M49
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1400 -380)))
+	(property permuteRule (string "(p S D)"))
+	(property l (string "8u"))
+	(property fing_w (string "40u"))
+	(property m (string "2"))
+	(property w (string "40u"))
+	(property lxUseCell (string "1_616342_0_parts MN_08_40")))
+      (instance C2
+       (viewRef symbol (cellRef CSIO (libraryRef IP62_2_analog)))
+       (transform (orientation R270) (origin (pt 2010 -380)))
+	(property c (string "2p"))
+	(property w (string "37.15u"))
+	(property l (string "80.9u"))
+	(property lxUseCell (string "1_616342_0_parts CSIO"))
+	(property permuteRule (string "(p PLUS MINUS)")))
+      (instance M38
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (orientation MY) (origin (pt 1160 -670)))
+	(property permuteRule (string "(p S D)"))
+	(property w (string "8u"))
+	(property l (string "5u"))
+	(property fing_w (string "8u"))
+	(property m (string "2"))
+	(property lxUseCell (string "1_616342_0_parts MN_05_08")))
+      (instance M15
+       (viewRef symbol (cellRef MN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1480 -670)))
+	(property permuteRule (string "(p S D)"))
+	(property w (string "8u"))
+	(property l (string "5u"))
+	(property m (string "4"))
+	(property fing_w (string "8u"))
+	(property lxUseCell (string "1_616342_0_parts MN_05_08")))
+      (instance D2
+       (viewRef symbol (cellRef DN (libraryRef IP62_2_analog)))
+       (transform (origin (pt 1740 -500)))
+	(property lxUseCell (string "1_616342_0_parts DN")))
+      (instance R1
+       (viewRef symbol (cellRef RR_W2_46_8 (libraryRef IP62_2_analog)))
+       (transform (orientation R90) (origin (pt 1150 -530)))
+	(property lxUseCell (string "1_616342_0_parts RR_028_1625_4K"))
+	(property r (string "4.326946K"))
+	(property num (integer 1))
+	(property entryMode (string "l & w"))
+	(property sp (string "parallel"))
+	(property l (string "16.4u")))
+      (instance R3
+       (viewRef symbol (cellRef RR_W2_46_8 (libraryRef IP62_2_analog)))
+       (transform (orientation MXR90) (origin (pt 1900 -450)))
+	(property sp (string "parallel"))
+	(property r (string "6.34358K"))
+	(property num (integer 1))
+	(property entryMode (string "l & w"))
+	(property permuteRule (string "(p PLUS MINUS)"))
+	(property lxUseCell (string "1_616342_0_parts RR_028_2041_6K"))
+	(property re (string "6K"))
+	(property l (string "20.6u")))
+       (commentGraphics (annotate (stringDisplay "462AMP_01_00"
+	(display (figureGroupOverride text (textHeight 48))
+	(justify LOWERCENTER)
+	(orientation R0)
+	(origin (pt 1290 90))))))
+       (commentGraphics (annotate (stringDisplay "change from 342AMP_01_00%10%DP added%10%RR L corrected"
+	(display (figureGroupOverride text (textHeight 16))
+	(justify LOWERCENTER)
+	(orientation R0)
+	(origin (pt 1220 20))))))
+      (portImplementation
+	 (name VIN_43_
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 1229 -260))))
+	(connectLocation
+	 (figure pin (dot (pt 1260 -260))))
+      (instance PIN27
+       (viewRef symbol (cellRef ipin (libraryRef IP62_ip)))
+       (transform (origin (pt 1260 -260)))))
+      (portImplementation
+	 (name VOUT
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERLEFT)
+	(orientation R0)
+	(origin (pt 2201 -478))))
+	(connectLocation
+	 (figure pin (dot (pt 2170 -480))))
+      (instance PIN18
+       (viewRef symbol (cellRef opin (libraryRef IP62_ip)))
+       (transform (origin (pt 2170 -480)))))
+      (portImplementation
+	 (name IREF
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 979 -530))))
+	(connectLocation
+	 (figure pin (dot (pt 1010 -530))))
+      (instance PIN15
+       (viewRef symbol (cellRef ipin (libraryRef IP62_ip)))
+       (transform (origin (pt 1010 -530)))))
+      (portImplementation
+	 (name VIN_45_
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify CENTERRIGHT)
+	(orientation R0)
+	(origin (pt 1229 -390))))
+	(connectLocation
+	 (figure pin (dot (pt 1260 -390))))
+      (instance PIN26
+       (viewRef symbol (cellRef ipin (libraryRef IP62_ip)))
+       (transform (orientation MX) (origin (pt 1260 -390)))))
+      (portImplementation
+	 (name VREG2
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify LOWERCENTER)
+	(orientation R0)
+	(origin (pt 1000 -14))))
+	(connectLocation
+	 (figure pin (dot (pt 1000 -30))))
+      (instance PIN1
+       (viewRef symbol (cellRef vccpin (libraryRef IP62_ip)))
+       (transform (origin (pt 1000 -30)))))
+      (portImplementation
+	 (name GND
+	(display (figureGroupOverride pin (textHeight 10))
+	(justify LOWERCENTER)
+	(orientation R0)
+	(origin (pt 1000 -764))))
+	(connectLocation
+	 (figure pin (dot (pt 1000 -780))))
+      (instance PIN0
+       (viewRef symbol (cellRef gndpin (libraryRef IP62_ip)))
+       (transform (orientation MY) (origin (pt 1000 -780)))))
+      (net net071 (joined
+	 (portRef  MINUS (instanceRef C2))
+	 (portRef  PLUS (instanceRef R0)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1900 -380) (pt 1950 -380)))))
+      (net VREG2 (joined
+	 (portRef  VREG2)
+	 (portRef  SUB (instanceRef R2))
+	 (portRef  SUB (instanceRef R1))
+	 (portRef  D (instanceRef M0))
+	 (portRef  BG (instanceRef M0))
+	 (portRef  S (instanceRef M0))
+	 (portRef  G (instanceRef M0))
+	 (portRef  BG (instanceRef M47))
+	 (portRef  S (instanceRef M47))
+	 (portRef  BG (instanceRef M52))
+	 (portRef  S (instanceRef M52))
+	 (portRef  G (instanceRef M1))
+	 (portRef  D (instanceRef M1))
+	 (portRef  BG (instanceRef M1))
+	 (portRef  S (instanceRef M1))
+	 (portRef  MINUS (instanceRef R4))
+	 (portRef  MINUS (instanceRef R3))
+	 (portRef  SUB (instanceRef R4))
+	 (portRef  SUB (instanceRef R3))
+	 (portRef  SUB (instanceRef R0))
+	 (portRef  PLUS (instanceRef R4))
+	 (portRef  PLUS (instanceRef R3))
+	 (portRef  MINUS (instanceRef D3))
+	 (portRef  G (instanceRef M2))
+	 (portRef  D (instanceRef M2))
+	 (portRef  BG (instanceRef M2))
+	 (portRef  S (instanceRef M2))
+	 (portRef  BG (instanceRef M42))
+	 (portRef  S (instanceRef M42)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1960 -30) (pt 2020 -30))))
+       (figure wire (path (pointList
+	 (pt 1800 -450) (pt 1840 -450))))
+       (figure wire (path (pointList
+	 (pt 1870 -320) (pt 1910 -320))))
+       (figure wire (path (pointList
+	 (pt 1220 -570) (pt 1220 -460))))
+       (figure wire (path (pointList
+	 (pt 1800 -430) (pt 1870 -430))))
+       (figure wire (path (pointList
+	 (pt 1910 -450) (pt 1910 -320))))
+       (figure wire (path (pointList
+	 (pt 1600 -30) (pt 1640 -30))))
+       (figure wire (path (pointList
+	 (pt 1360 -140) (pt 1360 -70))))
+       (figure wire (path (pointList
+	 (pt 2080 -190) (pt 2080 -30))))
+       (figure wire (path (pointList
+	 (pt 1180 -460) (pt 1220 -460))))
+       (figure wire (path (pointList
+	 (pt 1900 -450) (pt 1900 -430))))
+       (figure wire (path (pointList
+	 (pt 1800 -510) (pt 1800 -490))))
+       (figure wire (path (pointList
+	 (pt 1900 -510) (pt 1900 -490))))
+       (figure wire (path (pointList
+	 (pt 1800 -490) (pt 1870 -490))))
+       (figure wire (path (pointList
+	 (pt 1180 -460) (pt 1180 -30))))
+       (figure wire (path (pointList
+	 (pt 1710 -30) (pt 1750 -30))))
+       (figure wire (path (pointList
+	 (pt 1800 -490) (pt 1800 -450))))
+       (figure wire (path (pointList
+	 (pt 1870 -320) (pt 1870 -30))))
+       (figure wire (path (pointList
+	 (pt 1180 -570) (pt 1220 -570))))
+       (figure wire (path (pointList
+	 (pt 1870 -30) (pt 1910 -30))))
+       (figure wire (path (pointList
+	 (pt 1280 -100) (pt 1310 -100))))
+       (figure wire (path (pointList
+	 (pt 1310 -60) (pt 1310 -30))))
+       (figure wire (path (pointList
+	 (pt 1800 -450) (pt 1800 -430))))
+       (figure wire (path (pointList
+	 (pt 1960 -110) (pt 1980 -110))))
+       (figure wire (path (pointList
+	 (pt 1750 -160) (pt 1790 -160))))
+       (figure wire (path (pointList
+	 (pt 1440 -30) (pt 1600 -30))))
+       (figure wire (path (pointList
+	 (pt 1800 -510) (pt 1840 -510))))
+       (figure wire (path (pointList
+	 (pt 2020 -30) (pt 2040 -30))))
+       (figure wire (path (pointList
+	 (pt 1270 -170) (pt 1310 -170))))
+       (figure wire (path (pointList
+	 (pt 2020 -80) (pt 2020 -30))))
+       (figure wire (path (pointList
+	 (pt 1180 -30) (pt 1310 -30))))
+       (figure wire (path (pointList
+	 (pt 2080 -220) (pt 2120 -220))))
+       (figure wire (path (pointList
+	 (pt 1960 -110) (pt 1960 -30))))
+       (figure wire (path (pointList
+	 (pt 1900 -450) (pt 1910 -450))))
+       (figure wire (path (pointList
+	 (pt 1750 -100) (pt 1750 -80))))
+       (figure wire (path (pointList
+	 (pt 1440 -100) (pt 1440 -30))))
+       (figure wire (path (pointList
+	 (pt 2120 -220) (pt 2120 -30))))
+       (figure wire (path (pointList
+	 (pt 1270 -60) (pt 1310 -60))))
+       (figure wire (path (pointList
+	 (pt 2040 -30) (pt 2080 -30))))
+       (figure wire (path (pointList
+	 (pt 1750 -30) (pt 1870 -30))))
+       (figure wire (path (pointList
+	 (pt 1280 -140) (pt 1310 -140))))
+       (figure wire (path (pointList
+	 (pt 1640 -30) (pt 1710 -30))))
+       (figure wire (path (pointList
+	 (pt 1310 -70) (pt 1360 -70))))
+       (figure wire (path (pointList
+	 (pt 1310 -70) (pt 1310 -60))))
+       (figure wire (path (pointList
+	 (pt 1350 -140) (pt 1360 -140))))
+       (figure wire (path (pointList
+	 (pt 2040 -140) (pt 2040 -110))))
+       (figure wire (path (pointList
+	 (pt 1750 -70) (pt 1790 -70))))
+       (figure wire (path (pointList
+	 (pt 1790 -160) (pt 1790 -70))))
+       (figure wire (path (pointList
+	 (pt 1750 -70) (pt 1750 -30))))
+       (figure wire (path (pointList
+	 (pt 1270 -170) (pt 1270 -60))))
+       (figure wire (path (pointList
+	 (pt 1640 -130) (pt 1640 -30))))
+       (figure wire (path (pointList
+	 (pt 2040 -110) (pt 2040 -30))))
+       (figure wire (path (pointList
+	 (pt 2020 -110) (pt 2040 -110))))
+       (figure wire (path (pointList
+	 (pt 1310 -100) (pt 1310 -70))))
+       (figure wire (path (pointList
+	 (pt 1750 -130) (pt 1770 -130))))
+       (figure wire (path (pointList
+	 (pt 1310 -110) (pt 1310 -100))))
+       (figure wire (path (pointList
+	 (pt 1280 -140) (pt 1280 -100))))
+       (figure wire (path (pointList
+	 (pt 1870 -360) (pt 1870 -320))))
+       (figure wire (path (pointList
+	 (pt 1770 -130) (pt 1770 -80))))
+       (figure wire (path (pointList
+	 (pt 1750 -80) (pt 1770 -80))))
+       (figure wire (path (pointList
+	 (pt 1000 -30) (pt 1180 -30))))
+       (figure wire (path (pointList
+	 (pt 1180 -510) (pt 1180 -460))))
+       (figure wire (path (pointList
+	 (pt 1910 -130) (pt 1910 -30))))
+       (figure wire (path (pointList
+	 (pt 1310 -30) (pt 1400 -30))))
+       (figure wire (path (pointList
+	 (pt 1910 -30) (pt 1960 -30))))
+       (figure wire (path (pointList
+	 (pt 2020 -140) (pt 2040 -140))))
+       (figure wire (path (pointList
+	 (pt 1400 -130) (pt 1400 -30))))
+       (figure wire (path (pointList
+	 (pt 1400 -30) (pt 1440 -30))))
+       (figure wire (path (pointList
+	 (pt 1400 -130) (pt 1440 -130))))
+       (figure wire (path (pointList
+	 (pt 1600 -100) (pt 1600 -30))))
+       (figure wire (path (pointList
+	 (pt 1600 -130) (pt 1640 -130))))
+       (figure wire (path (pointList
+	 (pt 2080 -30) (pt 2120 -30))))
+       (figure wire (path (pointList
+	 (pt 1750 -80) (pt 1750 -70))))
+       (figure wire (path (pointList
+	 (pt 1710 -130) (pt 1710 -30))))
+       (figure wire (path (pointList
+	 (pt 1870 -430) (pt 1900 -430))))
+       (figure wire (path (pointList
+	 (pt 1870 -490) (pt 1900 -490)))))
+      (net VOUT (joined
+	 (portRef  VOUT)
+	 (portRef  PLUS (instanceRef C2))
+	 (portRef  D (instanceRef M36))
+	 (portRef  D (instanceRef M42)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 2080 -480) (pt 2080 -380))))
+       (figure wire (path (pointList
+	 (pt 2010 -380) (pt 2080 -380))))
+       (figure wire (path (pointList
+	 (pt 2080 -380) (pt 2080 -250))))
+       (figure wire (path (pointList
+	 (pt 2080 -640) (pt 2080 -480))))
+       (figure wire (path (pointList
+	 (pt 2080 -480) (pt 2170 -480)))))
+      (net (rename VIN_45_ "VIN-") (joined
+	 (portRef  VIN_45_)
+	 (portRef  MINUS (instanceRef D1))
+	 (portRef  G (instanceRef M45))
+	 (portRef  G (instanceRef M49)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1300 -450) (pt 1300 -390))))
+       (figure wire (path (pointList
+	 (pt 1300 -380) (pt 1400 -380))))
+       (figure wire (path (pointList
+	 (pt 1300 -390) (pt 1300 -380))))
+       (figure wire (path (pointList
+	 (pt 1260 -390) (pt 1300 -390))))
+       (figure wire (path (pointList
+	 (pt 1300 -450) (pt 1340 -450))))
+       (figure wire (path (pointList
+	 (pt 1300 -500) (pt 1300 -450)))))
+      (net net095 (joined
+	 (portRef  G (instanceRef M36))
+	 (portRef  G (instanceRef M15))
+	 (portRef  PLUS (instanceRef C12))
+	 (portRef  MINUS (instanceRef R1))
+	 (portRef  MINUS (instanceRef R2))
+	 (portRef  MINUS (instanceRef D0))
+	 (portRef  G (instanceRef M38)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 2020 -670) (pt 2020 -620))))
+       (figure wire (path (pointList
+	 (pt 1200 -680) (pt 1200 -670))))
+       (figure wire (path (pointList
+	 (pt 1460 -680) (pt 1460 -670))))
+       (figure wire (path (pointList
+	 (pt 2020 -670) (pt 2040 -670))))
+       (figure wire (path (pointList
+	 (pt 1460 -670) (pt 1460 -620))))
+       (figure wire (path (pointList
+	 (pt 1260 -680) (pt 1460 -680))))
+       (figure wire (path (pointList
+	 (pt 1160 -670) (pt 1200 -670))))
+       (figure wire (path (pointList
+	 (pt 1460 -620) (pt 2020 -620))))
+       (figure wire (path (pointList
+	 (pt 1200 -680) (pt 1210 -680))))
+       (figure wire (path (pointList
+	 (pt 1200 -700) (pt 1200 -680))))
+       (figure wire (path (pointList
+	 (pt 1460 -670) (pt 1480 -670))))
+       (figure wire (path (pointList
+	 (pt 1210 -680) (pt 1260 -680))))
+       (figure wire (path (pointList
+	 (pt 1260 -700) (pt 1260 -680))))
+       (figure wire (path (pointList
+	 (pt 1210 -680) (pt 1210 -590))))
+       (figure wire (path (pointList
+	 (pt 1210 -590) (pt 1210 -530)))))
+      (net net0106 (joined
+	 (portRef  G (instanceRef M42))
+	 (portRef  PLUS (instanceRef D3))
+	 (portRef  MINUS (instanceRef R0))
+	 (portRef  D (instanceRef M51))
+	 (portRef  D (instanceRef M52))
+	 (portRef  D (instanceRef M50)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1660 -420) (pt 1660 -320))))
+       (figure wire (path (pointList
+	 (pt 1800 -380) (pt 1800 -230))))
+       (figure wire (path (pointList
+	 (pt 1800 -230) (pt 1800 -220))))
+       (figure wire (path (pointList
+	 (pt 1600 -230) (pt 1800 -230))))
+       (figure wire (path (pointList
+	 (pt 1600 -320) (pt 1600 -230))))
+       (figure wire (path (pointList
+	 (pt 1600 -320) (pt 1660 -320))))
+       (figure wire (path (pointList
+	 (pt 1800 -220) (pt 1910 -220))))
+       (figure wire (path (pointList
+	 (pt 1600 -230) (pt 1600 -160))))
+       (figure wire (path (pointList
+	 (pt 1600 -350) (pt 1600 -320))))
+       (figure wire (path (pointList
+	 (pt 1910 -220) (pt 1910 -190))))
+       (figure wire (path (pointList
+	 (pt 1910 -220) (pt 2040 -220))))
+       (figure wire (path (pointList
+	 (pt 1800 -380) (pt 1840 -380)))))
+      (net net0150 (joined
+	 (portRef  G (instanceRef M52))
+	 (portRef  G (instanceRef M47))
+	 (portRef  D (instanceRef M47))
+	 (portRef  D (instanceRef M49))
+	 (portRef  D (instanceRef M45)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1520 -200) (pt 1520 -130))))
+       (figure wire (path (pointList
+	 (pt 1440 -320) (pt 1440 -200))))
+       (figure wire (path (pointList
+	 (pt 1440 -200) (pt 1440 -160))))
+       (figure wire (path (pointList
+	 (pt 1440 -200) (pt 1520 -200))))
+       (figure wire (path (pointList
+	 (pt 1380 -320) (pt 1440 -320))))
+       (figure wire (path (pointList
+	 (pt 1440 -350) (pt 1440 -320))))
+       (figure wire (path (pointList
+	 (pt 1380 -420) (pt 1380 -320))))
+       (figure wire (path (pointList
+	 (pt 1480 -130) (pt 1520 -130))))
+       (figure wire (path (pointList
+	 (pt 1520 -130) (pt 1560 -130)))))
+      (net IREF (joined
+	 (portRef  IREF)
+	 (portRef  D (instanceRef M38))
+	 (portRef  PLUS (instanceRef R2))
+	 (portRef  PLUS (instanceRef R1)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1140 -530) (pt 1150 -530))))
+       (figure wire (path (pointList
+	 (pt 1140 -590) (pt 1140 -530))))
+       (figure wire (path (pointList
+	 (pt 1010 -530) (pt 1120 -530))))
+       (figure wire (path (pointList
+	 (pt 1120 -640) (pt 1120 -530))))
+       (figure wire (path (pointList
+	 (pt 1140 -590) (pt 1150 -590))))
+       (figure wire (path (pointList
+	 (pt 1120 -530) (pt 1140 -530)))))
+      (net net084 (joined
+	 (portRef  S (instanceRef M51))
+	 (portRef  S (instanceRef M50))
+	 (portRef  D (instanceRef M15))
+	 (portRef  S (instanceRef M49))
+	 (portRef  S (instanceRef M45)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1440 -520) (pt 1520 -520))))
+       (figure wire (path (pointList
+	 (pt 1520 -640) (pt 1520 -520))))
+       (figure wire (path (pointList
+	 (pt 1600 -520) (pt 1600 -410))))
+       (figure wire (path (pointList
+	 (pt 1600 -520) (pt 1660 -520))))
+       (figure wire (path (pointList
+	 (pt 1660 -520) (pt 1660 -480))))
+       (figure wire (path (pointList
+	 (pt 1380 -520) (pt 1380 -480))))
+       (figure wire (path (pointList
+	 (pt 1380 -520) (pt 1440 -520))))
+       (figure wire (path (pointList
+	 (pt 1440 -520) (pt 1440 -410))))
+       (figure wire (path (pointList
+	 (pt 1520 -520) (pt 1600 -520)))))
+      (net GND (joined
+	 (portRef  GND)
+	 (portRef  S (instanceRef M38))
+	 (portRef  BG (instanceRef M38))
+	 (portRef  PLUS (instanceRef D0))
+	 (portRef  MINUS (instanceRef C12))
+	 (portRef  PLUS (instanceRef D1))
+	 (portRef  BG (instanceRef M45))
+	 (portRef  BG (instanceRef M49))
+	 (portRef  S (instanceRef M15))
+	 (portRef  BG (instanceRef M15))
+	 (portRef  BG (instanceRef M50))
+	 (portRef  BG (instanceRef M51))
+	 (portRef  PLUS (instanceRef D2))
+	 (portRef  G (instanceRef M3))
+	 (portRef  S (instanceRef M3))
+	 (portRef  BG (instanceRef M3))
+	 (portRef  D (instanceRef M3))
+	 (portRef  S (instanceRef M36))
+	 (portRef  BG (instanceRef M36)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 2080 -780) (pt 2080 -700))))
+       (figure wire (path (pointList
+	 (pt 1200 -780) (pt 1260 -780))))
+       (figure wire (path (pointList
+	 (pt 1520 -780) (pt 1520 -700))))
+       (figure wire (path (pointList
+	 (pt 1990 -780) (pt 1990 -700))))
+       (figure wire (path (pointList
+	 (pt 1960 -700) (pt 1990 -700))))
+       (figure wire (path (pointList
+	 (pt 1990 -780) (pt 2010 -780))))
+       (figure wire (path (pointList
+	 (pt 1960 -780) (pt 1960 -730))))
+       (figure wire (path (pointList
+	 (pt 1960 -670) (pt 2010 -670))))
+       (figure wire (path (pointList
+	 (pt 1540 -580) (pt 1560 -580))))
+       (figure wire (path (pointList
+	 (pt 1960 -780) (pt 1990 -780))))
+       (figure wire (path (pointList
+	 (pt 2120 -780) (pt 2120 -670))))
+       (figure wire (path (pointList
+	 (pt 1560 -670) (pt 1560 -580))))
+       (figure wire (path (pointList
+	 (pt 1300 -580) (pt 1300 -560))))
+       (figure wire (path (pointList
+	 (pt 1300 -580) (pt 1540 -580))))
+       (figure wire (path (pointList
+	 (pt 1520 -780) (pt 1560 -780))))
+       (figure wire (path (pointList
+	 (pt 1560 -780) (pt 1560 -670))))
+       (figure wire (path (pointList
+	 (pt 2010 -780) (pt 2080 -780))))
+       (figure wire (path (pointList
+	 (pt 1520 -380) (pt 1600 -380))))
+       (figure wire (path (pointList
+	 (pt 1560 -780) (pt 1900 -780))))
+       (figure wire (path (pointList
+	 (pt 1560 -670) (pt 1520 -670))))
+       (figure wire (path (pointList
+	 (pt 1260 -780) (pt 1520 -780))))
+       (figure wire (path (pointList
+	 (pt 1120 -780) (pt 1200 -780))))
+       (figure wire (path (pointList
+	 (pt 1900 -780) (pt 1960 -780))))
+       (figure wire (path (pointList
+	 (pt 1900 -780) (pt 1900 -700))))
+       (figure wire (path (pointList
+	 (pt 1440 -380) (pt 1520 -380))))
+       (figure wire (path (pointList
+	 (pt 2010 -780) (pt 2010 -670))))
+       (figure wire (path (pointList
+	 (pt 1560 -580) (pt 1740 -580))))
+       (figure wire (path (pointList
+	 (pt 1380 -450) (pt 1520 -450))))
+       (figure wire (path (pointList
+	 (pt 1900 -700) (pt 1920 -700))))
+       (figure wire (path (pointList
+	 (pt 1070 -780) (pt 1120 -780))))
+       (figure wire (path (pointList
+	 (pt 1520 -450) (pt 1540 -450))))
+       (figure wire (path (pointList
+	 (pt 1000 -780) (pt 1070 -780))))
+       (figure wire (path (pointList
+	 (pt 1520 -450) (pt 1520 -380))))
+       (figure wire (path (pointList
+	 (pt 1540 -580) (pt 1540 -450))))
+       (figure wire (path (pointList
+	 (pt 1070 -780) (pt 1070 -670))))
+       (figure wire (path (pointList
+	 (pt 2080 -670) (pt 2120 -670))))
+       (figure wire (path (pointList
+	 (pt 2080 -780) (pt 2120 -780))))
+       (figure wire (path (pointList
+	 (pt 1260 -780) (pt 1260 -760))))
+       (figure wire (path (pointList
+	 (pt 1120 -780) (pt 1120 -700))))
+       (figure wire (path (pointList
+	 (pt 1200 -780) (pt 1200 -760))))
+       (figure wire (path (pointList
+	 (pt 1740 -580) (pt 1740 -560))))
+       (figure wire (path (pointList
+	 (pt 1070 -670) (pt 1120 -670))))
+       (figure wire (path (pointList
+	 (pt 1540 -450) (pt 1660 -450)))))
+      (net (rename VIN_43_ "VIN+") (joined
+	 (portRef  VIN_43_)
+	 (portRef  G (instanceRef M50))
+	 (portRef  G (instanceRef M51))
+	 (portRef  MINUS (instanceRef D2)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 1740 -500) (pt 1740 -450))))
+       (figure wire (path (pointList
+	 (pt 1740 -380) (pt 1740 -260))))
+       (figure wire (path (pointList
+	 (pt 1740 -450) (pt 1740 -380))))
+       (figure wire (path (pointList
+	 (pt 1260 -260) (pt 1740 -260))))
+       (figure wire (path (pointList
+	 (pt 1640 -380) (pt 1740 -380))))
+       (figure wire (path (pointList
+	 (pt 1700 -450) (pt 1740 -450)))))))))))
