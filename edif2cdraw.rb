@@ -121,11 +121,16 @@ EOF
               }
             }
             c.view.contents.pages.instances.each{|i|
-              puts "  instance #{i.name}: #{i.cellRef} in #{i.libraryRef}"
+              puts "  instance '#{i.name}: #{i.cellRef}' in '#{i.libraryRef}'"
               ref[i.cellRef] = i.libraryRef
-              puts "    #{i.orientation}, @{i.origin.inspect}"
-              orient = "M0"
+              puts "    #{i.orientation}, #{i.origin.inspect}"
               case i.orientation
+              when :R90
+                orient = "R270"
+              when :R270
+                orient = "R90"
+              when :MY
+                orient = "M0"
               when :MYR90
                 orient = "M90"
               when :MX
@@ -230,7 +235,7 @@ class EdifSymbol
   attr_accessor :pins
   def initialize s
     bb =  EdifBoundingBox.new s.edif_get(:boundingBox)
-    puts "bb=#{bb} for s.edif_get(:boundingBox) = #{s.edif_get(:boundingBox)}"
+    # puts "bb=#{bb} for s.edif_get(:boundingBox) = #{s.edif_get(:boundingBox)}"
     @boundingBox = bb.rectangle
     @commentGraphics = EdifCommentGraphics.new s.edif_get(:commentGraphics)
     @figures = []
@@ -383,6 +388,7 @@ class EdifInstance
     @origin = origin[1..2] if origin
     @properties = {}
     properties.each{|p|
+      next unless [:w, :l, :n].include? p[1]
       case p[2][0]
       when :string
         @properties[p[1]]  = p[2][1].gsub(/%\d+%/){|w| w[1..-2].to_i.chr}
