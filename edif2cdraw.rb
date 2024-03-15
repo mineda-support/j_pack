@@ -114,7 +114,7 @@ EOF
 Version 4
 SHEET 1 7088 2000
 EOF
-            c.view.contents.pages.nets.each{|n|
+          c.view.contents.pages.nets.each{|n|
               puts "  net #{n.name}"
               n.wires.each{|w|
                 f.puts "WIRE #{w[0][0]} #{w[0][1]} #{w[1][0]} #{w[1][1]}"
@@ -125,7 +125,7 @@ EOF
               ref[i.cellRef] = i.libraryRef
               puts "    #{i.orientation}, @{i.origin.inspect}"
               orient = "M0"
-              case i.orientationdir 
+              case i.orientation
               when :MYR90
                 orient = "M90"
               when :MX
@@ -189,16 +189,28 @@ class EdifView
   def initialize s
     @name, @viewType, interface, contents = s[1..-1]
 #    puts "View name = #{@name}"
-    @interface = EdifInterface.new interface
-    @contents = EdifContents.new contents if contents
+    if @name == :symbol
+      @interface = EdifSymbolInterface.new interface
+    elsif @name == :schematic
+      @interface = EdifSchematicInterface.new interface
+      @contents = EdifContents.new contents if contents
+    end
   end
 end
-class EdifInterface
+class EdifSymbolInterface
   attr_accessor :ports, :symbol
   def initialize s
     @ports = s[1..-2].map{|p| EdifPort.new p} if s.size > 1
 #    puts "symbol: #{s[-1].inspect}"
     @symbol = EdifSymbol.new s[-1] if s.size > 2 && s[-1]
+  end
+end
+class EdifSchematicInterface
+  attr_accessor :ports, :symbol
+  def initialize s
+    @ports = s[1..-1].map{|p| EdifPort.new p}
+#    puts "symbol: #{s[-1].inspect}"
+    # @symbol = EdifSymbol.new s[-1] if s.size > 2 && s[-1]
   end
 end
 class EdifPort
@@ -218,6 +230,7 @@ class EdifSymbol
   attr_accessor :pins
   def initialize s
     bb =  EdifBoundingBox.new s.edif_get(:boundingBox)
+    puts "bb=#{bb} for s.edif_get(:boundingBox) = #{s.edif_get(:boundingBox)}"
     @boundingBox = bb.rectangle
     @commentGraphics = EdifCommentGraphics.new s.edif_get(:commentGraphics)
     @figures = []
@@ -343,6 +356,7 @@ debugger if s.nil?
     @instances = []
     @port_implementations = []
     @nets = []
+    @commentGraphics = []
     s[2..-2].each{|c|
       case c[0]
       when :instance
@@ -352,7 +366,7 @@ debugger if s.nil?
       when :net
         @nets << EdifNet.new(c)
       when :commentGraphics
-        @commentGraphics = c
+        @commentGraphics << c
       end
     }
   end
@@ -381,6 +395,7 @@ end
 class EdifNet
   attr_accessor :name, :wires
 =begin
+# silvaco
         (path
          (pointList
           (pt 1800 170)
@@ -393,12 +408,34 @@ class EdifNet
          (property netlistorder (integer 1)(owner "SILVACO"))
          (property text_size (integer 12)(owner "SILVACO"))
         )
+# cadence
+(net VOUT (joined
+	 (portRef  VOUT)
+	 (portRef  PLUS (instanceRef C2))
+	 (portRef  D (instanceRef M36))
+	 (portRef  D (instanceRef M42)))
+       (criticality 0)
+       (figure wire (path (pointList
+	 (pt 2080 -480) (pt 2080 -380))))
+       (figure wire (path (pointList
+	 (pt 2010 -380) (pt 2080 -380))))
+       (figure wire (path (pointList
+	 (pt 2080 -380) (pt 2080 -250))))
+       (figure wire (path (pointList
+	 (pt 2080 -640) (pt 2080 -480))))
+       (figure wire (path (pointList
+	 (pt 2080 -480) (pt 2170 -480)))))
 =end
   def initialize s
-    @name, @joined, @figure = s[1..-1]
+    @name, @joined, *rest = s[1..-1]
     @wires = []
-    @figure[2..-1].each{|path|
-      @wires <<[pt(path[1][1]), pt(path[1][2])]
+    rest.each{|figure|
+      if figure[0] == :figure
+        if figure[2][0] == :path
+          path = figure[2]
+          @wires <<[pt(path[1][1]), pt(path[1][2])]
+        end
+      end
     }
   end
   def pt s
