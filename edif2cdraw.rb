@@ -88,16 +88,34 @@ class Edif_out
             File.open(File.join('pictures', l.name, c.name+'.asy'), 'w'){|f|
               f.puts <<EOF
 Version 4
-SymbolType BLOCK
+SymbolType CELL
 EOF
-              c.view.interface.symbol.figures.each{|figs|
-                figs.figures.each{|fig|
-                  if fig[0] == :path
-                    f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
-                  elsif fig[0] == :circle
+              c.view.interface.symbol.figures.each{|edif_figure|
+                edif_figure.figures.each{|fig|
+                  case fig[0]
+                  when :path, :polygon
+                    #f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
+                    fig[1..-2].each_index{|i|
+                      f.puts "LINE Normal #{q2c(fig[i+1][0])} #{q2c(fig[i+1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}"
+                      f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}" if fig[0] == :polygon
+                    }
+                  when:circle
                     f.puts "CIRCLE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
                   end
                 }
+              }
+              c.view.interface.properties.each{|prop|
+                if prop[0] == :instNamePrefix
+                  f.puts "SYMATTR Prefix #{prop[1]}"
+                end
+              }
+              c.view.interface.symbol.commentGraphics.each{|cg|
+                x, y = cg.hash[:origin]
+                if cg.hash[:stringDisplay] == 'cdsName()'
+                  f.puts "WINDOW 0 #{x} #{y} Left 2"
+                elsif cg.hash[:stringDisplay] == 'cdsParam(1)'
+                  f.puts "WINDOW 2 #{x} #{y} Left 2"
+                end
               }
               c.view.interface.symbol.pins.each_with_index{|pin, i|
                 f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
@@ -204,19 +222,26 @@ class EdifView
   end
 end
 class EdifSymbolInterface
-  attr_accessor :ports, :symbol
+  attr_accessor :ports, :symbol, :properties
   def initialize s
     @ports = s[1..-2].map{|p| EdifPort.new p} if s.size > 1
 #    puts "symbol: #{s[-1].inspect}"
     @symbol = EdifSymbol.new s[-1] if s.size > 2 && s[-1]
+    @properties = {}
+    s[1..-2].edif_get_all(:property).each{|c|
+      @properties[c[1]] = c.edif_value :string || c.edif_value(:integer).to_int
+    } if s.size > 2
   end
 end
 class EdifSchematicInterface
   attr_accessor :ports, :symbol
   def initialize s
     @ports = s[1..-1].map{|p| EdifPort.new p}
+    @properties = s[1..-1].edif_get_all :property
 #    puts "symbol: #{s[-1].inspect}"
-    # @symbol = EdifSymbol.new s[-1] if s.size > 2 && s[-1]
+    if symbol = s.edif_get(:symbol)
+      @symbol = EdifSymbol.new symbol
+    end
   end
 end
 class EdifPort
@@ -238,20 +263,19 @@ class EdifSymbol
     bb =  EdifBoundingBox.new s.edif_get(:boundingBox)
     # puts "bb=#{bb} for s.edif_get(:boundingBox) = #{s.edif_get(:boundingBox)}"
     @boundingBox = bb.rectangle
-    @commentGraphics = EdifCommentGraphics.new s.edif_get(:commentGraphics)
+    @commentGraphics = []
+    s.edif_get_all(:commentGraphics).each{|cg|
+      @commentGraphics << EdifCommentGraphics.new(cg)
+    }
     @figures = []
 #    @portImplementations = []
     @pins = []
     @properties = {}
-    figures = s.edif_get_all(:figure)
-    figures && figures.each{|c|
+    s.edif_get_all(:figure).each{|c|
       @figures << EdifFigure.new(c)
     }
     s.edif_get_all(:portImplementation).each{|c|
       @pins << EdifPin.new(c)
-    }
-    s.edif_get_all(:property).each{|c|
-      @properties[c[0]] = c.edif_value :string || c.edif_value(:integer).to_int
     }
   end
 end
@@ -291,15 +315,15 @@ class EdifFigure
       case f[0]
       when :circle
         @figures << [:circle, pt(f[1]), pt(f[2])]
-      when :path
+      when :path, :polygon
         if f[1][0] == :pointList
-          @figures << [:path, *f[1][1..-1].map{|a| pt a}]
+          @figures << [f[0], *f[1][1..-1].map{|a| pt a}]
         end
       end
     }
   end
   def pt s
-    s[1, 2]
+    [s[1], -s[2]]
   end
 end
 class EdifBoundingBox
@@ -316,7 +340,7 @@ class EdifBoundingBox
     @rectangle = [pt(s[1][1]), pt(s[1][2])]
   end
   def pt s
-    s[1, 2]
+    [s[1], -s[2]]
   end
 end
 class EdifCommentGraphics
@@ -340,11 +364,14 @@ EOF
   def initialize s
     return if s.nil?
     @hash = s.edif_hash :stringDisplay, :textHeight, :justify, :orientation
-    if pt = s.edif_value(:origin)
-      result = {:origin => pt[1..2]}
+    if xy = s.edif_value(:origin)
+      result = {:origin => pt(xy)}
       @hash.merge! result
     end
   end
+  def pt s
+    [s[1], -s[2]]
+  end  
 end
 class EdifContents
   attr_accessor :pages
@@ -385,10 +412,10 @@ class EdifInstance
     @libraryRef = viewRef.edif_value :libraryRef
     @orientation = transform.edif_value :orientation
     origin = transform.edif_value(:origin) 
-    @origin = origin[1..2] if origin
+    @origin = pt(origin) if origin
     @properties = {}
     properties.each{|p|
-      next unless [:w, :l, :n].include? p[1]
+      next unless [:w, :l, :m].include? p[1]
       case p[2][0]
       when :string
         @properties[p[1]]  = p[2][1].gsub(/%\d+%/){|w| w[1..-2].to_i.chr}
@@ -396,6 +423,9 @@ class EdifInstance
         @properties[p[1]]  = p[2][1].to_i
       end
     }
+  end
+  def pt s
+    [s[1], -s[2]]
   end
 end
 class EdifNet
@@ -445,7 +475,7 @@ class EdifNet
     }
   end
   def pt s
-    s[1, 2]
+    [s[1], -s[2]]
   end
 end
 
