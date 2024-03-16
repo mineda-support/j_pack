@@ -14,8 +14,7 @@ end
 
 def q2c str
   i=str.to_i
-  #i*16/10
-  i/10*16
+  i*16/10
 end
 
 def q2e str

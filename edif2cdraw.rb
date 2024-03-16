@@ -6,18 +6,13 @@ require 'fileutils'
 
 class Array
   def edif_get key
-    self[1..-1].each{|s|
-      return s if s[0] == key
-    }
-    nil
+    self[1..-1].find{|s| s[0] == key}
   end
-  def edif_get2 key
-    result = []
-    self[1..-1].each{|s|
-      result << s if s[0] == key
-    }
-    result
+
+  def edif_get_all key
+    self[1..-1].select{|s| s[0] == key}
   end
+
   def edif_hash *k
     hash = {}
     k.each{|k2|
@@ -73,6 +68,11 @@ class Edif_out
       end
     }
   end
+  def q2c str
+    i=str.to_i
+    #i*16/10
+    i*16/10
+  end
   def edif2cdraw 
     @libraries.each{|l|
       puts "library #{l.name}"
@@ -93,15 +93,16 @@ EOF
               c.view.interface.symbol.figures.each{|figs|
                 figs.figures.each{|fig|
                   if fig[0] == :path
-                    f.puts "LINE Normal #{fig[1][0]} #{fig[1][1]} #{fig[2][0]} #{fig[2][1]}"
+                    f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
                   elsif fig[0] == :circle
-                    f.puts "CIRCLE Normal #{fig[1][0]} #{fig[1][1]} #{fig[2][0]} #{fig[2][1]}"
+                    f.puts "CIRCLE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
                   end
                 }
               }
-              c.view.interface.symbol.pins.each{|pin|
-                f.puts "PIN #{pin.xy[0]} #{pin.xy[1]} BOTTOM 0"
+              c.view.interface.symbol.pins.each_with_index{|pin, i|
+                f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
                 f.puts "PINATTR PinName #{pin.name}"
+                f.puts "PINATTR SpiceOrder #{i+1}"
               }
             }
           end
@@ -117,7 +118,7 @@ EOF
           c.view.contents.pages.nets.each{|n|
               puts "  net #{n.name}"
               n.wires.each{|w|
-                f.puts "WIRE #{w[0][0]} #{w[0][1]} #{w[1][0]} #{w[1][1]}"
+                f.puts "WIRE #{q2c(w[0][0])} #{q2c(w[0][1])} #{q2c(w[1][0])} #{q2c(w[1][1])}"
               }
             }
             c.view.contents.pages.instances.each{|i|
@@ -138,9 +139,9 @@ EOF
               when :MXR90
                 orient = "M270"
               else
-                orient = i.orientation
+                orient = "R0"
               end
-              f.puts "SYMBOL #{$rename_cell[i.cellRef]} #{i.origin[0]} #{i.origin[1]} #{orient}"
+              f.puts "SYMBOL #{$rename_cell[i.cellRef]} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}"
               f.puts "SYMATTR InstName #{i.name}"
               f.print "SYMATTR Value2"
               i.properties.each_pair{|k, v|
@@ -242,16 +243,15 @@ class EdifSymbol
 #    @portImplementations = []
     @pins = []
     @properties = {}
-    figures = s.edif_get2(:figure)
+    figures = s.edif_get_all(:figure)
     figures && figures.each{|c|
-      case c[0]
-      when :figure
-        @figures << EdifFigure.new(c)
-      when :portImplementation
-        @pins << EdifPin.new(c)
-      when :property
-        @properties[c[0]] = c.edif_value :string || c.edif_value(:integer).to_int
-      end
+      @figures << EdifFigure.new(c)
+    }
+    s.edif_get_all(:portImplementation).each{|c|
+      @pins << EdifPin.new(c)
+    }
+    s.edif_get_all(:property).each{|c|
+      @properties[c[0]] = c.edif_value :string || c.edif_value(:integer).to_int
     }
   end
 end
@@ -278,8 +278,8 @@ class EdifPin
        )
       )
 =end  
-  def initialize s
-    @name = s.edif_property :pin_name
+  def initialize s # s:(portImplementation D (connectLocaion ...))
+    @name = s.edif_property(:pin_name) || s[1]
     @xy = s.edif_value(:dot)[1..2]
   end
 end
@@ -293,13 +293,13 @@ class EdifFigure
         @figures << [:circle, pt(f[1]), pt(f[2])]
       when :path
         if f[1][0] == :pointList
-          @figures << [:path, pt(f[1][1]), pt(f[1][2])]
+          @figures << [:path, *f[1][1..-1].map{|a| pt a}]
         end
       end
     }
   end
   def pt s
-    s[1..2]
+    s[1, 2]
   end
 end
 class EdifBoundingBox
@@ -316,7 +316,7 @@ class EdifBoundingBox
     @rectangle = [pt(s[1][1]), pt(s[1][2])]
   end
   def pt s
-    s[1..2]
+    s[1, 2]
   end
 end
 class EdifCommentGraphics
@@ -445,7 +445,7 @@ class EdifNet
     }
   end
   def pt s
-    s[1..2]
+    s[1, 2]
   end
 end
 
