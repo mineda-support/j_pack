@@ -109,6 +109,7 @@ EOF
                   f.puts "SYMATTR Prefix #{prop[1]}"
                 end
               }
+              f.puts "SYMATTR Value #{c.name}"
               c.view.interface.symbol.commentGraphics.each{|cg|
                 x, y = cg.hash[:origin]
                 if cg.hash[:stringDisplay] == 'cdsName()'
@@ -161,11 +162,20 @@ EOF
               end
               f.puts "SYMBOL #{$rename_cell[i.cellRef]} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}"
               f.puts "SYMATTR InstName #{i.name}"
-              f.print "SYMATTR Value2"
-              i.properties.each_pair{|k, v|
-                f.print " #{k}=#{v}"
-              }
-              f.puts 
+              case prefix=i.name.to_s[0].downcase
+              when 'm'
+                f.print "SYMATTR Value2"
+                i.properties.each_pair{|k, v|
+                  f.print " #{k}=#{v}"
+                }
+                f.puts
+              when 'c', 'r'
+                i.properties.each_pair{|k, v|
+                  if k.to_s.downcase == prefix
+                    f.puts "SYMATTR Value #{v}"
+                  end
+                }
+              end
             }
           }
           File.open(File.join('pictures', l.name, c.name+'.yaml'), 'w'){|f|
@@ -300,11 +310,16 @@ class EdifPin
         (property y (integer 0)(owner "SILVACO"))
         ...
        )
-      )
+      )def pt s
+    [s[1], -s[2]]
+  end
 =end  
   def initialize s # s:(portImplementation D (connectLocaion ...))
     @name = s.edif_property(:pin_name) || s[1]
-    @xy = s.edif_value(:dot)[1..2]
+    @xy = pt(s.edif_value(:dot))
+  end
+  def pt s
+    [s[1], -s[2]]
   end
 end
 class EdifFigure
@@ -389,7 +404,7 @@ debugger if s.nil?
     @port_implementations = []
     @nets = []
     @commentGraphics = []
-    s[2..-2].each{|c|
+    s[2..-1].each{|c|
       case c[0]
       when :instance
         @instances << EdifInstance.new(c)
@@ -415,7 +430,12 @@ class EdifInstance
     @origin = pt(origin) if origin
     @properties = {}
     properties.each{|p|
-      next unless [:w, :l, :m].include? p[1]
+      case prefix=@name.to_s[0].downcase
+      when 'm'
+        next unless [:w, :l, :m].include? p[1]
+      when 'c', 'r'
+        next if p[1].to_s.downcase != prefix
+      end
       case p[2][0]
       when :string
         @properties[p[1]]  = p[2][1].gsub(/%\d+%/){|w| w[1..-2].to_i.chr}
@@ -465,6 +485,7 @@ class EdifNet
   def initialize s
     @name, @joined, *rest = s[1..-1]
     @wires = []
+    puts "@name=#{@name.inspect}"
     rest.each{|figure|
       if figure[0] == :figure
         if figure[2][0] == :path
@@ -478,7 +499,6 @@ class EdifNet
     [s[1], -s[2]]
   end
 end
-
 puts Dir.pwd
 
 file = './j_pack/AMP_01_00_edif.out'
