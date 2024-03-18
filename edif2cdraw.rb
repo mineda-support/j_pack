@@ -23,7 +23,7 @@ class Array
     hash
   end
   def edif_hash2 key, is_hash=true
-#    puts "#{key} for #{self.inspect}"
+    #    puts "#{key} for #{self.inspect}"
     if self[0] == key
       return (is_hash)? {key => self[1]} : self[1]
     else
@@ -47,6 +47,17 @@ class Array
       end
     }
     nil
+  end
+  def edif_direction
+    d = self.edif_value(:direction)
+    case d
+    when :INPUT
+      return 'in'
+    when :OUTPUT
+      return 'out'
+    when :INOUT
+      return 'inout'
+    end
   end
 end
 class Edif_out
@@ -79,11 +90,11 @@ class Edif_out
       FileUtils.mkdir_p File.join('pictures', l.name)
       l.cells.each{|c|
         puts " cell #{c.name}"
-        next if c.view.nil?
+        next if c.view.nil?     
         if c.view.interface
-#            c.view.interface.ports && c.view.interface.ports.each{|p|
-#              puts "port: #{p.name}"
-#            }
+          #            c.view.interface.ports && c.view.interface.ports.each{|p|
+          #              puts "port: #{p.name}"
+          #            }
           if c.view.interface.symbol
             File.open(File.join('pictures', l.name, c.name+'.asy'), 'w'){|f|
               f.puts <<EOF
@@ -99,7 +110,7 @@ EOF
                       f.puts "LINE Normal #{q2c(fig[i+1][0])} #{q2c(fig[i+1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}"
                       f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}" if fig[0] == :polygon
                     }
-                  when:circle
+                    when:circle
                     f.puts "CIRCLE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
                   end
                 }
@@ -134,11 +145,21 @@ EOF
 Version 4
 SHEET 1 7088 2000
 EOF
-          c.view.contents.pages.nets.each{|n|
+            c.view.contents.pages.nets.each{|n|
               puts "  net #{n.name}"
               n.wires.each{|w|
                 f.puts "WIRE #{q2c(w[0][0])} #{q2c(w[0][1])} #{q2c(w[1][0])} #{q2c(w[1][1])}"
               }
+            }
+            pi = c.view.contents.pages.port_implementations
+            puts "pi=#{pi}"
+            c.view.interface.ports.each_pair{|k, p|
+              k, name = (k.class == Array) ? [k[1], k[2]] : [k, k]
+              puts "pi[#{k}] =  #{pi[k]}"
+              x = q2c(pi[k][:connectLocation][0])
+              y = q2c(pi[k][:connectLocation][1])
+              f.puts "FLAG #{x} #{y} #{name}"
+              f.puts "IOPIN #{x} #{y} #{p[:direction]}"
             }
             c.view.contents.pages.instances.each{|i|
               puts "  instance '#{i.name}: #{i.cellRef}' in '#{i.libraryRef}'"
@@ -222,7 +243,7 @@ class EdifView
   attr_accessor :name, :viewType, :interface, :contents
   def initialize s
     @name, @viewType, interface, contents = s[1..-1]
-#    puts "View name = #{@name}"
+    #    puts "View name = #{@name}"
     if @name == :symbol
       @interface = EdifSymbolInterface.new interface
     elsif @name == :schematic
@@ -234,7 +255,13 @@ end
 class EdifSymbolInterface
   attr_accessor :ports, :symbol, :properties
   def initialize s
-    @ports = s[1..-2].map{|p| EdifPort.new p} if s.size > 1
+#    @ports = s[1..-2].map{|p| EdifPort.new p} if s.size > 1
+    @ports = {}
+    s[1..-1].each{|p|
+      direction = nil
+      
+      @ports[p[1]] = {direction: p.edif_direction}
+    }
 #    puts "symbol: #{s[-1].inspect}"
     @symbol = EdifSymbol.new s[-1] if s.size > 2 && s[-1]
     @properties = {}
@@ -246,14 +273,19 @@ end
 class EdifSchematicInterface
   attr_accessor :ports, :symbol
   def initialize s
-    @ports = s[1..-1].map{|p| EdifPort.new p}
+    @ports = {}
+    s[1..-1].each{|p|
+      @ports[p[1]] = {direction: p.edif_direction} if p[0] == :port
+    }
+    # @ports = s[1..-1].map{|p| EdifPort.new p}
     @properties = s[1..-1].edif_get_all :property
-#    puts "symbol: #{s[-1].inspect}"
+    #    puts "symbol: #{s[-1].inspect}"
     if symbol = s.edif_get(:symbol)
       @symbol = EdifSymbol.new symbol
     end
   end
 end
+=begin
 class EdifPort
   attr_accessor :name, :direction
   def initialize s
@@ -266,6 +298,7 @@ class EdifPort
     end
   end
 end
+=end
 class EdifSymbol
   attr_accessor :boundingBox, :commentGraphics, :figures, :properties
   attr_accessor :pins
@@ -278,7 +311,7 @@ class EdifSymbol
       @commentGraphics << EdifCommentGraphics.new(cg)
     }
     @figures = []
-#    @portImplementations = []
+    #    @portImplementations = []
     @pins = []
     @properties = {}
     s.edif_get_all(:figure).each{|c|
@@ -292,27 +325,25 @@ end
 class EdifPin
   attr_accessor :name, :xy 
 =begin
-      (portImplementation h01
-       (connectLocation
-        (figure pin
-         (dot (pt 0 0))
-        )
-        (figure device
-         (rectangle
-          (pt -4 -4)
-          (pt 4 4)
-         )
+     (portImplementation h01
+      (connectLocation
+       (figure pin
+        (dot (pt 0 0))
+       )
+       (figure device
+        (rectangle
+         (pt -4 -4)
+         (pt 4 4)
         )
        )
-       (property pin_name
-        (string "h01")
-        (property x (integer 0)(owner "SILVACO"))
-        (property y (integer 0)(owner "SILVACO"))
-        ...
-       )
-      )def pt s
-    [s[1], -s[2]]
-  end
+      )
+      (property pin_name
+       (string "h01")
+       (property x (integer 0)(owner "SILVACO"))
+       (property y (integer 0)(owner "SILVACO"))
+       ...
+      )
+     )
 =end  
   def initialize s # s:(portImplementation D (connectLocaion ...))
     @name = s.edif_property(:pin_name) || s[1]
@@ -344,12 +375,12 @@ end
 class EdifBoundingBox
   attr_accessor :rectangle 
 =begin
-      (boundingBox 
-       (rectangle 
-        (pt -6 -30)
-        (pt 66 26)
-       )
+     (boundingBox 
+      (rectangle 
+       (pt -6 -30)
+       (pt 66 26)
       )
+     )
 =end
   def initialize s
     @rectangle = [pt(s[1][1]), pt(s[1][2])]
@@ -391,31 +422,46 @@ end
 class EdifContents
   attr_accessor :pages
   def initialize s
-#    puts "page: #{s[1].inspect}"
+    #    puts "page: #{s[1].inspect}"
     @pages = EdifPage.new s[1]
   end
 end
 class EdifPage
   attr_accessor :commentGraphics, :instances, :port_implementations, :nets
   def initialize s
-debugger if s.nil?
-#    @commentGraphics = s[-1]
+    debugger if s.nil?
+    #    @commentGraphics = s[-1]
     @instances = []
-    @port_implementations = []
+    @port_implementations = {}
     @nets = []
     @commentGraphics = []
     s[2..-1].each{|c|
       case c[0]
       when :instance
         @instances << EdifInstance.new(c)
-      when :port_implementation
-        @port_implementations << c
+      when :portImplementation
+        pi = EdifPortImplementation.new(c)
+        @port_implementations[c[1][1]] = pi.hash
       when :net
         @nets << EdifNet.new(c)
       when :commentGraphics
         @commentGraphics << c
       end
     }
+  end
+end
+class EdifPortImplementation
+  attr_accessor :hash
+  def initialize s
+    @hash = {}
+    @hash[:name]= s.edif_value(:name)
+    @hash[:justify] = s.edif_value(:justify)
+    @hash[:orientation] = s.edif_value(:orientation)
+    @hash[:origin] = pt(s.edif_value(:origin))
+    @hash[:connectLocation] =pt(s.edif_get(:connectLocation).edif_value(:dot))
+  end
+  def pt s
+    [s[1], -s[2]]
   end
 end
 class EdifInstance
@@ -485,7 +531,6 @@ class EdifNet
   def initialize s
     @name, @joined, *rest = s[1..-1]
     @wires = []
-    puts "@name=#{@name.inspect}"
     rest.each{|figure|
       if figure[0] == :figure
         if figure[2][0] == :path
