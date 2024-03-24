@@ -84,6 +84,24 @@ class Edif_out
     #i*16/10
     i*16/10
   end
+  def rename s
+    if s[0] == :rename
+      s[2]
+    end
+  end
+  def IP62_pin_order s
+    cell_name = (s.class == Array)? rename(s): s
+    case cell_name
+    when 'DN', 'DP'
+      [1, 0]
+    when 'RR_W2.8', 'RR', 'RN', 'RNHV', 'RS', 'RH', 'RHHV'
+      [1, 2]
+    when 'CSIO'
+      [1, 0]
+    else
+      nil
+    end
+  end
   def edif2cdraw 
     @libraries.each{|l|
       puts "library #{l.name}"
@@ -129,11 +147,20 @@ EOF
                   f.puts "WINDOW 2 #{x} #{y} Left 2"
                 end
               }
-              c.view.interface.symbol.pins.each_with_index{|pin, i|
-                f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
-                f.puts "PINATTR PinName #{pin.name}"
-                f.puts "PINATTR SpiceOrder #{i+1}"
-              }
+              if pin_order = IP62_pin_order(c.name)
+                (0..pin_order.size-1).each{|i|
+                  pin = c.view.interface.symbol.pins[pin_order[i]]
+                  f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
+                  f.puts "PINATTR PinName #{pin.name}"
+                  f.puts "PINATTR SpiceOrder #{i+1}"
+                }                 
+              else
+                c.view.interface.symbol.pins.each_with_index{|pin, i|
+                  f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
+                  f.puts "PINATTR PinName #{pin.name}"
+                  f.puts "PINATTR SpiceOrder #{i+1}"
+                }
+              end
             }
           end
         end
