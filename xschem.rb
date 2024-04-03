@@ -1,6 +1,9 @@
 # Copyright Anagix Corporation 2009-2020
 
-require '/home/anagix/work/alb2/lib/qucs' if $0 == __FILE__
+#require '/home/anagix/work/alb2/lib/qucs' if $0 == __FILE__
+$:.unshift('C:\Users\mined\work\SvelteKit\my-sveltekit-app\j_pack')
+puts $:
+require 'qucs' if $0 == __FILE__
 
 class Xschem
   def get_cells_and_symbols
@@ -173,7 +176,7 @@ end
 if $0 == __FILE__
 #  current = Xschem.new
 #  current.get_cells_and_symbols # run xschem.rb in the xschem directory
-  xschem2cdraw '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2cdraw'
+  xschem2cdraw 'c:/Users/mined/Seafile/nejime/circuits', 'C:/Users/mined/Seafile/nejime/xschem2cdraw'
   ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'  
   xschem2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'
 end

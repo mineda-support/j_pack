@@ -1220,7 +1220,7 @@ class QucsSchematic
   
   def xschem_schema_in
     @lib_info = {}
-    File.read(@cell+'.kicad_sch').each_line{|l|
+    File.read(@cell+'.sch').each_line{|l|
       if l =~ /^N +(\S+) +(\S+) +(\S+) +(\S+)/ #  {lab=(\S+)}/ 
         @wires << [x2q($1), x2q($2), x2q($3), x2q($4)]
       elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}/
@@ -1256,7 +1256,7 @@ class QucsSchematic
 
     if File.exist?(@cell+'.sym')
       @symbol = QucsSymbol.new @cell
-      @symbol.xschem_symbol_in 
+      @symbol.xschem_symbol_in File.read(@cell+'.sym')
     else
       @symbol = nil
     end
