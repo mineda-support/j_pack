@@ -1220,10 +1220,25 @@ class QucsSchematic
   
   def xschem_schema_in
     @lib_info = {}
+    properties = nil # non-nil means line continued
     File.read(@cell+'.sch').each_line{|l|
+      if properties && @component
+        if l =~ /^ *\*([^}]*)}/ # like '*value=0}'
+          parse_properties properties + ' ' + $1
+          properties = nil
+        elsif l =~ /([^}\*]*)}/ # like 'value=0}'
+          parse_properties properties
+          @components << @component
+          properties = nil
+        elsif l =~ /^ *([^\*}])$/ # like 'value==0'
+          properties = properties + ' ' + $1
+        elsif l =~ /^ *\*[^}]*$/ # like '*value=0'
+        end
+        next
+      end
       if l =~ /^N +(\S+) +(\S+) +(\S+) +(\S+)/ #  {lab=(\S+)}/ 
         @wires << [x2q($1), x2q($2), x2q($3), x2q($4)]
-      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}/
+      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}*/
         name = $1
         x = $2
         y = $3
@@ -1237,15 +1252,11 @@ class QucsSchematic
         end
         @lib_info[name] = 'circuits'
         @component = {:type => 'Lib', :name=>$1, :x=>x2q(x), :y=>x2q(y), :rotation=>xschem_in_orientation(rotation, mirror)} 
-        if properties =~ /name=(\S+)/
-          @component[:symattr] = {"InstName"=>$1}
+        if l =~ /.*} *$/ # no continueation
+          parse_properties properties
+          @components << @component
+          properties = nil
         end
-        if properties =~ /value=\"([^\"]*)\"/
-          @component[:symattr]["Value2"] = $1
-        elsif properties =~ /value=(\S+)/
-          @component[:symattr]["Value"] = $1
-        end
-        @components << @component
       elsif l =~ /^T +(\S+) +(\S+) +(\S+)/
         text = $1
         @texts << [x2q($2), x2q($3), 0.2, 0.2, text]
@@ -1265,6 +1276,24 @@ class QucsSchematic
     # @lib_info = props['cells']||{}
     # @lib_info['GND'] = 'power'
     @lib_info
+  end
+  def parse_properties properties
+    properties.sub! /} *$/, ''
+    if properties =~ /name=(\S+)/
+      @component[:symattr] = {"InstName"=>$1}
+    end
+    if properties =~ /name=(\S+).* +lab=(\S+)}/
+      @component[:symattr] = {"InstName"=>$2}
+    elsif properties =~ /value=\"([^\"]*)\"/ || properties =~ /value=([^\"]*)\"/
+      @component[:symattr]["Value2"] = $1
+    elsif properties =~ /value=(\S+)/
+      @component[:symattr]["Value"] = $1
+    elsif properties =~ /model=\"(\S+) +([^\"]*)\"/ || properties =~ /model=(\S+) +([^\"]*)/
+      @component[:symattr]["Value2"] = $2
+      @component[:symattr]["Value"] = $1
+    elsif properties =~ /model=(\S+)/
+      @component[:symattr]["Value"] = $1
+    end
   end
 
   def qucs_schema_out file

@@ -1,7 +1,8 @@
 # Copyright Anagix Corporation 2009-2020
 
 #require '/home/anagix/work/alb2/lib/qucs' if $0 == __FILE__
-$:.unshift('C:\Users\mined\work\SvelteKit\my-sveltekit-app\j_pack')
+#$:.unshift('C:\Users\mined\work\SvelteKit\my-sveltekit-app\j_pack')
+$:.unshift(File.dirname $0)
 puts $:
 require 'qucs' if $0 == __FILE__
 
@@ -172,12 +173,13 @@ def xschem2qucs xschem_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_scri
   }
 end
 
-
 if $0 == __FILE__
 #  current = Xschem.new
 #  current.get_cells_and_symbols # run xschem.rb in the xschem directory
-  xschem2cdraw 'c:/Users/mined/Seafile/nejime/circuits', 'C:/Users/mined/Seafile/nejime/xschem2cdraw'
+# xschem2cdraw 'c:/Users/mined/Seafile/nejime/circuits', 'C:/Users/mined/Seafile/nejime/xschem2cdraw'
+  xschem2cdraw 'c:/Users/seiji/work/nejime/xschem_library/devices/', 'c:/Users/seiji/work/nejime/xschem_library/devices/'
+  xschem2cdraw 'c:/Users/seiji/work/nejime/test', 'c:/Users/seiji/work/nejime/test'
   ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'  
-  xschem2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'
+ # xschem2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'
 end
 
