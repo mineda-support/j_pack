@@ -48,7 +48,12 @@ class QucsComponent
   def initialize name
     @name = name
   end
-
+ 
+  def dump
+    puts "***************** #{@name} ***********************"
+    puts @symbol.portsyms #.to_yaml
+  end
+  
   def cdraw_comp_in
     @symbol = QucsSymbol.new @name
     @model, @params = @symbol.cdraw_symbol_in
@@ -220,7 +225,7 @@ class QucsLibrary
     @components = []
     @component_is_symbol = {}
   end
-
+ 
   def cdraw_lib_in lib
     symbol_info = {}
     Dir.chdir(lib){
@@ -684,13 +689,19 @@ EOS
 
   def xschem_symbol_in desc
     device, @prefix = XSCHEM_DEVICE_MAP[@cell.to_sym]
+    pin_order = 1
     desc && desc.each_line{|l|
       if l =~ /^B \S+ (\S+) (\S+) (\S+) (\S+) {(.*)}/
         label = $5
         x = ($1.to_i+$3.to_i)/2
         y = ($2.to_i+$4.to_i)/2
-        if label =~ /pinnumber=(\S+)/
-          @pin = {:xy => [x2q(x), x2q(y)], :SpiceOrder => $1.to_i}
+        if label =~ /dir=(\S+)/
+          if label =~ /pinnumber=(\S+)/
+            @pin = {:xy => [x2q(x), x2q(y)], :SpiceOrder => $1.to_i}
+          else
+            @pin = {:xy => [x2q(x), x2q(y)], :SpiceOrder => pin_order}
+            pin_order = pin_order + 1
+          end
           @portsyms << @pin
         else
           @rectangles << [x2q($1), x2q($2), x2q($3), x2q($4)] 
