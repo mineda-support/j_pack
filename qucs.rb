@@ -410,6 +410,11 @@ class QucsSymbol
     @symbol_type = nil # 'CELL'
   end
 
+  XSCHEM_PREFIX = {
+    resistor: 'R', capacitor: 'C', pmos: 'M', nmos: 'M',
+    isource: 'I', vsource: 'V'
+  }
+
   XSCHEM_DEVICE_MAP = {
     res: [:resistor, 'R'],
     cap: [:capacitor, 'C'],
