@@ -178,9 +178,9 @@ end
 if $0 == __FILE__
   #  current = Xschem.new
   #  current.get_cells_and_symbols # run xschem.rb in the xschem directory
-  if File.exist? 'c:/Users/mined/Seafile/nejime/circuits'
-    xschem2cdraw 'c:/Users/mined/Seafile/nejime/circuits', 'C:/Users/mined/Seafile/nejime/xschem2cdraw'
-  end
+  #if File.exist? 'c:/Users/mined/Seafile/nejime/circuits'
+  #  xschem2cdraw 'c:/Users/mined/Seafile/nejime/circuits', 'C:/Users/mined/Seafile/nejime/xschem2cdraw'
+  #end
      #  xschem2cdraw 'c:/Users/seiji/work/nejime/xschem_library/devices/', 'c:/Users/seiji/work/nejime/xschem_library/devices/'
   if File.exist?(target = 'c:/Users/seiji/work/nejime/test') ||
     File.exist?(target = 'c:/Users/mined/Seafile/nejime/test')

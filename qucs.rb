@@ -14,7 +14,8 @@ end
 
 def q2c str
   i=str.to_i
-  i*16/10
+  #(i*8)/10
+  (i*4)/5
 end
 
 def q2e str
@@ -39,7 +40,7 @@ end
 
 def x2q str
   f = str.to_f
-  f.to_i
+  f*2.0.to_i
 end
 
 class QucsComponent
@@ -52,6 +53,7 @@ class QucsComponent
   def dump
     puts "***************** #{@name} ***********************"
     puts @symbol.portsyms #.to_yaml
+    puts @symbol.symbol_type
   end
   
   def cdraw_comp_in
