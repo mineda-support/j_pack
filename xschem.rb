@@ -150,6 +150,7 @@ def xschem2cdraw xschem_dir, cdraw_dir
       # c = XschemSchematic.new sch_file.sub('.sch', '')
       c = QucsSchematic.new sch_file.sub('.sch', '')
       c.xschem_schema_in 
+      c.dump
       c.cdraw_schema_out cdraw_dir
     }
   }

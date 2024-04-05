@@ -985,6 +985,11 @@ class QucsSchematic
     @lib_info = {}
   end
 
+  def dump
+    puts "***************** #{@cell} ***********************"
+    puts @components #.to_yaml
+  end
+
   def cdraw_schema_in
     # File.open(@cell+'.asc', 'r:Windows-1252').read.encode('UTF-8').gsub(181.chr(Encoding::UTF_8), 'u').scrub.each_line{|l|
     mu = 181.chr(Encoding::UTF_8)
@@ -1218,6 +1223,7 @@ class QucsSchematic
     symbols
   end
   
+  XschemPorts = {'ipin' => 'in', 'opin' => 'out', 'iopin' => 'inout'}
   def xschem_schema_in
     @lib_info = {}
     properties = nil # non-nil means line continued
@@ -1250,8 +1256,14 @@ class QucsSchematic
           @wires << [x2q(x), x2q(y), x2q(x), x2q(y), $1]
           next
         end
-        @lib_info[name] = 'circuits'
-        @component = {:type => 'Lib', :name=>$1, :x=>x2q(x), :y=>x2q(y), :rotation=>xschem_in_orientation(rotation, mirror)} 
+        if ['ipin', 'opin', 'iopin', 'lab_wire'].include? name
+          type = 'Port';
+          name = XschemPorts[name] || name
+        else
+          @lib_info[name] = 'circuits'
+          type = 'Lib'
+        end
+        @component = {:type => type, :name=>name, :x=>x2q(x), :y=>x2q(y), :rotation=>xschem_in_orientation(rotation, mirror)} 
         if l =~ /.*} *$/ # no continueation
           parse_properties properties
           @components << @component
@@ -1277,12 +1289,13 @@ class QucsSchematic
     # @lib_info['GND'] = 'power'
     @lib_info
   end
+
   def parse_properties properties
     properties.sub! /} *$/, ''
     if properties =~ /name=(\S+)/
       @component[:symattr] = {"InstName"=>$1}
     end
-    if properties =~ /name=(\S+).* +lab=(\S+)}/
+    if properties =~ /name=(\S+).* +lab=(\S+)/
       @component[:symattr] = {"InstName"=>$2}
     elsif properties =~ /value=\"([^\"]*)\"/ || properties =~ /value=([^\"]*)\"/
       @component[:symattr]["Value2"] = $1
