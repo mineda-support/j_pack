@@ -53,7 +53,7 @@ class QucsComponent
   def dump
     puts "***************** #{@name} ***********************"
     puts @symbol.portsyms #.to_yaml
-    puts @symbol.symbol_type
+    puts "-> #{@symbol.prefix}"
   end
   
   def cdraw_comp_in
@@ -698,17 +698,22 @@ EOS
     device, @prefix = XSCHEM_DEVICE_MAP[@cell.to_sym]
     pin_order = 1
     desc && desc.each_line{|l|
-      if l =~ /^B \S+ (\S+) (\S+) (\S+) (\S+) {(.*)}/
+      if l=~/^G {type=(\S+)/
+        @prefix = XSCHEM_PREFIX[$1.to_sym]
+      elsif l =~ /^B \S+ (\S+) (\S+) (\S+) (\S+) {(.*)}/
         label = $5
-        x = ($1.to_i+$3.to_i)/2
-        y = ($2.to_i+$4.to_i)/2
-        if label =~ /dir=(\S+)/
+        x = ($1.to_f+$3.to_f)/2.to_i
+        y = ($2.to_f+$4.to_f)/2.to_i
+        if label =~ /name=(\S+) +dir=(\S+)/ || label =~ /name=(\S+)/
+          pin_name = $1
+          pin_dir = $2
           if label =~ /pinnumber=(\S+)/
-            @pin = {:xy => [x2q(x), x2q(y)], :SpiceOrder => $1.to_i}
+            @pin = {:PinName=> pin_name, :xy => [x2q(x), x2q(y)], :SpiceOrder => $1.to_i}
           else
-            @pin = {:xy => [x2q(x), x2q(y)], :SpiceOrder => pin_order}
+            @pin = {:PinName=> pin_name, :xy => [x2q(x), x2q(y)], :SpiceOrder => pin_order}
             pin_order = pin_order + 1
           end
+          @pin[:PinDir] = pin_dir if pin_dir
           @portsyms << @pin
         else
           @rectangles << [x2q($1), x2q($2), x2q($3), x2q($4)] 
@@ -973,7 +978,7 @@ EOS
       result << "WINDOW 3 #{(xmin+xmax)/2} #{(ymin+ymax)/2 - 20} Left 2\n"
     end
     # result << "SYMATTR Value #{@prefix}\n"
-    # result << "SYMATTR Prefix #{@prefix}\n"
+    result << "SYMATTR Prefix #{@prefix}\n" if @prefix
     @portsyms.each{|p|
       result << "PIN #{p[:xy].map{|a| q2c(a).to_s}.join(' ')} NONE 0\n"
       # result << "PINATTR PinName P#{p[:SpiceOrder]}\n" # Pn should be replaced
