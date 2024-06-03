@@ -412,7 +412,7 @@ class QucsSymbol
 
   XSCHEM_PREFIX = {
     resistor: 'R', capacitor: 'C', pmos: 'M', nmos: 'M',
-    isource: 'I', vsource: 'V'
+    isource: 'I', vsource: 'V', vcvs: 'E',
   }
 
   XSCHEM_DEVICE_MAP = {
@@ -698,7 +698,7 @@ EOS
     device, @prefix = XSCHEM_DEVICE_MAP[@cell.to_sym]
     pin_order = 1
     desc && desc.each_line{|l|
-      if l=~/^G {type=(\S+)/
+      if l=~/^[KG] {type=(\S+)/ # curios how 'G type=' and 'K type=' different
         @prefix = XSCHEM_PREFIX[$1.to_sym]
       elsif l =~ /^B \S+ (\S+) (\S+) (\S+) (\S+) {(.*)}/
         label = $5
@@ -1250,7 +1250,19 @@ class QucsSchematic
   def xschem_schema_in
     @lib_info = {}
     properties = nil # non-nil means line continued
+    name = x = y = code = nil
     File.read(@cell+'.sch').each_line{|l|
+      # puts l
+      if code
+        if l.strip =~ /^}$/
+          @texts << [x2q(x), x2q(y), 0.2, 0.2, code]
+          name = code = nil
+        elsif l =~ /value=/ # ignore
+        elsif l =~ /^[\.\*]/ || l =~ /^[vViI]/
+          code << l.chop + "\\n"
+        end
+        next
+      end
       if properties && @component
         if l =~ /^ *\*([^}]*)}/ # like '*value=0}'
           parse_properties properties + ' ' + $1
@@ -1274,9 +1286,20 @@ class QucsSchematic
         rotation = $4
         mirror = $5
         properties = $6
+        #puts "properties='#{properties} for #{name}'"
         if name == 'lab_pin'
           properties =~ /lab=(\S+)/
           @wires << [x2q(x), x2q(y), x2q(x), x2q(y), $1]
+          next
+        elsif name == 'title'
+          properties =~ /author="(\S+)"/
+          @texts << [x2q(x), x2q(y), 1.0, 1.0, "Author: #{$1}"]
+          properties = nil
+          next
+        elsif name == 'code'
+          # properties =~ /name=(\S+)/
+          properties = nil
+          code = 'Code: '
           next
         end
         if ['ipin', 'opin', 'iopin', 'lab_wire'].include? name
@@ -1313,22 +1336,35 @@ class QucsSchematic
     @lib_info
   end
 
+  def wrap_with_curly_bracket str
+    return str if str =~ /\{.*\}/ || !(str =~ /^[a-zA-Z]+/) || str.strip.include?(' ')
+    '{' + str + '}'
+  end
+
   def parse_properties properties
     properties.sub! /} *$/, ''
-    if properties =~ /name=(\S+)/
-      @component[:symattr] = {"InstName"=>$1}
-    end
     if properties =~ /name=(\S+).* +lab=(\S+)/
       @component[:symattr] = {"InstName"=>$2}
-    elsif properties =~ /value=\"([^\"]*)\"/ || properties =~ /value=([^\"]*)\"/
-      @component[:symattr]["Value2"] = $1
-    elsif properties =~ /value=(\S+)/
-      @component[:symattr]["Value"] = $1
-    elsif properties =~ /model=\"(\S+) +([^\"]*)\"/ || properties =~ /model=(\S+) +([^\"]*)/
-      @component[:symattr]["Value2"] = $2
-      @component[:symattr]["Value"] = $1
-    elsif properties =~ /model=(\S+)/
-      @component[:symattr]["Value"] = $1
+    elsif properties =~ /name=(\S+).* +value=\"([^\"]*)\"/ || 
+          properties =~ /name=(\S+).* +value=([^\"]*)/ || 
+          properties =~ /name=(\S+).* +value=(\S+)/
+      inst_name = $1
+      value = $2
+      value.sub!(/ *footprint=\S+/, '')
+      value.sub!(/ *device=\S*/, '')
+      if value =~ /^\S+ *= *\S+/
+        @component[:symattr] = {"InstName"=>inst_name, "Value2" => value}
+      else
+        @component[:symattr] = {"InstName"=>inst_name, "Value" => wrap_with_curly_bracket(value)}
+      end
+    elsif properties =~ /name=(\S+).* +model=\"(\S+) +([^\"]*)\"/ || properties =~ /name=(\S+).* +model=(\S+) +([^\"]*)/
+      @component[:symattr] = {"InstName"=>$1, "Value" =>$2, "Value2" =>$3}
+    elsif properties =~ /name=(\S+).* +model=(\S+)/
+      @component[:symattr] = {"InstName"=>$1, "Value" =>$2}
+    elsif properties =~ /name=(\S+) +(.*)/
+      @component[:symattr] = {"InstName"=>$1, "SpiceLine" =>$2}
+    elsif properties =~ /name=(\S+)/
+      @component[:symattr] = {"InstName"=>$1}
     end
   end
 
@@ -1809,8 +1845,9 @@ EOS
           c[:label_pos] && f.puts("WINDOW 3 #{q2c(c[:label_pos][0]) - q2c(c[:x])} #{q2c(c[:label_pos][1]) - q2c(c[:y])} Left 2")
           if c[:symattr]
             f.puts "SYMATTR InstName #{c[:symattr]['InstName']}" 
-            f.puts "SYMATTR Value #{c[:symattr]['Value']}"
-            f.puts "SYMATTR Value2 #{c[:symattr]['Value2']}"
+            f.puts "SYMATTR Value #{c[:symattr]['Value']}" if c[:symattr]['Value']
+            f.puts "SYMATTR Value2 #{c[:symattr]['Value2']}" if c[:symattr]['Value2']
+            f.puts "SYMATTR SpiceLine #{c[:symattr]['SpiceLine']}" if c[:symattr]['SpiceLine']
           end
           lib_paths << c[:lib_path]
         when 'Sub'
@@ -1820,6 +1857,13 @@ EOS
           
         end
         }
+      @texts.each{|txt|
+        if txt[4] =~ /Code: (.*$)/
+          f.puts "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 2 !#{$1}"
+        else
+          f.puts "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 2 ;#{txt[4]}"
+        end
+      }
     }
     lib_paths.uniq
   end
