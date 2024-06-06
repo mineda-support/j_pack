@@ -143,7 +143,7 @@ def xschem2cdraw xschem_dir, cdraw_dir
       # c = XschemComponent.new sym.sub('.sym', '')
       c = QucsComponent.new sym.sub('.sym', '')
       c.xschem_comp_in
-      c.dump
+      #c.dump
       # FileUtils.rm_r cdraw_dir; FileUtils.mkdir cdraw_dir
       c.cdraw_comp_out File.join(cdraw_dir, c.name+'.asy')
     }
@@ -151,7 +151,7 @@ def xschem2cdraw xschem_dir, cdraw_dir
       # c = XschemSchematic.new sch_file.sub('.sch', '')
       c = QucsSchematic.new sch_file.sub('.sch', '')
       c.xschem_schema_in 
-      c.dump
+      #c.dump
       c.cdraw_schema_out cdraw_dir
     }
   }
@@ -178,17 +178,13 @@ end
 if $0 == __FILE__
   #  current = Xschem.new
   #  current.get_cells_and_symbols # run xschem.rb in the xschem directory
-  #if File.exist? 'c:/Users/mined/Seafile/nejime/circuits'
-  #  xschem2cdraw 'c:/Users/mined/Seafile/nejime/circuits', 'C:/Users/mined/Seafile/nejime/xschem2cdraw'
-  #end
-  if File.exist?(target = 'c:/Users/seiji/work/nejime/circuits') # (target = 'c:/Users/seiji/work/nejime/test') 
+  if File.exist?(target = 'c:/Users/seiji/work/nejime/circuits') ||
+     File.exist?(target = 'c:/Users/seiji/work/nejime/test') ||
+     File.exist?(target = 'c:/Users/mined/Seafile/nejime/circuits') ||
+     File.exist?(target = 'c:/Users/mined/Seafile/nejime/test')
     #xschem2cdraw 'c:/Users/seiji/work/nejime/xschem_library/devices/', 'c:/Users/seiji/work/nejime/xschem_library/devices/'
     xschem2cdraw target, target
   end
-  if File.exist?(target = 'c:/Users/mined/Seafile/nejime/test')
-    #xschem2cdraw target, target
-  end
-  #  xschem2cdraw 'c:/Users/seiji/work/nejime/test', 'c:/Users/seiji/work/nejime/test'
     ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'  
    # xschem2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'
   end

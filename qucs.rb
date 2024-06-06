@@ -1250,11 +1250,11 @@ class QucsSchematic
   def xschem_schema_in
     @lib_info = {}
     properties = nil # non-nil means line continued
-    name = x = y = code = nil
+    name = x = y = code = graph = nil
     File.read(@cell+'.sch').each_line{|l|
       # puts l
       if code
-        if l.strip =~ /^}$/
+        if l.strip =~ /}$/
           @texts << [x2q(x), x2q(y), 0.2, 0.2, code]
           name = code = nil
         elsif l =~ /value=/ # ignore
@@ -1262,6 +1262,13 @@ class QucsSchematic
           code << l.chop + "\\n"
         end
         next
+      elsif graph # not used
+        if l.strip =~ /([^}]*)}$/
+          graph << l.chop + "\\n"
+          graph = nil
+        else
+          graph << l
+        end
       end
       if properties && @component
         if l =~ /^ *\*([^}]*)}/ # like '*value=0}'
@@ -1279,7 +1286,7 @@ class QucsSchematic
       end
       if l =~ /^N +(\S+) +(\S+) +(\S+) +(\S+)/ #  {lab=(\S+)}/ 
         @wires << [x2q($1), x2q($2), x2q($3), x2q($4)]
-      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}*/
+      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}*/ 
         name = $1
         x = $2
         y = $3
@@ -1315,6 +1322,9 @@ class QucsSchematic
           @components << @component
           properties = nil
         end
+      elsif l =~ /^B +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) {(.*)/ # bug fix 2024/6/6
+        graph = ''
+        next
       elsif l =~ /^T +(\S+) +(\S+) +(\S+)/
         text = $1
         @texts << [x2q($2), x2q($3), 0.2, 0.2, text]
@@ -1363,7 +1373,7 @@ class QucsSchematic
       @component[:symattr] = {"InstName"=>$1, "Value" =>$2}
     elsif properties =~ /name=(\S+) +(.*)/
       @component[:symattr] = {"InstName"=>$1, "SpiceLine" =>$2}
-    elsif properties =~ /name=(\S+)/
+    elsif properties =~ /name=(\S+)}/ || properties =~ /name=(\S+)/
       @component[:symattr] = {"InstName"=>$1}
     end
   end
@@ -1813,6 +1823,7 @@ EOS
       }
     end
     lib_paths = []
+    puts "cdraw_schema_out #{@cell}"
     File.open(File.join(pictures_dir, @cell+'.asc'), 'w'){|f|
       f.puts "Version 4\nSHEET #{q2c(@properties[:View][2])} #{q2c(@properties[:View][3])} 1\n" 
       @wires.each{|w|
