@@ -181,7 +181,9 @@ if $0 == __FILE__
   if File.exist?(target = 'c:/Users/seiji/work/nejime/circuits') ||
      File.exist?(target = 'c:/Users/seiji/work/nejime/test') ||
      File.exist?(target = 'c:/Users/mined/Seafile/nejime/circuits') ||
-     File.exist?(target = 'c:/Users/mined/Seafile/nejime/test')
+     File.exist?(target = 'c:/Users/mined/Seafile/nejime/test') ||
+     #File.exist?(target = 'c:/Users/seiji/Seafiles/Seafile/nejime/circuits') ||
+     File.exist?(target = 'c:/Users/seiji/Seafiles/Seafile/nejime/test')
     #xschem2cdraw 'c:/Users/seiji/work/nejime/xschem_library/devices/', 'c:/Users/seiji/work/nejime/xschem_library/devices/'
     xschem2cdraw target, target
   end

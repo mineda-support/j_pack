@@ -1251,6 +1251,7 @@ class QucsSchematic
     @lib_info = {}
     properties = nil # non-nil means line continued
     name = x = y = code = graph = nil
+    num_nc = 0
     File.read(@cell+'.sch').each_line{|l|
       # puts l
       if code
@@ -1312,6 +1313,14 @@ class QucsSchematic
         if ['ipin', 'opin', 'iopin', 'lab_wire'].include? name
           type = 'Port';
           name = XschemPorts[name] || name
+        elsif name == 'noconn'
+          type = 'Port';
+          num_nc = num_nc + 1
+          @component = {:type => type, :name=>name, :x=>x2q(x), :y=>x2q(y), :rotation=>xschem_in_orientation(rotation, mirror)} 
+          @component[:symattr] = {"InstName"=>'nc_'+num_nc.to_s}
+          @components << @component
+          properties = nil
+          next
         else
           @lib_info[name] = 'circuits'
           type = 'Lib'
