@@ -1273,13 +1273,14 @@ class QucsSchematic
       end
       if properties && @component
         if l =~ /^ *\*([^}]*)}/ # like '*value=0}'
-          parse_properties properties + ' ' + $1
-          properties = nil
-        elsif l =~ /([^}\*]*)}/ # like 'value=0}'
           parse_properties properties
           @components << @component
           properties = nil
-        elsif l =~ /^ *([^\*}])$/ # like 'value==0'
+        elsif l =~ /([^}\*]*)}/ # like 'value=0}'
+          parse_properties properties + ' ' + $1
+          @components << @component
+          properties = nil
+        elsif l =~ /^ *([^\*}]*)$/ # like 'value==0'
           properties = properties + ' ' + $1
         elsif l =~ /^ *\*[^}]*$/ # like '*value=0'
         end
@@ -1287,7 +1288,7 @@ class QucsSchematic
       end
       if l =~ /^N +(\S+) +(\S+) +(\S+) +(\S+)/ #  {lab=(\S+)}/ 
         @wires << [x2q($1), x2q($2), x2q($3), x2q($4)]
-      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}*/ 
+      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {([^}]*)}*/ 
         name = $1
         x = $2
         y = $3
