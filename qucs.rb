@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright Anagix Corporation 2009-2017
+# Copyright Anagix Corporation 2009-2024
 
 require 'rubygems'
 require 'byebug'
@@ -1271,18 +1271,20 @@ class QucsSchematic
           graph << l
         end
       end
+      l.chop!
       if properties && @component
-        if l =~ /^ *\*([^}]*)}/ # like '*value=0}'
-          parse_properties properties
+        if l =~ /^ *} *$/ || l =~ /^ *\*([^}]*)}/ # like '*value=0}'
+          parse_properties properties # ignore commened value
           @components << @component
           properties = nil
         elsif l =~ /([^}\*]*)}/ # like 'value=0}'
           parse_properties properties + ' ' + $1
           @components << @component
           properties = nil
-        elsif l =~ /^ *([^\*}]*)$/ # like 'value==0'
+        elsif l =~ /^ *([^\*}]*)$/ # like 'value=0'
           properties = properties + ' ' + $1
         elsif l =~ /^ *\*[^}]*$/ # like '*value=0'
+          # ignore
         end
         next
       end
