@@ -1,8 +1,10 @@
 # ltspctl v0.5 Copyright(C) Anagix Corporation
 if $0 == __FILE__
   $: << '.'
-  $: << '/home/anagix/work/alb2/lib'
-  $: << '/home/anagix/work/alb2/ade_express'
+  $: << './j_pack'
+  $: << './j_pack/ade_express'
+  #$: << '/home/anagix/work/alb2/lib'
+  #$: << '/home/anagix/work/alb2/ade_express'
 end
 load 'alb_lib.rb'
 load 'spice_parser.rb'
@@ -15,14 +17,15 @@ require 'fileutils'
 class LTspiceControl
   attr_accessor :elements, :file, :mtime, :pid, :traces, :default, :node_list, :ltspice
 
-  def initialize ckt=nil
+  def initialize ckt=nil, recursive=false
     if ENV['USE_PYCALL']
       require 'pycall'
       PyCall.exec 'import ltspice'
     end
 
     @default = [0, 0]
-    read ckt if ckt
+    @ckts = {}
+    read ckt, recursive if ckt
   end
   
   def help
@@ -51,24 +54,25 @@ y --- y array of default trace
 EOF
   end
   
-  def read ckt=@file
+  def read ckt=@file, recursive=false
     raise "Error: '#{ckt}' does not exist" unless File.exist? ckt 
     @file = ckt
     case File.extname ckt 
     when '.asc'
-        @elements = read_asc ckt
+        @elements = read_asc ckt, recursive
     when '.net'
-        @elements = read_net ckt
+        @elements = read_net ckt, recursive
     when ''
       if File.exist? ckt+'.asc'
-        @elements = read_asc ckt+'.asc'
+        @elements = read_asc ckt+'.asc', recursive
       elsif File.exist? ckt+'.net'
-        @elements = read_net ckt+'.net'
+        @elements = read_net ckt+'.net', recursive
       else
       end
     end
     @mtime = Time.now
     puts "elements updated from #{@file}!"
+    @elements = @ckts if recursive
     @elements
   end
 
@@ -78,8 +82,9 @@ EOF
     update(@file, lines)
   end
 
-  def read_asc file
+  def read_asc file, recursive=false, caller='' 
     elements = {}
+    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
     #    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
@@ -87,10 +92,15 @@ EOF
       l.chomp!
       lineno = lineno + 1 
       if l =~ /SYMATTR InstName (.*)$/
-        name = $1
+        name = $1 # is like X1
+        if recursive && name[0].downcase == 'x'
+          caller << '.' + name
+          @ckts[type] ||= read_asc(File.join(File.dirname(file), type+'.asc'), true, caller)
+          @ckts[caller] = type
+        end
       elsif l =~ /SYMBOL (\S+)/
         new_type = $1
-        read_asc_sub elements, name, type, value, value2, line1, line2
+        read_asc_sub elements, name, type, value, value2, line1, line2 if name
         type = new_type
         name = value = value2 = nil
       elsif l =~ /SYMATTR Value (.*)$/
@@ -284,7 +294,7 @@ EOF
   private :add
 
   def update file, lines
-    File.open(@file, 'w:Windows-1252'){|f| f.puts lines}
+    File.open(@file, 'w:UTF-8'){|f| f.puts lines} # changed Windows-1252 to UTF-8
     @mtime = File.mtime(@file)          
   end
   private :update
@@ -953,9 +963,9 @@ EOF
     [vars, traces]
   end
 
-  def open file=@file
-    view file
-    read file
+  def open file=@file, recursive=false
+    view file 
+    read file, recursive
   end
 
   def view file
@@ -1081,4 +1091,10 @@ EOF
     set_input_variables inputs
     command "activate_model"
   end
+end
+
+if $0 == __FILE__
+  file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
+  ckt = LTspiceControl.new file, true # test recursive
+  puts ckt.elements.inspect
 end
