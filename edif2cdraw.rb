@@ -573,7 +573,8 @@ class EdifNet
 end
 puts Dir.pwd
 
-file = './j_pack/AMP_01_00_edif.out'
+#file = './j_pack/AMP_01_00_edif.out'
+file = "./j_pack/462STUP_00_00.edif"
 require 'sxp'
 require 'debug'
 desc = SXP.read(File.read(file).encode('UTF-8'))

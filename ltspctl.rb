@@ -294,7 +294,7 @@ EOF
   private :add
 
   def update file, lines
-    File.open(@file, 'w:UTF-8'){|f| f.puts lines} # changed Windows-1252 to UTF-8
+    File.open(@file, 'w:Windows-1252'){|f| f.puts lines}
     @mtime = File.mtime(@file)          
   end
   private :update
