@@ -38,3 +38,7 @@ def create_cdraw
     FileUtils.cp cell+'.asc', File.join('cdraw/cells', cell+'.asc')
   }
 end
+if $0 == __FILE__
+  m = CompactModel.new 'MinedaPTS06_TT'
+  puts
+end

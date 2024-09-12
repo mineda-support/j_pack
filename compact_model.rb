@@ -1,11 +1,18 @@
 class CompactModel
-  attr_accessor :type, :name, :model_params, :file
+  attr_accessor :file, :models
   require 'spice_parser'
   require 'alb_lib'
+  @@models = {}
+
   def initialize file, name=nil
     @file = file
-    @type, @name, @model_params = load file, name
+    @models = load file
     @orig_params = @model_params.dup
+    @@models[file] = models
+  end
+
+  def self.models ()
+    @@models
   end
 
   def help
@@ -28,8 +35,23 @@ class CompactModel
     @model_params = @orig_params.dup
   end
 
-  def load file, name=nil
-    @type, @name, @model_params = parse_model File.read(file), name
+  def load file
+    models = {}
+    description = nil
+    File.read(file).each_line{|l|
+      if l =~ /\.(model|MODEL)/ 
+        if description
+          name, type, params = parse_model(description)
+          models[name] = [type, params]
+        end
+        description = l
+      else
+        description << l
+      end
+    }
+    name, type, params = parse_model(description)
+    models[name] = [type, params]
+    return models
   end
 
   def update model_params_temp = @model_params, file = @file
