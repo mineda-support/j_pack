@@ -105,7 +105,7 @@ class Edif_out
   def edif2cdraw 
     @libraries.each{|l|
       puts "library #{l.name}"
-      FileUtils.mkdir_p File.join('pictures', l.name.tr('&', '_'))
+      FileUtils.mkdir_p File.join('pictures', l.name)
       l.cells.each{|c|
         puts " cell #{c.name}"
         next if c.view.nil?     
@@ -114,7 +114,7 @@ class Edif_out
           #              puts "port: #{p.name}"
           #            }
           if c.view.interface.symbol
-            File.open(File.join('pictures', l.name.tr('&', '_'), c.name.tr('&', '_') +'.asy'), 'w'){|f|
+            File.open(File.join('pictures', l.name, c.name+'.asy'), 'w'){|f|
               f.puts <<EOF
 Version 4
 SymbolType CELL
@@ -138,7 +138,7 @@ EOF
                   f.puts "SYMATTR Prefix #{prop[1]}"
                 end
               }
-              f.puts "SYMATTR Value #{c.name.tr('&', '_')}"
+              f.puts "SYMATTR Value #{c.name}"
               c.view.interface.symbol.commentGraphics.each{|cg|
                 x, y = cg.hash[:origin]
                 if cg.hash[:stringDisplay] == 'cdsName()'
@@ -167,7 +167,7 @@ EOF
         if c.view.contents
           ref = {}
           puts "c.name=#{c.name}"
-          File.open(File.join('pictures', l.name.tr('&', '_'), c.name.tr('&', '_')+'.asc'), 'w'){|f|
+          File.open(File.join('pictures', l.name, c.name+'.asc'), 'w'){|f|
             f.puts <<EOF
 Version 4
 SHEET 1 7088 2000
@@ -183,7 +183,6 @@ EOF
             c.view.interface.ports.each_pair{|k, p|
               k, name = (k.class == Array) ? [k[1], k[2]] : [k, k]
               puts "pi[#{k}] =  #{pi[k]}"
-              next if pi[k] == nil
               x = q2c(pi[k][:connectLocation][0])
               y = q2c(pi[k][:connectLocation][1])
               f.puts "FLAG #{x} #{y} #{name}"
@@ -209,7 +208,7 @@ EOF
               else
                 orient = "R0"
               end
-              f.puts "SYMBOL #{$rename_cell[i.cellRef].tr('&', '_')} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}"
+              f.puts "SYMBOL #{$rename_cell[i.cellRef]} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}"
               f.puts "SYMATTR InstName #{i.name}"
               case prefix=i.name.to_s[0].downcase
               when 'm'
@@ -227,7 +226,7 @@ EOF
               end
             }
           }
-          File.open(File.join('pictures', l.name.tr('&', '_'), c.name.tr('&', '_')+'.yaml'), 'w'){|f|
+          File.open(File.join('pictures', l.name, c.name+'.yaml'), 'w'){|f|
             f.puts "cells:"
             ref.each_pair{|c_ref, l_ref|
               f.puts "  #{$rename_cell[c_ref]}: #{$rename_lib[l_ref]}"
@@ -271,10 +270,9 @@ class EdifView
   attr_accessor :name, :viewType, :interface, :contents
   def initialize s
     @name, @viewType, interface, contents = s[1..-1]
-    # puts "View name = #{@name} @viewType = #{@viewType}"
+    #    puts "View name = #{@name}"
     if @name == :symbol
       @interface = EdifSymbolInterface.new interface
-      @contents = EdifContents.new contents if contents && @viewType[1] == :SCHEMATIC
     elsif @name == :schematic
       @interface = EdifSchematicInterface.new interface
       @contents = EdifContents.new contents if contents
@@ -375,8 +373,7 @@ class EdifPin
      )
 =end  
   def initialize s # s:(portImplementation D (connectLocaion ...))
-    name = s.edif_property(:pin_name) || s[1]
-    @name = (name.class == Array) ? name[1] : name
+    @name = s.edif_property(:pin_name) || s[1]
     @xy = pt(s.edif_value(:dot))
   end
   def pt s
@@ -498,8 +495,7 @@ class EdifInstance
   attr_accessor :name, :properties
   attr_accessor :cellRef, :libraryRef, :orientation, :origin
   def initialize s
-    name, viewRef, transform, *properties = s[1..-1]
-    @name = (name.class == Array) ? name[1] : name
+    @name, viewRef, transform, *properties = s[1..-1]
     @cellRef = viewRef.edif_value :cellRef
     @libraryRef = viewRef.edif_value :libraryRef
     @orientation = transform.edif_value :orientation
@@ -578,7 +574,7 @@ end
 puts Dir.pwd
 
 #file = './j_pack/AMP_01_00_edif.out'
-file = "./j_pack/462_G_Anagix.edif"
+file = "./j_pack/a_462_G_Anagix.edif"
 require 'sxp'
 require 'debug'
 desc = SXP.read(File.read(file).encode('UTF-8'))
