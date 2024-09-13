@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../../../../Seafile/nejime"
+		},
+		{
+			"path": "../../../../Seafile/PTS06_2023_8"
 		}
 	],
 	"settings": {}

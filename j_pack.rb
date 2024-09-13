@@ -11,12 +11,12 @@ require 'xschem'
 require 'eeschema'
 require 'alta'
 require 'ltspctl'
-NGSPICE = ENV['NGSPICE'] || if /mswin32|mingw|cygwin/ =~ RUBY_PLATFORM
+ngspice = ENV['NGSPICE'] || if /mswin32|mingw|cygwin/ =~ RUBY_PLATFORM
   "c:/Program Files/KiCad/7.0/bin/ngspice.dll"
 else
   "/home/anagix/ngspice/lib/libngspice.so"
 end
-NGSPICE = nil unless File.exist? NGSPICE
+NGSPICE = (File.exist? ngspice)? ngspice : nil
 require 'ngspice'
 require 'ngspctl'
 require 'qucsctl'
@@ -39,6 +39,11 @@ def create_cdraw
   }
 end
 if $0 == __FILE__
-  m = CompactModel.new 'MinedaPTS06_TT'
-  puts
+  #m = CompactModel.new 'MinedaPTS06_TT'
+  #puts
+  #file = File.join ENV['HOMEPATH'], 'Seafile/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
+  file = File.join ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/nch_pch.asc'
+  ckt = LTspiceControl.new file, true # test recursive
+  puts ckt.elements.inspect
+  puts ckt.models.inspectend
 end

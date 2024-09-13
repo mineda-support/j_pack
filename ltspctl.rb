@@ -5,6 +5,8 @@ if $0 == __FILE__
   $: << './j_pack/ade_express'
   #$: << '/home/anagix/work/alb2/lib'
   #$: << '/home/anagix/work/alb2/ade_express'
+  $:.unshift File.dirname(__FILE__)
+  $:.unshift File.join(File.dirname(__FILE__), './ade_express')
 end
 load 'alb_lib.rb'
 load 'spice_parser.rb'
@@ -15,7 +17,7 @@ require 'byebug'
 require 'fileutils'
 
 class LTspiceControl
-  attr_accessor :elements, :file, :mtime, :pid, :traces, :default, :node_list, :ltspice
+  attr_accessor :elements, :file, :mtime, :pid, :traces, :default, :node_list, :ltspice, :models
 
   def initialize ckt=nil, recursive=false
     if ENV['USE_PYCALL']
@@ -26,6 +28,14 @@ class LTspiceControl
     @default = [0, 0]
     @ckts = {}
     read ckt, recursive if ckt
+    return unless recursive
+    e=@elements[File.basename(file).sub(/\.\S+/, '')]
+    if e && e['include'] && model_include = e['include'][0][:control]
+      model_include =~ /^\.\S+ +(\S+)/
+      model_file = $1.sub('%HOMEPATH%', ENV['HOMEPATH']).gsub("\\", '/').gsub("\"", '')
+      m = CompactModel.new model_file
+      @models = m.models
+    end
   end
   
   def help
@@ -114,7 +124,7 @@ EOF
         # puts "contro: #{control}"
         # puts "keep: #{keep}"        
         read_asc_sub elements, name, type, value, value2, line1, line2 if name
-        name = keep.gsub! /[\.\*]/, '' 
+        name = keep.gsub! /([\.\*])/, '' 
         elements[name] = []
         # puts "elements[name] = #{elements[name]}"
         if control[0] == '!'
@@ -1097,4 +1107,5 @@ if $0 == __FILE__
   file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
   ckt = LTspiceControl.new file, true # test recursive
   puts ckt.elements.inspect
+  puts ckt.models.inspect
 end
