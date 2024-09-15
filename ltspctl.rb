@@ -29,13 +29,7 @@ class LTspiceControl
     @ckts = {}
     read ckt, recursive if ckt
     return unless recursive
-    e=@elements[File.basename(file).sub(/\.\S+/, '')]
-    if e && e['include'] && model_include = e['include'][0][:control]
-      model_include =~ /^\.\S+ +(\S+)/
-      model_file = $1.sub('%HOMEPATH%', ENV['HOMEPATH']).gsub("\\", '/').gsub("\"", '')
-      m = CompactModel.new model_file
-      @models = m.models
-    end
+    get_models e=@elements[File.basename(file).sub(/\.\S+/, '')]
   end
   
   def help
@@ -327,7 +321,7 @@ EOF
   end      
   private :wait_for
   
-  def fix_net file, analysis, extra_commands = ''
+  def fix_net file, analysis, extra_commands = '', models_update
     contents = File.open(file, 'r:Windows-1252').read.sub(/^\.lib .*standard.mos/, "*\\0")
     File.open(file, 'w'){|f|
       contents.each_line{|l|
@@ -343,10 +337,28 @@ EOF
       }
       extra_commands << '.end' 
       extra_commands.each_line{|l| f.puts l}
+      print_models(f, @models) if models_update
     }
     [contents, extra_commands].join "\n"
   end
   private :fix_net
+
+  def print_models f, models       
+    models.each_pair{|model_name, contents|
+      f.print words=".model #{model_name} #{contents[0]}"
+      nwords = words.length
+      contents[1].each_pair{|key, value| 
+        f.print words = "#{nwords == 0 ? '+ ' : ' '}#{key}=#{value}"
+        nwords = nwords + words.length
+        if nwords > 72
+          f.print "\n"
+          nwords = 0
+        end
+      }
+      f.puts
+    }
+    nil
+  end
 
   def simulate *variables
     simulate0 variables
@@ -376,9 +388,24 @@ EOF
     analysis = {}
     # delete_file_with_retry file
     FileUtils.touch file unless File.exist? file
+    models_update = nil
     Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
       ascfile = File.basename @file
-      FileUtils.cp ascfile, ascfile.sub('.asc', '.tmp')
+      lines = File.open(ascfile, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace).split("\n")
+      variables.each{|v|
+        if v.class == Hash && models_update = v[:models_update]
+          model_lines = get_models @elements
+          model_lines.each{|lineno|
+            lines[lineno-1].sub! '.include', ';include'
+          } 
+        end
+      }
+      models_update && models_update.each_pair{|model_name, params|
+        params.each_pair{|key, value|
+          @models[model_name][1][key] = value
+        } 
+      }
+      File.open(ascfile.sub('.asc', '.tmp'), 'w:windows-1252'){|f| f.puts lines}
       start = Time.now
       run '-netlist', ascfile.sub('.asc', '.tmp') # creates #{file} = xxx.net
       wait_for(file, start, 'due to some error')
@@ -388,14 +415,14 @@ EOF
     extra_commands = ''
     variables.each{|v|
       if v.class == Hash
-        analysis = {v.first[0] => v.first[1]}
+        analysis = {v.first[0] => v.first[1]} # {:tran => '1n 10n} when v={:tran=> '1n 10n'} ???
         puts "analysis set: #{analysis.inspect}"
       else
         extra_commands << ".save #{v}\n"
       end
     }
-    fix_net file, analysis, extra_commands
-    Dir.chdir(File.dirname @file){ # chdir or -Run does not work 
+    fix_net file, analysis, extra_commands, models_update
+    true && Dir.chdir(File.dirname @file){ # chdir or -Run does not work 
       puts "CWD: #{Dir.pwd}"
       ascfile = File.basename @file
       raw_file = ascfile.sub('.asc', '.raw')
@@ -499,20 +526,25 @@ EOF
     result
   end
 
-  def get_models
-    cwd = get_cwd()
-    include_files = get('include').map{|l|
-      l =~ /include \"\.\/(\S+)\"/
-      File.join cwd, $1
+  def get_models elements
+    @models = {}
+    return if elements.nil? || elements['include'].nil?
+    model_lines = []
+    include_files = []
+    elements['include'].each{|l|
+      if l[:control] =~ /^\.\S+ +(\S+)/ 
+        model_file = $1.sub('%HOMEPATH%', ENV['HOMEPATH']).gsub("\\", '/').gsub("\"", '')
+        include_files << model_file
+        model_lines << l[:lineno]
+      end
     }
-    @models = []
-    model_files(include_files).map{|f|
+    model_files(include_files).each{|f|
       m = CompactModel.new f
-      @models << m
-      eval "$#{m.name} = m"
-      eval "@#{m.name} = m.model_params" 
-      '$'+m.name
+      puts m.models
+      @models.merge! m.models
     }
+    @models
+    model_lines
   end
 
   def update_models
