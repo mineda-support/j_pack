@@ -47,7 +47,7 @@ if $0 == __FILE__
   #file = './j_pack/nch_pch.asc'
   puts Dir.pwd
   ckt = LTspiceControl.new file #, true # test recursive
-  ckt.simulate models_update: {'pdio' => {'LEVEL'=> 333}}
+  ckt.simulate models_update: {"nch":{"VTH0":"0.1624532"}}
   puts ckt.elements.inspect
   puts ckt.models.inspect
 end

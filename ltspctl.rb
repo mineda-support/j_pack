@@ -43,6 +43,7 @@ set name1: value1, name2:value2, ... --- set element value (ex. set M1: 'l=1u w=
 comment name --- comment SPICE directive
 uncomment name --- uncomment SPICE directive
 elements --- show current circuit elements
+models --- show SPICE models used in the circuit
 mtime --- time when elements are modified
 show pattern --- show elements matching the pattern
 file --- show current circuit file 
@@ -333,11 +334,12 @@ EOF
         end
       }
       analysis.each_pair{|k, p|
+        next if k == :models_update
         extra_commands << ".#{k} #{p}\n"
       }
-      extra_commands << '.end' 
       extra_commands.each_line{|l| f.puts l}
       print_models(f, @models) if models_update
+      f.puts '.end' 
     }
     [contents, extra_commands].join "\n"
   end
@@ -402,7 +404,7 @@ EOF
       }
       models_update && models_update.each_pair{|model_name, params|
         params.each_pair{|key, value|
-          @models[model_name][1][key] = value
+          @models[model_name.to_s][1][key.to_s] = value
         } 
       }
       File.open(ascfile.sub('.asc', '.tmp'), 'w:windows-1252'){|f| f.puts lines}
@@ -415,6 +417,7 @@ EOF
     extra_commands = ''
     variables.each{|v|
       if v.class == Hash
+        next if v.first[0] == :models_update
         analysis = {v.first[0] => v.first[1]} # {:tran => '1n 10n} when v={:tran=> '1n 10n'} ???
         puts "analysis set: #{analysis.inspect}"
       else
