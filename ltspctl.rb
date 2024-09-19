@@ -322,13 +322,23 @@ EOF
   end      
   private :wait_for
   
-  def fix_net file, analysis, extra_commands = '', models_update
+  def fix_net file, analysis, extra_commands = '', models_update, variations={}
     contents = File.open(file, 'r:Windows-1252').read.sub(/^\.lib .*standard.mos/, "*\\0")
     File.open(file, 'w'){|f|
-      contents.each_line{|l|
+        contents.each_line{|l|
         l.strip!
         if l =~ /^ *\.ac|\.tran|\.dc/
           f.puts "*#{l}"
+        elsif l =~ /^([Mm]\S*\#) (+\S+ +\S+ +\S+ +\S+) (.*$) /
+          if vals = variations[$1]
+            elm = $1
+            nodes = $2
+            params = $3
+            new_l = ''
+            vals.each_with_index{|val, i|
+              f.puts "#{elm}#{i} #{nodes} #{vals}"
+            } 
+          }
         else
           f.puts l unless l =~ /^\.end$/
         end

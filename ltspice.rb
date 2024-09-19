@@ -792,7 +792,7 @@ class LTspice < Spice
         input = input_copy.dup
         comment input, type
         File.open('input.'+type, 'w'){|otf| otf.print input}
-	File.delete 'input.op.raw' if File.exist? 'input.op.raw'
+	      File.delete 'input.op.raw' if File.exist? 'input.op.raw'
         File.delete type+'.raw' if File.exist? type+'.raw'
         puts "Execute #{type} analysis: scad3 #{args} input.#{type}"
         execute args, "input.#{type}", marching_display # @rawfile='input.raw' is deleted
@@ -801,7 +801,7 @@ class LTspice < Spice
           File.rename @rawfile, type+'.raw' 
           rawfiles = split_stepped_file type+'.raw' # if simulation is stepped
         end
-	if File.exist? 'input.op.raw'
+	      if File.exist? 'input.op.raw'
           dc_op_conv 'input.op.raw', dc_file_name()
         elsif File.exist? 'dc.raw'
           dc_op_conv 'dc.raw', dc_file_name()
