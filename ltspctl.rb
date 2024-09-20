@@ -322,23 +322,26 @@ EOF
   end      
   private :wait_for
   
-  def fix_net file, analysis, extra_commands = '', models_update, variations={}
+  def fix_net file, analysis, extra_commands = '', models_update=nil, variations={}
     contents = File.open(file, 'r:Windows-1252').read.sub(/^\.lib .*standard.mos/, "*\\0")
     File.open(file, 'w'){|f|
         contents.each_line{|l|
         l.strip!
         if l =~ /^ *\.ac|\.tran|\.dc/
           f.puts "*#{l}"
-        elsif l =~ /^([Mm]\S*\#) (+\S+ +\S+ +\S+ +\S+) (.*$) /
-          if vals = variations[$1]
+        elsif l =~ /^([Mm]\S*\#) +(\S+ +\S+ +\S+ +\S+) +(\S+) +(.*$)/
+          if vals = variations[$1.to_sym]
             elm = $1
             nodes = $2
-            params = $3
+            model = $3
+            params = $4
             new_l = ''
             vals.each_with_index{|val, i|
-              f.puts "#{elm}#{i} #{nodes} #{vals}"
+              f.puts "#{elm}#{i+1} #{nodes} #{model} #{vals[i]}"
             } 
-          }
+          else
+            f.puts l
+          end
         else
           f.puts l unless l =~ /^\.end$/
         end
@@ -401,15 +404,22 @@ EOF
     # delete_file_with_retry file
     FileUtils.touch file unless File.exist? file
     models_update = nil
+    variations = {}
     Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
       ascfile = File.basename @file
       lines = File.open(ascfile, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace).split("\n")
       variables.each{|v|
-        if v.class == Hash && models_update = v[:models_update]
-          model_lines = get_models @elements
-          model_lines.each{|lineno|
-            lines[lineno-1].sub! '.include', ';include'
-          } 
+        if v.class == Hash 
+          if v[:models_update]
+            models_update = v[:models_update]
+            model_lines = get_models @elements
+            model_lines.each{|lineno|
+              lines[lineno-1].sub! '.include', ';include'
+            } 
+          end
+          if v[:variations]
+            variations = v[:variations]
+          end
         end
       }
       models_update && models_update.each_pair{|model_name, params|
@@ -434,7 +444,7 @@ EOF
         extra_commands << ".save #{v}\n"
       end
     }
-    fix_net file, analysis, extra_commands, models_update
+    fix_net file, analysis, extra_commands, models_update, variations
     true && Dir.chdir(File.dirname @file){ # chdir or -Run does not work 
       puts "CWD: #{Dir.pwd}"
       ascfile = File.basename @file
