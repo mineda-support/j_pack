@@ -42,8 +42,8 @@ if $0 == __FILE__
   #m = CompactModel.new 'MinedaPTS06_TT'
   #puts
   #file = File.join ENV['HOMEPATH'], 'Seafile/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
-  file = File.join ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/nch_pch#.asc'
-  #file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
+  #file = File.join ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/nch_pch#.asc'
+  file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
   #file = './j_pack/nch_pch.asc'
   puts Dir.pwd
   ckt = LTspiceControl.new file #, true # test recursive

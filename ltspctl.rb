@@ -491,7 +491,7 @@ EOF
   end
   
   def sim_log ckt=@file
-    File.read(ckt.sub('.asc', '.log')).gsub("\x00", '')
+    File.open(ckt.sub('.asc', '.log'), 'r:Windows-1252').read.encode('UTF-8', invalid: :replace)
   end
   
   def raw2tmp *node_list
@@ -563,7 +563,7 @@ EOF
     }
     model_files(include_files).each{|f|
       m = CompactModel.new f
-      puts m.models
+      # puts m.models
       @models.merge! m.models
     }
     @models
