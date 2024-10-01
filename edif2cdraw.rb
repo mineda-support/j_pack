@@ -149,10 +149,11 @@ EOF
               }
               if pin_order = IP62_pin_order(c.name)
                 (0..pin_order.size-1).each{|i|
-                  pin = c.view.interface.symbol.pins[pin_order[i]]
-                  f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
-                  f.puts "PINATTR PinName #{pin.name}"
-                  f.puts "PINATTR SpiceOrder #{i+1}"
+                  if pin = c.view.interface.symbol.pins[pin_order[i]]
+                    f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
+                    f.puts "PINATTR PinName #{pin.name}"
+                    f.puts "PINATTR SpiceOrder #{i+1}"
+                  end
                 }                 
               else
                 c.view.interface.symbol.pins.each_with_index{|pin, i|
@@ -208,7 +209,7 @@ EOF
               else
                 orient = "R0"
               end
-              f.puts "SYMBOL #{$rename_cell[i.cellRef]} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}"
+              f.puts "SYMBOL #{$rename_cell[i.cellRef]} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}" if i.origin
               f.puts "SYMATTR InstName #{i.name}"
               case prefix=i.name.to_s[0].downcase
               when 'm'
@@ -574,7 +575,8 @@ end
 puts Dir.pwd
 
 #file = './j_pack/AMP_01_00_edif.out'
-file = "./j_pack/a_462_G_Anagix.edif"
+#file = "./j_pack/a_462_G_Anagix.edif"
+file = "./j_pack/edif.out"
 require 'sxp'
 require 'debug'
 desc = SXP.read(File.read(file).encode('UTF-8'))

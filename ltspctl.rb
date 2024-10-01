@@ -329,7 +329,7 @@ EOF
         l.strip!
         if l =~ /^ *\.ac|\.tran|\.dc/
           f.puts "*#{l}"
-        elsif l =~ /^([Mm]\S*\#) +(\S+ +\S+ +\S+ +\S+) +(\S+) +(.*$)/
+        elsif l =~ /^([Mm]\S+) +(\S+ +\S+ +\S+ +\S+) +(\S+) +(.*$)/
           if vals = variations[$1.to_sym]
             elm = $1
             nodes = $2
@@ -337,7 +337,7 @@ EOF
             params = $4
             new_l = ''
             vals.each_with_index{|val, i|
-              f.puts "#{elm}#{i+1} #{nodes} #{model} #{vals[i]}"
+              f.puts "#{elm}##{i+1} #{nodes} #{model} #{vals[i]}"
             } 
           else
             f.puts l
