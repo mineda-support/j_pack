@@ -94,8 +94,10 @@ class Edif_out
     case cell_name
     when 'DN', 'DP'
       [1, 0]
-    when 'RR_W2.8', 'RR', 'RN', 'RNHV', 'RS', 'RH', 'RHHV'
-      [1, 2]
+    when 'RR_W2.8', 'RR', 'RS', 'RNHV'
+      [0, 1]
+    when 'RN', 'RH', 'RHHV'
+      [0, 2]
     when 'CSIO'
       [1, 0]
     else
@@ -575,8 +577,8 @@ end
 puts Dir.pwd
 
 #file = './j_pack/AMP_01_00_edif.out'
-#file = "./j_pack/a_462_G_Anagix.edif"
-file = "./j_pack/edif.out"
+file = "./j_pack/a_462_G_Anagix.edif"
+#file = "./j_pack/edif.out"
 require 'sxp'
 require 'debug'
 desc = SXP.read(File.read(file).encode('UTF-8'))
