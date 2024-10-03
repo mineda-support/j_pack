@@ -504,7 +504,8 @@ class EdifPortImplementation
   end
 end
 
-IP62_defaults = {MN: {}, MP: {}, MNO: {l: '6u', w: '6u'}, MPO: {l: '3.5u', w: '50u'}, 
+IP62_defaults = {MN: {l: '1u', w: '3.4u'}, MP: {l: '1u', w: '3.4u'},
+                 MNO: {l: '6u', w: '6u'}, MPO: {l: '3.5u', w: '50u'}, 
                  CSIO: {c: '500fF'}}
 
 class EdifInstance
@@ -516,7 +517,7 @@ class EdifInstance
     @libraryRef = viewRef.edif_value :libraryRef
     @orientation = transform.edif_value :orientation
     origin = transform.edif_value(:origin) 
-    @origin = pt(origin) if origin
+    @origin = origin ? pt(origin) : [0, 0]
     @properties = {}
     prefix=@name.to_s[0].downcase
     properties.each{|p|
@@ -596,8 +597,8 @@ end
 puts Dir.pwd
 
 #file = './j_pack/AMP_01_00_edif.out'
-file = "./j_pack/a_462_G_Anagix.edif"
-#file = "./j_pack/edif.out"
+#file = "./j_pack/a_462_G_Anagix.edif"
+file = "./j_pack/edif.out"
 require 'sxp'
 require 'debug'
 desc = SXP.read(File.read(file).encode('UTF-8'))
