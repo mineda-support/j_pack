@@ -104,6 +104,11 @@ class Edif_out
       nil
     end
   end
+
+  def ignore_figureGruopOverride inst_name
+    (inst_name.class == Array && inst_name[0] == :name) ? inst_name[1] : inst_name
+  end
+
   def edif2cdraw 
     @libraries.each{|l|
       puts "library #{l.name}"
@@ -153,14 +158,14 @@ EOF
                 (0..pin_order.size-1).each{|i|
                   if pin = c.view.interface.symbol.pins[pin_order[i]]
                     f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
-                    f.puts "PINATTR PinName #{pin.name}"
+                    f.puts "PINATTR PinName #{ignore_figureGruopOverride pin.name}"
                     f.puts "PINATTR SpiceOrder #{i+1}"
                   end
                 }                 
               else
                 c.view.interface.symbol.pins.each_with_index{|pin, i|
                   f.puts "PIN #{q2c(pin.xy[0])} #{q2c(pin.xy[1])} NONE 0"
-                  f.puts "PINATTR PinName #{pin.name}"
+                  f.puts "PINATTR PinName #{ignore_figureGruopOverride pin.name}"
                   f.puts "PINATTR SpiceOrder #{i+1}"
                 }
               end
@@ -182,19 +187,21 @@ EOF
               }
             }
             pi = c.view.contents.pages.port_implementations
-            puts "pi=#{pi}"
+            #puts "pi=#{pi}"
             c.view.interface.ports.each_pair{|k, p|
               k, name = (k.class == Array) ? [k[1], k[2]] : [k, k]
-              puts "pi[#{k}] =  #{pi[k]}"
-              x = q2c(pi[k][:connectLocation][0])
-              y = q2c(pi[k][:connectLocation][1])
-              f.puts "FLAG #{x} #{y} #{name}"
-              f.puts "IOPIN #{x} #{y} #{p[:direction]}"
+              #puts "pi[#{k}] =  #{pi[k]}"
+              if pi[k]
+                x = q2c(pi[k][:connectLocation][0])
+                y = q2c(pi[k][:connectLocation][1])
+                f.puts "FLAG #{x} #{y} #{name}"
+                f.puts "IOPIN #{x} #{y} #{p[:direction]}"
+              end
             }
             c.view.contents.pages.instances.each{|i|
-              puts "  instance '#{i.name}: #{i.cellRef}' in '#{i.libraryRef}'"
+              print "  instance '#{i.name}: #{i.cellRef}' in '#{i.libraryRef}'"
               ref[i.cellRef] = i.libraryRef
-              puts "    #{i.orientation}, #{i.origin.inspect}"
+              puts "    #{i.orientation}, #{i.origin.inspect} #{i.properties}"
               case i.orientation
               when :R90
                 orient = "R270"
@@ -211,8 +218,9 @@ EOF
               else
                 orient = "R0"
               end
-              f.puts "SYMBOL #{$rename_cell[i.cellRef]} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}" if i.origin
-              f.puts "SYMATTR InstName #{i.name}"
+              symbol_name = $rename_cell[i.cellRef]
+              f.puts "SYMBOL #{symbol_name} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}" if i.origin
+              f.puts "SYMATTR InstName #{ignore_figureGruopOverride i.name}"
               case prefix=i.name.to_s[0].downcase
               when 'm'
                 f.print "SYMATTR Value2"
@@ -276,6 +284,7 @@ class EdifView
     #    puts "View name = #{@name}"
     if @name == :symbol
       @interface = EdifSymbolInterface.new interface
+      @contents = EdifContents.new contents if contents
     elsif @name == :schematic
       @interface = EdifSchematicInterface.new interface
       @contents = EdifContents.new contents if contents
@@ -494,6 +503,10 @@ class EdifPortImplementation
     [s[1], -s[2]]
   end
 end
+
+IP62_defaults = {MN: {}, MP: {}, MNO: {l: '6u', w: '6u'}, MPO: {l: '3.5u', w: '50u'}, 
+                 CSIO: {c: '500fF'}}
+
 class EdifInstance
   attr_accessor :name, :properties
   attr_accessor :cellRef, :libraryRef, :orientation, :origin
@@ -505,8 +518,9 @@ class EdifInstance
     origin = transform.edif_value(:origin) 
     @origin = pt(origin) if origin
     @properties = {}
+    prefix=@name.to_s[0].downcase
     properties.each{|p|
-      case prefix=@name.to_s[0].downcase
+      case prefix
       when 'm'
         next unless [:w, :l, :m].include? p[1]
       when 'c', 'r'
@@ -519,6 +533,11 @@ class EdifInstance
         @properties[p[1]]  = p[2][1].to_i
       end
     }
+    if defaults = IP62_defaults[@cellRef]
+      defaults.each_pair{|k, v|
+        @properties[k] ||= v
+      }
+    end
   end
   def pt s
     [s[1], -s[2]]
