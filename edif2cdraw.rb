@@ -62,7 +62,8 @@ class Array
 end
 class Edif_out
   attr_accessor :edifVersion, :edifLevel, :keywordMap, :status, :libraries , :comment
-  def initialize s 
+  def initialize s, resistor_with_bulk=false
+    @resistor_with_bulk = resistor_with_bulk
     @edifVersion, @edifLevel, @keywordMap, @status = s[2..5]
     @design = s[-1]
     @comments = []
@@ -94,10 +95,14 @@ class Edif_out
     case cell_name
     when 'DN', 'DP'
       [1, 0]
-    when 'RR_W2.8', 'RR', 'RS', 'RNHV'
+    when 'RS', 'RNHV'
       [0, 1]
-    when 'RN', 'RH', 'RHHV'
-      [0, 2]
+    when 'RR_W2.8', 'RR', 'RN'
+      $resistor_with_bulk ? [1, 2, 0] : [1, 2] #for 2 terminal
+    when 'MNO'
+      [2, 1, 0, 3]
+    when 'RH', 'RHHV'
+      $resistor_with_bulk ? [0, 2, 1] : [0, 2] #for 2 terminal
     when 'CSIO'
       [1, 0]
     else
@@ -142,7 +147,8 @@ EOF
               }
               c.view.interface.properties.each{|prop|
                 if prop[0] == :instNamePrefix
-                  f.puts "SYMATTR Prefix #{prop[1]}"
+                  prefix = ($resistor_with_bulk && prop[1] == 'R') ? 'X' : prop[1]
+                  f.puts "SYMATTR Prefix #{prefix}"
                 end
               }
               f.puts "SYMATTR Value #{c.name}"
@@ -221,14 +227,14 @@ EOF
               symbol_name = $rename_cell[i.cellRef]
               f.puts "SYMBOL #{symbol_name} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}" if i.origin
               f.puts "SYMATTR InstName #{ignore_figureGruopOverride i.name}"
-              case prefix=i.name.to_s[0].downcase
-              when 'm'
+              prefix=i.name.to_s[0].downcase
+              if prefix == 'm' || ($resistor_with_bulk && prefix == 'r')
                 f.print "SYMATTR Value2"
                 i.properties.each_pair{|k, v|
                   f.print " #{k}=#{v}"
                 }
                 f.puts
-              when 'c', 'r'
+              elsif prefix == 'c' || prefix == 'r'
                 i.properties.each_pair{|k, v|
                   if k.to_s.downcase == prefix
                     f.puts "SYMATTR Value #{v}"
@@ -505,7 +511,7 @@ class EdifPortImplementation
 end
 
 IP62_defaults = {MN: {l: '1u', w: '3.4u'}, MP: {l: '1u', w: '3.4u'},
-                 MNO: {l: '6u', w: '6u'}, MPO: {l: '3.5u', w: '50u'}, 
+                 MNO: {l: '6u', w: '6u'}, MPO: {l: '3.5u', w: '5u'}, 
                  CSIO: {c: '500fF'}}
 
 class EdifInstance
@@ -602,5 +608,6 @@ file = "./j_pack/edif.out"
 require 'sxp'
 require 'debug'
 desc = SXP.read(File.read(file).encode('UTF-8'))
+$resistor_with_bulk = true
 e = Edif_out.new desc
 e.edif2cdraw
