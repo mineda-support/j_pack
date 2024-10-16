@@ -69,6 +69,7 @@ class CompactModel
         end
         description = l
       else
+        description ||= ''
         description << l
       end
     }
