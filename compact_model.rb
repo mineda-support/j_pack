@@ -1,3 +1,8 @@
+if $0 == __FILE__
+  $:.unshift File.dirname(__FILE__)
+  $:.unshift File.join(File.dirname(__FILE__), './ade_express')
+  $:.unshift '.'
+end
 class CompactModel
   attr_accessor :file, :models, :type
   require 'spice_parser'
@@ -65,7 +70,7 @@ class CompactModel
       if l =~ /\.(model|MODEL)/ 
         if description
           type, name, params = parse_model(description)
-          models[name] = [type, params]
+          models[name] = [type, params] if name
         end
         description = l
       else
@@ -75,6 +80,7 @@ class CompactModel
     }
     type, name, params = parse_model(description)
     models[name] = [type, params]
+    # puts "models in load: #{models.inspect}"
     return models
   end
 
@@ -199,3 +205,10 @@ def write_model model_params, file
   }
 end
 =end
+if $0 == __FILE__
+  $:.unshift File.dirname(__FILE__)
+  $:.unshift File.join(File.dirname(__FILE__), './ade_express')
+  $:.unshift '.'
+  m = CompactModel.new "#{ENV['HOMEPATH']}/KLayout/salt/ICPS2023_5/Technology/tech/models/SOI_CMOS"
+  puts m.models
+end

@@ -561,12 +561,16 @@ EOF
         model_lines << l[:lineno]
       end
     }
+    # puts "include_files=#{include_files.inspect}"
     model_files(include_files).each{|f|
       m = CompactModel.new f
       # puts m.models
+      # puts "@models=#{@models.inspect}"
       @models.merge! m.models
+      #puts "m.models=#{m.models.inspect}"
     }
     @models
+    #puts "=> @models=#{@models.inspect}"
     model_lines
   end
 
