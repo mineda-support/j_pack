@@ -601,13 +601,14 @@ class EdifNet
   end
 end
 puts Dir.pwd
-
-#file = './j_pack/AMP_01_00_edif.out'
-file = "./j_pack/a_462_G_Anagix.edif"
-#file = "./j_pack/edif.out"
-require 'sxp'
-require 'debug'
-desc = SXP.read(File.read(file).encode('UTF-8'))
-$resistor_with_bulk = true
-e = Edif_out.new desc
-e.edif2cdraw
+if $0 == __FILE__
+  #file = './j_pack/AMP_01_00_edif.out'
+  #file = "./j_pack/a_462_G_Anagix.edif"
+  #file = "./j_pack/edif.out"
+  require 'sxp'
+  require 'debug'
+  desc = SXP.read(File.read(file).encode('UTF-8'))
+  $resistor_with_bulk = true
+  e = Edif_out.new desc
+  e.edif2cdraw
+end
