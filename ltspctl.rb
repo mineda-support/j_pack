@@ -184,7 +184,7 @@ EOF
   
   def set pairs
     read @file if File.mtime(@file) > @mtime
-    lines = File.open(@file, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace)
+    lines = File.open(@file, 'r:ANSI').read.encode('UTF-8', invalid: :replace)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
     else
@@ -323,6 +323,7 @@ EOF
   private :wait_for
   
   def fix_net file, analysis, extra_commands = '', models_update=nil, variations={}
+    puts "variations passed to fix_net = #{variations}"
     contents = File.open(file, 'r:Windows-1252').read.sub(/^\.lib .*standard.mos/, "*\\0")
     File.open(file, 'w'){|f|
         contents.each_line{|l|
@@ -330,11 +331,13 @@ EOF
         if l =~ /^ *\.ac|\.tran|\.dc/
           f.puts "*#{l}"
         elsif l =~ /^([Mm]\S+) +(\S+ +\S+ +\S+ +\S+) +(\S+) +(.*$)/
-          if vals = variations[$1.to_sym]
-            elm = $1
-            nodes = $2
-            model = $3
-            params = $4
+          elm = $1
+          nodes = $2
+          model = $3
+          params = $4
+          name = File.basename(file).sub(File.extname(file), '') + ':' + elm
+          puts "variations[#{name.to_sym}] = #{variations[name.to_sym]}"
+          if vals = variations[name.to_sym]
             new_l = ''
             vals.each_with_index{|val, i|
               f.puts "#{elm}##{i+1} #{nodes} #{model} #{vals[i]}"
@@ -408,7 +411,9 @@ EOF
     Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
       ascfile = File.basename @file
       lines = File.open(ascfile, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace).split("\n")
+      puts "variables=#{variables.inspect}"
       variables.each{|v|
+        puts "v=#{v.inspect}"
         if v.class == Hash 
           if v[:models_update]
             models_update = v[:models_update]
@@ -419,6 +424,7 @@ EOF
           end
           if v[:variations]
             variations = v[:variations]
+            puts "v[:variations]=#{variations}"
           end
         end
       }
@@ -491,7 +497,7 @@ EOF
   end
   
   def sim_log ckt=@file
-    File.open(ckt.sub('.asc', '.log'), 'r:Windows-1252').read.encode('UTF-8', invalid: :replace)
+    File.open(ckt.sub('.asc', '.log')).read.encode('UTF-8', invalid: :replace)
   end
   
   def raw2tmp *node_list
