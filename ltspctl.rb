@@ -340,7 +340,7 @@ EOF
           if vals = variations[name.to_sym]
             new_l = ''
             vals.each_with_index{|val, i|
-              f.puts "#{elm}##{i+1} #{nodes} #{model} #{vals[i]}"
+              f.puts "#{elm}##{i+1} #{nodes} #{model} #{val}" if val
             } 
           else
             f.puts l
