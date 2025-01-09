@@ -2,7 +2,9 @@
 # Copyright(C) 2009-2020 Anagix Corporation
 #require 'rubygems'
 #require 'ruby-debug'
-
+#
+puts Dir.pwd
+#require './j_pack'
 require 'pp'
 #require './invoker.rb'
 require 'ffi'

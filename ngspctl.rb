@@ -2,7 +2,8 @@
 if $0 == __FILE__
   $: << '.'
   $: << '/home/anagix/work/alb2/lib'
-  $: << '/home/anagix/work/alb2/ade_express'
+  #$: << '/home/anagix/work/alb2/ade_express'
+  $: << './ade_express'
 end
 load 'alb_lib.rb'
 load 'spice_parser.rb'
@@ -16,9 +17,11 @@ require 'fileutils'
 
 class NgspiceControl < LTspiceControl
   attr_accessor :elements, :file, :mtime, :pid, :result, :sheet
-  def initialize ckt=nil, ignore_cir=true
+  def initialize ckt=nil, ignore_cir=true, recursive=false
     return unless ckt
-    read ckt, ignore_cir
+    @ckts = {}
+    read ckt, ignore_cir, recursive
+    get_models e=@elements[File.basename(file).sub(/\.\S+/, '')] || @elements
   end
   
   def read_subckt sheets
@@ -45,6 +48,11 @@ class NgspiceControl < LTspiceControl
         puts 'Paste the command above in a markdown cell to display the circuit'
       end
     end
+  end
+
+  def open file=@file, ignore_cir=false, recursive=false
+    view file 
+    read file, ignore_cir, recursive
   end
   
   def view file, options=nil
@@ -73,10 +81,10 @@ class NgspiceControl < LTspiceControl
     }
   end
 
-  def read ckt=@file, ignore_cir=false
-    read0 ckt # @elements is set
+  def read ckt=@file, ignore_cir=false, recursive=false
+    read0 ckt, recursive # @elements is set
     @sheet = nil
-    return unless sch_type(ckt)== 'eeschema'
+    return unless sch_type(ckt) == 'eeschema'
     @sheet = {ckt => @elements}
     read_subckt @elements['Sheets']
     cir = ckt.sub('.sch', '.cir')
@@ -88,45 +96,47 @@ class NgspiceControl < LTspiceControl
       end
     end
     @elements = read_net cir if File.exist? cir
+    @elements
   end
 
-  def read0 ckt
+  def read0 ckt, recursive
     @file = ckt
     case File.extname ckt 
     when '.asc'
-        @elements = read_asc ckt
+        @elements = read_asc ckt, recursive
     when '.sch'
-        @elements = read_sch ckt
+        @elements = read_sch ckt, recursive
     when '.net', '.spice', '.cir', '.spc'
-        @elements = read_net ckt
+        @elements = read_net ckt, recursive
         @sheet && @sheet.each_key{|file|
-          @sheet[file] = read_eeschema_sch file
+          @sheet[file] = read_eeschema_sch file, recursive
         }
     when ''
       if File.exist? ckt+'.asc'
-        @elements = read_asc ckt+'.asc'
+        @elements = read_asc ckt+'.asc', recursive
       elsif File.exist? ckt+'.sch'
-        @elements = read_sch ckt+'.sch'
+        @elements = read_sch ckt+'.sch', recursive
       elsif File.exist? ckt+'.net'
-        @elements = read_net ckt+'.net'
+        @elements = read_net ckt+'.net', recursive
       else
       end
     end
     @mtime = Time.now
     puts "elements updated from #{@file}!"
+    @elements = @ckts if recursive
     @elements
   end
   private :read0 
 
-  def read_sch file
+  def read_sch file, recursive=false, caller=''
     if sch_type(file) == 'eeschema'
-      read_eeschema_sch file
+      read_eeschema_sch file, recursive, caller
     elsif sch_type(file) == 'xschem'
-      read_xschem_sch file
+      read_xschem_sch file, recursive, caller
     end
   end
       
-  def read_eeschema_sch file
+  def read_eeschema_sch file, recursive=false, caller=''
     puts "read_eeschema_sch reads #{file}"
     elements = {}
     name = type = value = value2 = flag_wire = flag_text = group = nil
@@ -195,7 +205,7 @@ class NgspiceControl < LTspiceControl
     elements
   end
   
-  def read_xschem_sch file
+  def read_xschem_sch file, recursive=false, caller=''
     elements = {}
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
@@ -216,6 +226,11 @@ class NgspiceControl < LTspiceControl
         name = $2
         value2 = $3
         elements[name] = {value: value2, type: type, lineno: lineno}
+        if recursive && name[0].downcase == 'x'
+          caller << '.' + name
+          @ckts[type] ||= read_xschem_sch(File.join(File.dirname(file), type+'.sch'), true, caller)
+          @ckts[caller] = type
+        end
       end
     }
     elements
@@ -685,4 +700,10 @@ class NgspiceControl < LTspiceControl
     command
   end
   private :eeschemaexe
+end
+if $0 == __FILE__
+  file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2024_8/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  ckt = NgspiceControl.new file, true, true # test recursive
+  puts ckt.elements.inspect
+  puts ckt.models.inspect
 end
