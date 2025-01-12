@@ -966,14 +966,18 @@ if RUBY_VERSION < '3.0' && RUBY_PLATFORM=~/mswin32|mingw|cygwin/
   end
 
   def windows_which tool
-      tool << '.exe' unless tool.include? '.exe'
-      p=IO.popen 'where ' + tool
-      while l = p.gets
-        if l.include? tool
-          return l.chop.gsub("\\", '/')
-        end
+    tool << '.exe' unless tool.include? '.exe'
+    p=IO.popen 'where ' + tool
+    while l = p.gets
+      if l.include? tool
+        return l.chop.gsub("\\", '/')
       end
     end
+  end
+else
+  def get_short_path_name(file)
+    file
+  end
 end
 
 def which tool

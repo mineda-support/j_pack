@@ -207,6 +207,7 @@ class NgspiceControl < LTspiceControl
   
   def read_xschem_sch file, recursive=false, caller=''
     elements = {}
+    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
     File.read(file).each_line{|l|
@@ -446,13 +447,22 @@ class NgspiceControl < LTspiceControl
       elsif sch_type(@file) == 'xschem'
         Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
-          Dir.chdir(File.join ENV['HOME'], '.xschem'){
+          Dir.chdir(File.join ENV['HOME'], /mswin32|mingw/ =~ RUBY_PLATFORM ? 'Xschem' : '.xschem'){
             FileUtils.rm 'simulations' if File.symlink? 'simulations'
             FileUtils.mv 'simulations', 'simulations_KEEP' if File.directory? 'simulations'
-            FileUtils.ln_s pwd, 'simulations'
+            if /mswin32|mingw/ =~ RUBY_PLATFORM
+              File.link 'simulations', pwd if File.exist? 'simulations'
+            else
+              FileUtils.ln_s pwd, 'simulations'
+            end
           }
-          File.delete file if File.exist? file
-          run "-s -i -n -q -l #{@file.sub '.sch', '.log'}", @file 
+          file = @file.sub '.sch', '.log'
+          File.delete file if file && File.exist?(file)
+          run "-s -i -n -q -l #{file}", @file # xschem options:
+          # -s: set netlist type to spice
+          # -i: do not load any xschemrc file
+          # -q: quit after doing things 
+          # -l: set a log file
           wait_for File.basename(file), 'due to some error'
         }
         netlist = File.read file
@@ -706,4 +716,6 @@ if $0 == __FILE__
   ckt = NgspiceControl.new file, true, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect
+  ckt.simulate
+  puts 'sim end'
 end
