@@ -530,10 +530,17 @@ class NgspiceControl < LTspiceControl
   end
 
   def info
-    result = with_stringio{
+    result = nil
+    with_stringio(){
       Ngspice.info
+    }.each_line{|l|
+      if result && l =~ /stdout *(\S+) */
+        result << $1
+      elsif l =~ /stdout Date:/
+        result = []
+      end
     }
-    puts result
+    result
   end
   
   def plot *node_list
