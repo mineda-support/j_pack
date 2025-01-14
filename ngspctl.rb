@@ -1,12 +1,15 @@
 # ngspctl v0.2 Copyright(C) Anagix Corporation
 if $0 == __FILE__
+  puts Dir.pwd
+  Dir.chdir '../j_pack'
   $: << '.'
-  $: << '/home/anagix/work/alb2/lib'
-  #$: << '/home/anagix/work/alb2/ade_express'
   $: << './ade_express'
-end
-load 'alb_lib.rb'
+  puts "$: = #{$:}"
+  #$: << '/home/anagix/work/alb2/lib'
+  #$: << '/home/anagix/work/alb2/ade_express'
+  end
 load 'spice_parser.rb'
+load 'alb_lib.rb'
 load 'ngspice.rb'
 load 'ltspctl.rb'
 load 'postprocess.rb'
@@ -107,7 +110,7 @@ class NgspiceControl < LTspiceControl
     when '.sch'
         @elements = read_sch ckt, recursive
     when '.net', '.spice', '.cir', '.spc'
-        @elements = read_net ckt, recursive
+        @elements = read_net ckt
         @sheet && @sheet.each_key{|file|
           @sheet[file] = read_eeschema_sch file, recursive
         }
@@ -418,6 +421,7 @@ class NgspiceControl < LTspiceControl
     file = nil
     netlist = ''
     analysis = {}
+    $stderr.puts "@file = #{@file}"
     if @file =~ /\.asc/
       file = @file.sub('.asc', '.net')
       File.delete file if File.exist? file
@@ -437,6 +441,7 @@ class NgspiceControl < LTspiceControl
         end
       }
     elsif @file =~ /\.sch/
+      $stderr.puts "sch_type(@file)=#{sch_type(@file)}"
       if sch_type(@file) == 'eeschema'
         file = @file.sub('.sch', '.cir')
         $stderr.puts "#{@file}: #{File.mtime(@file)} vs. #{file}: #{File.mtime(file)}"
@@ -447,37 +452,53 @@ class NgspiceControl < LTspiceControl
       elsif sch_type(@file) == 'xschem'
         Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
-          Dir.chdir(File.join ENV['HOME'], /mswin32|mingw/ =~ RUBY_PLATFORM ? 'Xschem' : '.xschem'){
-            FileUtils.rm 'simulations' if File.symlink? 'simulations'
-            FileUtils.mv 'simulations', 'simulations_KEEP' if File.directory? 'simulations'
-            if /mswin32|mingw/ =~ RUBY_PLATFORM
-              File.link 'simulations', pwd if File.exist? 'simulations'
-            else
-              FileUtils.ln_s pwd, 'simulations'
-            end
-          }
-          file = @file.sub '.sch', '.log'
+          file = @file.sub '.sch', '.spice'
           File.delete file if file && File.exist?(file)
-          run "-s -i -n -q -l #{file}", @file # xschem options:
-          # -s: set netlist type to spice
-          # -i: do not load any xschemrc file
-          # -q: quit after doing things 
-          # -l: set a log file
+          run "-s -n -x -q -o .", @file # xschem options:
+            # -s: set netlist type to spice
+            # -n: create netlist
+            # -i: do not load any xschemrc file
+            # -x: command mode (no X)
+            # -q: quit after doing things 
+            # -o: output directory
           wait_for File.basename(file), 'due to some error'
+
+          $stderr.puts "file='#{file}'"
+          sleep 1 # weird but file is not available w/o sleep 1
+          netlist = ''
+          home = (ENV['HOMEPATH'] || ENV['HOME'])
+          File.read(file.gsub(/\\/, '/')).each_line{|l|
+            netlist << l.sub(/%HOMEPATH|%HOME|\$HOMEPATH|\$HOME/, home)
+          }
         }
-        netlist = File.read file
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
-      $stderr.puts netlist = parse(@file, analysis)
+      netlist = parse(@file, analysis)
+      $stderr.puts "netlist = #{netlist}"
+      $stderr.puts "analysis = #{analysis}"
     end
-    $stderr.puts "analysis directives in netlist: #{analysis.inspect}" unless analysis.empty?
+    $stderr.puts "analysis directives in netlist: #{analysis.inspect}" # unless analysis.empty?
     Dir.chdir(File.dirname @file){
       $stderr.puts "variables = #{variables.inspect}"
       Ngspice.init
       Ngspice.circ(netlist)
       variables.each{|v|
         if v.class == Hash
-          analysis[v.first[0]] = v.first[1]
+=begin
+          if v[:models_update]
+            models_update = v[:models_update]
+            model_lines = get_models @elements
+            model_lines.each{|lineno|
+              lines[lineno-1].sub! '.include', ';include'
+            } 
+          end
+          if v[:variations]
+            variations = v[:variations]
+            puts "v[:variations]=#{variations}"
+          else        
+            analysis[v.first[0]] = v.first[1]
+          end
+=end
         else
           Ngspice.command "save #{v}"
         end
@@ -485,6 +506,7 @@ class NgspiceControl < LTspiceControl
       if analysis.empty?
         Ngspice.command('run')
       else
+        $stderr.puts "analysis = #{analysis.inspect}"
         analysis.each{|k, v|
           Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
         }
@@ -674,7 +696,7 @@ class NgspiceControl < LTspiceControl
       command = "\"" + xschem_path() + "\""
     elsif File.directory? '/mnt/c/Windows/SysWOW64/'
       command = xschem_path_WSL()
-    else
+    elsec
       command = "/usr/local/bin/xschem"
     end
     command
@@ -712,10 +734,11 @@ class NgspiceControl < LTspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
-  file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2024_8/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   ckt = NgspiceControl.new file, true, true # test recursive
-  puts ckt.elements.inspect
-  puts ckt.models.inspect
+  #puts ckt.elements.inspect
+  #puts ckt.models.inspect
   ckt.simulate
   puts 'sim end'
 end

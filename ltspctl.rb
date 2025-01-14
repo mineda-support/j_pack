@@ -384,8 +384,12 @@ EOF
 
   def parse file, analysis
     netlist = ''
+    home = (ENV['HOMEPATH'] || ENV['HOME'])
+    $stderr.puts "file = #{file}"
     File.open(file, 'r:Windows-1252').read.each_line{|l|
       l.chomp!
+      l.sub!(/%HOMEPATH|%HOME|\$HOMEPATH|\$HOME/, home)
+      $stderr.puts l
       if l =~ /^ *\.ac +(.*)/
         analysis[:ac] = $1
       elsif l =~ /^ *\.tran +(.*)/
@@ -560,9 +564,10 @@ EOF
     return if elements.nil? || elements['include'].nil?
     model_lines = []
     include_files = []
+    home = ENV['HOMEPATH']||ENV['HOME']
     elements['include'].each{|l|
       if l[:control] =~ /^\.\S+ +(\S+)/ 
-        model_file = $1.sub('%HOMEPATH%', ENV['HOMEPATH']).gsub("\\", '/').gsub("\"", '')
+        model_file = $1.sub(/%HOMEPATH%|%HOME|$HOMEPATH|$HOME/, home).gsub("\\", '/').gsub("\"", '')
         include_files << model_file
         model_lines << l[:lineno]
       end
