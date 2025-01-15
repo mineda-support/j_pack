@@ -15,7 +15,7 @@ load 'ltspctl.rb'
 load 'postprocess.rb'
 load 'compact_model.rb'
 load './customize.rb' if File.exist? './customize.rb'
-require 'byebug'
+#require 'byebug'
 require 'fileutils'
 
 class NgspiceControl < LTspiceControl
@@ -468,7 +468,7 @@ class NgspiceControl < LTspiceControl
           netlist = ''
           home = (ENV['HOMEPATH'] || ENV['HOME'])
           File.read(file.gsub(/\\/, '/')).each_line{|l|
-            netlist << l.sub(/%HOMEPATH|%HOME|\$HOMEPATH|\$HOME/, home)
+            netlist << l.sub(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
           }
         }
       end

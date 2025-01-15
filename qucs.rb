@@ -1405,6 +1405,8 @@ class QucsSchematic
   def wrap_with_quote(value)
     if value =~ / +/
       '"' + value + '"'
+    elsif value =~ /{(\S+)}/
+      '\{' + $1 + '\}'
     else
       value
     end

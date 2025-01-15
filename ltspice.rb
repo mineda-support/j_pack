@@ -91,9 +91,9 @@ def model_files include_files
   model_files = []
   home = (ENV['HOMEPATH'] || ENV['HOME'])
   include_files.each{|f|
-    f.sub!(/%HOMEPATH|%HOME|\$HOMEPATH|\$HOME/, home)
+    f.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
     File.read(f).each_line{|l|
-      l.sub!(/%HOMEPATH|%HOME|\$HOMEPATH|\$HOME/, home)
+      l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
       if l =~ /include \"\.\/(\S+)\"/
         model_files << File.join(File.dirname(f), $1)
       end
