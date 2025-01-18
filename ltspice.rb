@@ -275,7 +275,7 @@ class LTspice < Spice
     result = {'ports'=>[], 'global'=>[], 'parameters'=>{},
       'instance'=>{}, 'connection'=>{}
     }
-    ELEMENTS.each{|e| result[e] = {}}
+    # ELEMENTS.each{|e| result[e] = {}}
     nets = []
     flag = nil  # lang=spice if true
     netlist, breaks = unwrap orig_netlist    # continuation w/ '+' unwrapped    

@@ -149,7 +149,7 @@ EOF
   end
   private :read_asc_sub
 
-  def read_net file
+  def read_net file, recursive
     sim = LTspice.new
     net = sim.parse_netlist File.read file
   end
@@ -1174,7 +1174,8 @@ EOF
 end
 
 if $0 == __FILE__
-  file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
+  #file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Idvd_nch_pch.asc'
   ckt = LTspiceControl.new file, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect

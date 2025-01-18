@@ -591,7 +591,9 @@ class NgspiceControl < LTspiceControl
 
   def get_traces *node_list
     # node_list_to_get_result = Marshal.load(Marshal.dump node_list)
-    variables = node_list.map{|a|
+    puts "node_list='#{node_list}'"
+    variables = [node_list[0]]
+    node_list[1..-1].each{|a|
       if a =~ /#{pattern='[vV]*\(([^\)\("]*)\)'}/
         a.gsub(/#{pattern}/){"\"#{translate $1}\""}
       elsif (a=~ /#{pattern='\("([^()]+)"\)'}/) || (a=~ /#{pattern='\(([^()]+)\)'}/)
@@ -603,9 +605,14 @@ class NgspiceControl < LTspiceControl
       else
         "\"#{translate a}\""
       end
+      if variables[0] == 'frequency'
+        variables << "real(#{a})"
+        variables << "imag(#{a})"
+      else
+        variables << a
+      end
     }
-
-    # puts "variables=#{variables}"
+    puts "variables=#{variables}"
     @result = Ngspice.get_result variables[1..-1]
     indices = []
     vars = []
@@ -616,13 +623,19 @@ class NgspiceControl < LTspiceControl
       variables.each_with_index{|name, i|
         if variables.include? name
           indices <<  i
-          vars << name
+          if variables[0] == 'frequency'
+            if name =~ /real\((.*)\)/
+              vars << $1
+            else
+              vars << name
+            end
+          end
         end
       }
     else
       vars = variables
     end
-    traces = Array.new(vars.size-1)
+    traces = Array.new(variables[0] == 'frequency' ? (vars.size-1)/2 : vars.size-1)
     traces.size.times{|i|
       traces[i] = {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
     }
@@ -633,9 +646,13 @@ class NgspiceControl < LTspiceControl
       # puts "index: #{index} > old_index: #{old_index}"
       break if index < old_index
       if node_list.size > 0
-        plot_data = []
-        indices.each{|i|
-          plot_data << values[i]
+        plot_data = [values[0]] # it looks inefficient to have used plot_data
+        indices[1..-1].each_with_index{|index, i|
+          if variables[0] == 'frequency' && i % 2 == 0
+            plot_data << Complex(values[index], values[index+1])
+          else
+            plot_data << values[index]
+          end
         }
       else
         plot_data = values
@@ -643,8 +660,8 @@ class NgspiceControl < LTspiceControl
       # puts plot_data.join(',')
       # data << plot_data
       traces.size.times{|i|
-        traces[i][:x] << plot_data[0].to_f
-        traces[i][:y] << plot_data[i+1].to_f
+        traces[i][:x] << plot_data[0]
+        traces[i][:y] << plot_data[i+1]
       }
       old_index = index
     }
@@ -741,11 +758,13 @@ class NgspiceControl < LTspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
-  #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
-  file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
   ckt = NgspiceControl.new file, true, true # test recursive
   #puts ckt.elements.inspect
   #puts ckt.models.inspect
   ckt.simulate
+  ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))')[1][0][:y]
   puts 'sim end'
 end
