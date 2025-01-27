@@ -12,35 +12,25 @@ require 'ffi'
 module Invoker
   extend FFI::Library
   if /mswin32|mingw|cygwin/ =~ RUBY_PLATFORM
-    dlls = ["c:/Program Files/KiCad/7.0/bin/ngspice.dll", "c:/Program Files/KiCad/8.0/bin/ngspice.dll"]
-    dlls.each{|d|
-      if File.exist? d
-        ffi_lib d
-        break
-      end
-    }
-=begin
-    require 'byebug'
-    Dir.chdir("c:/Program Files/KiCad/7.0/bin"){ 
-      debugger
-      ffi_lib "ngspice.dll"
-    }
-=end
+    dlls = [ENV['NGSPICE_DLL'], "c:/Program Files/KiCad/7.0/bin/ngspice.dll", "c:/Program Files/KiCad/8.0/bin/ngspice.dll"]
   else
-    ffi_lib '/home/anagix/ngspice/lib/libngspice.so'
+    dlls = [ENV['NGSPICE_DLL'], '/home/anagix/ngspice/lib/libngspice.so']
   end
-
-  callback :SendChar, [:string, :int, :pointer], :int
-  callback :SendStat, [:string, :int, :pointer], :int
-  callback :ControlledExit, [:int, :bool, :bool, :int, :pointer], :int
-  callback :SendData, [:pointer, :int, :int, :pointer], :int
-  callback :SendInitData, [:pointer, :int, :pointer], :int
-  callback :BGThreadRunning, [:bool, :int, :pointer], :int
-  attach_function :ngSpice_Init, [:SendChar, :SendStat, :ControlledExit,
-                    :SendData, :SendInitData, :BGThreadRunning, :pointer], :int
-  attach_function :ngSpice_Command, [:string], :int
-  attach_function :ngSpice_Circ, [:pointer], :int
-  attach_function :ngSpice_running, [ ], :bool
+  dll_loaded = false
+  dlls.each{|d| d && File.exist?(d) && ffi_lib(d) && dll_loaded = true && break }
+  if dll_loaded
+    callback :SendChar, [:string, :int, :pointer], :int
+    callback :SendStat, [:string, :int, :pointer], :int
+    callback :ControlledExit, [:int, :bool, :bool, :int, :pointer], :int
+    callback :SendData, [:pointer, :int, :int, :pointer], :int
+    callback :SendInitData, [:pointer, :int, :pointer], :int
+    callback :BGThreadRunning, [:bool, :int, :pointer], :int
+    attach_function :ngSpice_Init, [:SendChar, :SendStat, :ControlledExit,
+                      :SendData, :SendInitData, :BGThreadRunning, :pointer], :int
+    attach_function :ngSpice_Command, [:string], :int
+    attach_function :ngSpice_Circ, [:pointer], :int
+    attach_function :ngSpice_running, [ ], :bool
+  end
 end
 
 module Ngspice

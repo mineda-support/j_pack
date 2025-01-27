@@ -1047,6 +1047,16 @@ class QucsSchematic
         if text =~ /!\.tran +(\S*[0-9]+)([^0-9]*)$/
           @component[:name] = '.tran'
           @component[:tstop] = $1 + $2
+        elsif text =~ /!\.dc +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+)/
+          @component[:name] = '.dc'
+          @component[:sweep] = $1
+          @component[:start] = $2
+          @component[:stop] = $3
+          @component[:step] = $4 
+          @component[:sweep2] = $5
+          @component[:start2] = $6
+          @component[:stop2] = $7
+          @component[:step2] = $8        
         elsif text =~ /!\.dc +(\S+) +(\S+) +(\S+) +(\S+)/
           @component[:name] = '.dc'
           @component[:sweep] = $1
@@ -1458,7 +1468,7 @@ EOS
             tstep = c[:tstep] || eng2number(c[:tstop])/100.0
             attributes << "only_toplevel=false value=\".tran #{tstep} #{c[:tstop]}\"\n"
           when '.dc'
-            attributes << "only_toplevel=false value=\".dc #{c[:sweep]} #{c[:start]} #{c[:stop]} #{c[:step]}\"\n"
+            attributes << "only_toplevel=false value=\".dc #{c[:sweep]} #{c[:start]} #{c[:stop]} #{c[:step]} #{c[:sweep2]} #{c[:start2]} #{c[:stop2]} #{c[:step2]}\"\n"
           end
           c[:name] = 'code_shown'
         elsif c[:name] == 'voltage'

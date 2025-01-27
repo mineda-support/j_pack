@@ -630,29 +630,34 @@ class NgspiceControl < LTspiceControl
         end
       end
     }
-    traces = Array.new(variables[0] == 'frequency' ? (vars.size-1)/2 : vars.size-1)
-    traces.size.times{|i|
-      traces[i] = {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
-    }
     old_index = index = -100000
+    count = 0
+    old_value = nil
     @result.map{|h| h.values}.each{|values|
       index = values[0].to_i
       values = values[1..-1]
       # puts "index: #{index} > old_index: #{old_index}"
       break if index < old_index
-      plot_data = [values[0]] # it looks inefficient to have used plot_data as intermediate storage
-      indices[1..-1].each_with_index{|index, i|
-        if variables[0] == 'frequency' && i % 2 == 0
-          plot_data << Complex(values[index], values[index+1])
+      indices[1..-1].each_with_index{|j, i|
+        if variables[0] == 'frequency' 
+          if i % 2 == 0
+            if index == 0
+              traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
+            end
+            traces[count+i/2][:x] << values[0]
+            traces[count+i/2][:y] << Complex(values[j], values[j+1])
+          end
         else
-          plot_data << values[index]
+          if old_value.nil?  || old_value > values[0]
+            count = traces.size
+            traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
+          end
+          traces[count+i][:x] << values[0]
+          traces[count+i][:y] << values[j]
         end
       }
-      traces.size.times{|i|
-        traces[i][:x] << plot_data[0]
-        traces[i][:y] << plot_data[i+1]
-      }
       old_index = index
+      old_value = values[0]
     }
     [vars, traces]
   end
@@ -747,14 +752,14 @@ class NgspiceControl < LTspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
-  #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  ##file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
   ckt = NgspiceControl.new file, true, true # test recursive
   #puts ckt.elements.inspect
   #puts ckt.models.inspect
   ckt.simulate
-# ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))')[1][0][:y]
+  #ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))')[1][0][:y]
   ckt.get_traces('v-sweep', 'vds#branch')[1][0][:y]
   puts 'sim end'
 end

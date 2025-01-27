@@ -11,12 +11,6 @@ require 'xschem'
 require 'eeschema'
 require 'alta'
 require 'ltspctl'
-ngspice = ENV['NGSPICE'] || if /mswin32|mingw|cygwin/ =~ RUBY_PLATFORM
-  "c:/Program Files/KiCad/7.0/bin/ngspice.dll"
-else
-  "/home/anagix/ngspice/lib/libngspice.so"
-end
-NGSPICE = (File.exist? ngspice)? ngspice : nil
 require 'ngspice'
 require 'ngspctl'
 require 'qucsctl'
