@@ -17,7 +17,13 @@ module Invoker
     dlls = [ENV['NGSPICE_DLL'], '/home/anagix/ngspice/lib/libngspice.so']
   end
   dll_loaded = false
-  dlls.each{|d| d && File.exist?(d) && ffi_lib(d) && dll_loaded = true && break }
+  dlls.each{|d|
+    if d && File.exist?(d) 
+      ffi_lib(d)
+      dll_loaded = true
+      break
+    end
+  }
   if dll_loaded
     callback :SendChar, [:string, :int, :pointer], :int
     callback :SendStat, [:string, :int, :pointer], :int
@@ -30,6 +36,9 @@ module Invoker
     attach_function :ngSpice_Command, [:string], :int
     attach_function :ngSpice_Circ, [:pointer], :int
     attach_function :ngSpice_running, [ ], :bool
+  else
+    $stderr.puts 'Error: please install ngspice.dll at one of the following location:'
+    dlls.each {|f| $stderr.puts("      #{f || 'file pointed by NGSPICE_DLL environment variable'}")}
   end
 end
 

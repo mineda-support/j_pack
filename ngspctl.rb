@@ -760,6 +760,7 @@ if $0 == __FILE__
   #puts ckt.models.inspect
   ckt.simulate
   #ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))')[1][0][:y]
-  ckt.get_traces('v-sweep', 'vds#branch')[1][0][:y]
+  r = ckt.get_traces('v-sweep', 'vds#branch')
+  puts r[1][0][:y] if r[1] && r[1][0]
   puts 'sim end'
 end
