@@ -501,7 +501,7 @@ EOF
   end
   
   def sim_log ckt=@file
-    File.open(ckt.sub('.asc', '.log')).read.encode('UTF-8', invalid: :replace)
+    File.open(ckt.sub('.asc', '.log'), 'rb:UTF-16LE').read.encode('UTF-8', invalid: :replace)
   end
   
   def raw2tmp *node_list
