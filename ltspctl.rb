@@ -184,7 +184,7 @@ EOF
   
   def set pairs
     read @file if File.mtime(@file) > @mtime
-    lines = File.open(@file, 'r:ANSI').read.encode('UTF-8', invalid: :replace)
+    lines = File.open(@file, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
     else
