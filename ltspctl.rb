@@ -184,7 +184,7 @@ EOF
   
   def set pairs
     read @file if File.mtime(@file) > @mtime
-    lines = File.open(@file, 'r:ANSI').read.encode('UTF-8', invalid: :replace)
+    lines = File.open(@file, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
     else
@@ -336,8 +336,9 @@ EOF
           model = $3
           params = $4
           name = File.basename(file).sub(File.extname(file), '') + ':' + elm
-          puts "variations[#{name.to_sym}] = #{variations[name.to_sym]}"
-          if vals = variations[name.to_sym]
+          vals = variations[name.to_sym]          
+         if vals
+            puts "variations[#{name.to_sym}] = #{vals}"
             new_l = ''
             vals.each_with_index{|val, i|
               f.puts "#{elm}##{i+1} #{nodes} #{model} #{val}" if val
