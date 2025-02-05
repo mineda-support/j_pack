@@ -383,8 +383,9 @@ EOF
     simulate0 variables
   end
 
-  def parse file, analysis
+  def parse file, analysis, comment_step=nil
     netlist = ''
+    steps = []
     home = (ENV['HOMEPATH'] || ENV['HOME'])
     $stderr.puts "file = #{file}"
     File.open(file, 'r:Windows-1252').read.each_line{|l|
@@ -397,11 +398,14 @@ EOF
         analysis[:tran] = $1
       elsif l =~ /^ *\.dc +(.*)/
         analysis[:dc] = $1
+      elsif comment_step && l =~ /#{comment_step}/
+        steps = LTspice.new.step2params(l)
+        netlist << '*' + l + "\n"
       else
         netlist << l + "\n"
       end
     }
-    netlist
+    [netlist, steps]
   end
   private :parse
 

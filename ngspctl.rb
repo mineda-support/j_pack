@@ -19,7 +19,7 @@ load './customize.rb' if File.exist? './customize.rb'
 require 'fileutils'
 
 class NgspiceControl < LTspiceControl
-  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet
+  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist
   def initialize ckt=nil, ignore_cir=true, recursive=false
     return unless ckt
     @ckts = {}
@@ -411,6 +411,7 @@ class NgspiceControl < LTspiceControl
   
   def emulated_step_analysis step_desc = '.step param ccap 0.2p 1p 0.5p', node_list = ['frequency', 'V(out)/(V(net1)-V(net3))']
     steps = LTspice.new.step2params(step_desc)
+    return nil if steps[0].nil?
     start, stop, step = steps[0]['values'].map{|v| eng2number(v)}
     results = [[], []]
     logs = with_stringio(){
@@ -440,6 +441,7 @@ class NgspiceControl < LTspiceControl
     file = nil
     netlist = ''
     analysis = {}
+    steps = []
     $stderr.puts "@file = #{@file}"
     if @file =~ /\.asc/
       file = @file.sub('.asc', '.net')
@@ -467,7 +469,7 @@ class NgspiceControl < LTspiceControl
         if File.mtime(@file) > File.mtime(file)
           raise "Error: #{@file} is newer than #{file} -- please open #{@file}, create netlist and save in #{file}" 
         end
-        netlist = super.parse(file, analysys)
+        netlist, steps = super.parse(file, analysys)
       elsif sch_type(@file) == 'xschem'
         Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
@@ -487,15 +489,21 @@ class NgspiceControl < LTspiceControl
           netlist = ''
           home = (ENV['HOMEPATH'] || ENV['HOME'])
           File.read(file.gsub(/\\/, '/')).each_line{|l|
-            netlist << l.sub(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
+            if l =~ /^ *\.step/
+              steps = LTspice.new.step2params(l)
+              netlist << '*' + l
+            else
+              netlist << l.sub(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
+            end
           }
         }
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
-      netlist = parse(@file, analysis)
+      netlist, steps = parse(@file, analysis, '^ *\.step')
       $stderr.puts "netlist = #{netlist}"
       $stderr.puts "analysis = #{analysis}"
     end
+    @netlist = netlist
     $stderr.puts "analysis directives in netlist: #{analysis.inspect}" # unless analysis.empty?
     Dir.chdir(File.dirname @file){
       $stderr.puts "variables = #{variables.inspect}"
@@ -522,16 +530,39 @@ class NgspiceControl < LTspiceControl
           Ngspice.command "save #{v}"
         end
       }
-      if analysis.empty?
-        Ngspice.command('run')
+      node_list = variables[0] ? variables[0][:probes] : nil
+      if steps[0] == nil || node_list == nil
+        simulate_core analysis
       else
-        $stderr.puts "analysis = #{analysis.inspect}"
-        analysis.each{|k, v|
-          Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
-        }
+        start, stop, step = steps[0]['values'].map{|v| eng2number(v)}
+        results = [[], []]
+        #logs = with_stringio(){
+          start.step(by: step, to: stop){|v|
+            Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
+            #Ngspice.command 'reset' if v != start
+            Ngspice.command 'listing param'
+            simulate_core analysis
+            r = get_traces *node_list
+            results[0] = r[0]
+            results[1] << r[1]
+          }
+        #}
+        #$stderr.puts logs
+        results
       end
     }
     # @result = Ngspice.get_result
+  end
+
+  def simulate_core analysis
+    if analysis.empty?
+      Ngspice.command('run')
+    else
+      $stderr.puts "analysis = #{analysis.inspect}"
+      analysis.each{|k, v|
+        Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
+      }
+    end    
   end
 
   def sim_log ckt=@file # should be revised!
@@ -771,15 +802,16 @@ class NgspiceControl < LTspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
-  file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
   ckt = NgspiceControl.new file, true, true # test recursive
   #puts ckt.elements.inspect
   #puts ckt.models.inspect
-  ckt.simulate
+  ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
-  #r = ckt.get_traces('v-sweep', 'vds#branch')
+  #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   puts r[1][0][:y] if r[1] && r[1][0]
   puts 'sim end'
 end
