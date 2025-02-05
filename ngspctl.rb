@@ -408,6 +408,25 @@ class NgspiceControl < LTspiceControl
     end
   end
   private :update
+  
+  def emulated_step_analysis step_desc = '.step param ccap 0.2p 1p 0.5p', node_list = ['frequency', 'V(out)/(V(net1)-V(net3))']
+    steps = LTspice.new.step2params(step_desc)
+    start, stop, step = steps[0]['values'].map{|v| eng2number(v)}
+    results = [[], []]
+    logs = with_stringio(){
+      start.step(by: step, to: stop){|v|
+        Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
+        Ngspice.command 'reset'
+        Ngspice.command 'listing param'
+        Ngspice.command 'run'
+        r = get_traces *node_list
+        results[0] = r[0]
+        results[1] << r[1]
+      }
+    }
+    $stderr.puts logs
+    results
+  end
 
   def simulate *variables
     result = with_stringio{
@@ -752,15 +771,15 @@ class NgspiceControl < LTspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
-  ##file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
   ckt = NgspiceControl.new file, true, true # test recursive
   #puts ckt.elements.inspect
   #puts ckt.models.inspect
   ckt.simulate
-  #ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))')[1][0][:y]
-  r = ckt.get_traces('v-sweep', 'vds#branch')
+  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
+  #r = ckt.get_traces('v-sweep', 'vds#branch')
   puts r[1][0][:y] if r[1] && r[1][0]
   puts 'sim end'
 end
