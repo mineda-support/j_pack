@@ -29,7 +29,7 @@ class LTspiceControl
     @ckts = {}
     read ckt, recursive if ckt
     return unless recursive
-    get_models e=@elements[File.basename(file).sub(/\.\S+/, '')]
+    get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')]
   end
   
   def help
@@ -401,6 +401,7 @@ EOF
       elsif comment_step && l =~ /#{comment_step}/
         steps = LTspice.new.step2params(l)
         netlist << '*' + l + "\n"
+        $stderr.puts "commented: #{l}"
       else
         netlist << l + "\n"
       end

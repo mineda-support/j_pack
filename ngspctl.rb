@@ -19,13 +19,14 @@ load './customize.rb' if File.exist? './customize.rb'
 require 'fileutils'
 
 class NgspiceControl < LTspiceControl
-  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist, :step_results
+  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist
+  @@step_results = {}
+
   def initialize ckt=nil, ignore_cir=true, recursive=false
     return unless ckt
     @ckts = {}
     read ckt, ignore_cir, recursive
-    get_models e=@elements[File.basename(file).sub(/\.\S+/, '')] || @elements
-    @step_results = [[], []]
+    get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
   end
   
   def read_subckt sheets
@@ -493,6 +494,7 @@ class NgspiceControl < LTspiceControl
             if l =~ /^ *\.step/
               steps = LTspice.new.step2params(l)
               netlist << '*' + l
+              $stderr.puts "commented out: #{l}"
             else
               netlist << l.sub(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
             end
@@ -531,21 +533,25 @@ class NgspiceControl < LTspiceControl
           Ngspice.command "save #{v}"
         end
       }
-      @step_results = [[], []]
+      @@step_results[@file] = [[], []]
       node_list = variables[0] ? variables[0][:probes] : nil
       if steps[0] == nil || node_list == nil
         simulate_core analysis
       else
         start, stop, step = steps[0]['values'].map{|v| eng2number(v)}
+        $stderr.puts "start step analysis with (#{start}, #{stop}, #{step})"
         #logs = with_stringio(){
           start.step(by: step, to: stop){|v|
             Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
-            #Ngspice.command 'reset' if v != start
+            Ngspice.command 'reset'
             Ngspice.command 'listing param'
             simulate_core analysis
             r = get_active_traces *node_list
-            @step_results[0] = r[0]
-            @step_results[1] << r[1]
+            $stderr.puts "node_list = #{node_list}"
+            $stderr.puts "r=#{r.inspect}"
+            r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
+            @@step_results[@file][0] = r[0]
+            @@step_results[@file][1] << r[1][0]
           }
         #}
         #$stderr.puts logs
@@ -665,8 +671,8 @@ class NgspiceControl < LTspiceControl
   private :node_list_to_variables
 
   def get_traces *node_list
-    if @step_results && @step_results[0].size > 0
-      @step_results      
+    if @@step_results[@file] && @@step_results[@file][0].size > 0
+      @@step_results[@file]
     else
       get_active_traces *node_list
     end
@@ -674,11 +680,12 @@ class NgspiceControl < LTspiceControl
 
   def get_active_traces *node_list
     # node_list_to_get_result = Marshal.load(Marshal.dump node_list)
-    puts "node_list='#{node_list}'"
+    # $stderr.puts "node_list='#{node_list}' @ get_active_traces"
     return [[], []] if node_list.size == 0
     variables = node_list_to_variables node_list
-    puts "variables=#{variables}"
+    $stderr.puts "variables=#{variables} @ get_active_traces"
     @result = Ngspice.get_result variables[1..-1]
+    # $stderr.puts @result
     indices = []
     vars = []
     traces = []
