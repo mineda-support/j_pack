@@ -19,12 +19,13 @@ load './customize.rb' if File.exist? './customize.rb'
 require 'fileutils'
 
 class NgspiceControl < LTspiceControl
-  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist
+  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist, :step_results
   def initialize ckt=nil, ignore_cir=true, recursive=false
     return unless ckt
     @ckts = {}
     read ckt, ignore_cir, recursive
     get_models e=@elements[File.basename(file).sub(/\.\S+/, '')] || @elements
+    @step_results = [[], []]
   end
   
   def read_subckt sheets
@@ -420,7 +421,7 @@ class NgspiceControl < LTspiceControl
         Ngspice.command 'reset'
         Ngspice.command 'listing param'
         Ngspice.command 'run'
-        r = get_traces *node_list
+        r = get_active_traces *node_list
         results[0] = r[0]
         results[1] << r[1]
       }
@@ -530,25 +531,24 @@ class NgspiceControl < LTspiceControl
           Ngspice.command "save #{v}"
         end
       }
+      @step_results = [[], []]
       node_list = variables[0] ? variables[0][:probes] : nil
       if steps[0] == nil || node_list == nil
         simulate_core analysis
       else
         start, stop, step = steps[0]['values'].map{|v| eng2number(v)}
-        results = [[], []]
         #logs = with_stringio(){
           start.step(by: step, to: stop){|v|
             Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
             #Ngspice.command 'reset' if v != start
             Ngspice.command 'listing param'
             simulate_core analysis
-            r = get_traces *node_list
-            results[0] = r[0]
-            results[1] << r[1]
+            r = get_active_traces *node_list
+            @step_results[0] = r[0]
+            @step_results[1] << r[1]
           }
         #}
         #$stderr.puts logs
-        results
       end
     }
     # @result = Ngspice.get_result
@@ -637,12 +637,9 @@ class NgspiceControl < LTspiceControl
       a
     end
   end
-  # private :translate
-
-  def get_traces *node_list
-    # node_list_to_get_result = Marshal.load(Marshal.dump node_list)
-    puts "node_list='#{node_list}'"
-    return [[], []] if node_list.size == 0
+  private :translate
+  
+  def node_list_to_variables node_list
     variables = [node_list[0]]
     node_list[1..-1].each{|a|
       if a =~ /#{pattern='[vV]*\(([^\)\("]*)\)'}/
@@ -663,6 +660,23 @@ class NgspiceControl < LTspiceControl
         variables << a
       end
     }
+    variables
+  end
+  private :node_list_to_variables
+
+  def get_traces *node_list
+    if @step_results && @step_results[0].size > 0
+      @step_results      
+    else
+      get_active_traces *node_list
+    end
+  end
+
+  def get_active_traces *node_list
+    # node_list_to_get_result = Marshal.load(Marshal.dump node_list)
+    puts "node_list='#{node_list}'"
+    return [[], []] if node_list.size == 0
+    variables = node_list_to_variables node_list
     puts "variables=#{variables}"
     @result = Ngspice.get_result variables[1..-1]
     indices = []
@@ -813,5 +827,7 @@ if $0 == __FILE__
   r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   puts r[1][0][:y] if r[1] && r[1][0]
+  ckt = NgspiceControl.new file, true, true # test recursive
+  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   puts 'sim end'
 end
