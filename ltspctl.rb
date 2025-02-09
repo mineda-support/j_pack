@@ -425,7 +425,7 @@ EOF
       variables.each{|v|
         puts "v=#{v.inspect}"
         if v.class == Hash 
-          if v[:models_update]
+          if v[:models_update] && v[:models_update].length > 0
             models_update = v[:models_update]
             model_lines = get_models @elements
             model_lines.each{|lineno|
