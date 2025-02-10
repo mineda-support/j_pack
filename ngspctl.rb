@@ -734,7 +734,7 @@ class NgspiceControl < LTspiceControl
   end
 
   def run_ltspice arg, input
-    puts command = "#{ltspiceexe} #{arg} #{input}"
+    puts command = "#{ltspiceexe} #{arg} \"#{input}\""
     # system command
     IO_popen command
   end

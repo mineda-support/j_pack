@@ -445,6 +445,7 @@ EOF
       }
       File.open(ascfile.sub('.asc', '.tmp'), 'w:windows-1252'){|f| f.puts lines}
       start = Time.now
+      puts "ascfile = '#{ascfile.inspect}'"
       run '-netlist', ascfile.sub('.asc', '.tmp') # creates #{file} = xxx.net
       wait_for(file, start, 'due to some error')
     }
@@ -1059,7 +1060,7 @@ EOF
       # system command
       #IO_popen command
       if /mswin32|mingw/ =~ RUBY_PLATFORM
-        puts command = "#{ltspiceexe} #{File.basename(file)}"
+        puts command = "#{ltspiceexe} \"#{File.basename(file)}\""
         system 'start "dummy" ' + command # need a dummy title
       else
         puts command = "#{ltspiceexe} '#{File.basename(file)}'"
@@ -1081,7 +1082,7 @@ EOF
 
   def run arg, input
     if /mswin32|mingw/ =~ RUBY_PLATFORM
-      puts command = "#{ltspiceexe} #{arg} #{input}"
+      puts command = "#{ltspiceexe} #{arg} \"#{input}\""
     else
       puts command = "#{ltspiceexe} #{arg} '#{input}'" # '#{ltspiceexe}' does not work!
     end
