@@ -967,6 +967,10 @@ EOF
         }
         #puts "equations[#{k}] = '#{equations[k]}'"
         @pass_values = {cur_x: nil, prev_x: nil, prev_y: [], count: 0}
+        if node_list[0].downcase == 'time' && i >= 1
+          x_data = @ltspice.getTime(i)
+          x_data = x_data.map{|a| a.to_f}
+        end
         x_data.each_with_index{|v, j|
           @pass_values[:count] = 0
           @pass_values[:prev_x] = @pass_values[:cur_x]
