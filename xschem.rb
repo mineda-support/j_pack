@@ -138,6 +138,7 @@ end
 
 def xschem2cdraw xschem_dir, cdraw_dir
   puts "xschem2cdraw xschem_dir=#{xschem_dir}, cdraw_dir=#{cdraw_dir}"
+  FileUtils.mkdir_p cdraw_dir unless File.directory? cdraw_dir
   Dir.chdir(xschem_dir){
     Dir.glob('*.sym').each{|sym|
       # c = XschemComponent.new sym.sub('.sym', '')
