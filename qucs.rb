@@ -1394,7 +1394,7 @@ class QucsSchematic
     elsif properties =~ /name=(\S+).* +model=(\S+)/
       @component[:symattr] = {"InstName"=>$1, "Value" =>$2}
     elsif properties =~ /name=(\S+) +(.*)/
-      @component[:symattr] = {"InstName"=>$1, "SpiceLine" =>$2}
+      @component[:symattr] = {"InstName"=>$1, "Value2" =>$2}
     elsif properties =~ /name=(\S+)}/ || properties =~ /name=(\S+)/
       @component[:symattr] = {"InstName"=>$1}
     end
