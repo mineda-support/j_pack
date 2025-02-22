@@ -308,14 +308,14 @@ EOF
     count = 0
     puts "file=#{file}, start=#{start}"
     until !File.exist?(file) || (File.mtime(file) >= start) do
-      puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
+      $stderr.puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
       # puts "count=#{count}"
       if count == 20
-        puts "#{file} is not created #{error_message}" 
+        $stderr.puts "#{file} is not created #{error_message}" 
         yield
         return
       end
-      puts "count: #{count} while waiting for '#{file}'"
+      $stderr.puts "count: #{count} while waiting for '#{file}'"
       count = count +1
       sleep 0.2
     end
