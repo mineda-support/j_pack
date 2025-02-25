@@ -588,15 +588,20 @@ class NgspiceControl < LTspiceControl
   def info
     result = nil
     with_stringio(){
+      Ngspice.command 'setscale'
+    } =~ /stdout *(\S+)/
+    scale_var = $1
+    puts "scale_var = '#{scale_var}'"
+    with_stringio(){
       Ngspice.info
     }.each_line{|l|
       if result && l =~ /stdout *(\S+) */
-        result << $1
+        result << $1 if $1 != scale_var
       elsif l =~ /stdout Date:/
         result = []
       end
     }
-    result
+    [scale_var].concat result
   end
   
   def plot *node_list
