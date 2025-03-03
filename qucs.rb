@@ -704,7 +704,9 @@ EOS
         label = $5
         x = ($1.to_f+$3.to_f)/2.to_i
         y = ($2.to_f+$4.to_f)/2.to_i
-        if label =~ /name=(\S+) +dir=(\S+)/ || label =~ /name=(\S+)/
+        if label == ''
+          @rectangles << [x2q($1), x2q($2), x2q($3), x2q($4)] 
+        else label =~ /name=(\S+) +dir=(\S+)/ || label =~ /name=(\S+)/
           pin_name = $1
           pin_dir = $2
           if label =~ /pinnumber=(\S+)/
@@ -715,9 +717,17 @@ EOS
           end
           @pin[:PinDir] = pin_dir if pin_dir
           @portsyms << @pin
-        else
-          @rectangles << [x2q($1), x2q($2), x2q($3), x2q($4)] 
         end
+      elsif l =~ /^P \S+ (\S+) (.*)/
+        npoints = $1.to_i
+        p = $2.split(' ').map{|a| x2q(a)}
+        npoints.times{|i|
+          x1 = p[i*2]
+          y1 = -p[i*2+1]
+          x2 = p[(i*2+2)%8]
+          y2 = -p[(i*2+3)%8]
+          @lines << [x1, y1, x2 - x1, y2 - y1]
+        }
       elsif l =~ /^L \S+ (\S+) (\S+) (\S+) (\S+)/
         x1 = x2q($1)
         y1 = -x2q($2)
