@@ -411,10 +411,9 @@ class QucsSymbol
   end
 
   XSCHEM_PREFIX = {
-    resistor: 'R', capacitor: 'C', pmos: 'M', nmos: 'M',
+    resistor: 'R', capacitor: 'C', pmos: 'M', nmos: 'M', diode: 'D',
     isource: 'I', vsource: 'V', vcvs: 'E',
   }
-
   XSCHEM_DEVICE_MAP = {
     res: [:resistor, 'R'],
     cap: [:capacitor, 'C'],
@@ -699,12 +698,16 @@ EOS
     pin_order = 1
     desc && desc.each_line{|l|
       if l=~/^[KG] {type=(\S+)/ # curios how 'G type=' and 'K type=' different
-        @prefix = XSCHEM_PREFIX[$1.to_sym]
+        @prefix = XSCHEM_PREFIX[$1.to_sym] # default prefix
+      elsif l=~/^template=\"name=(.)/
+        @prefix = $1 # some diveces do not have spiceprefix
+      elsif l=~/spiceprefix=(.)/
+        @prefix = $1
       elsif l =~ /^B \S+ (\S+) (\S+) (\S+) (\S+) {(.*)}/
         label = $5
         x = ($1.to_f+$3.to_f)/2.to_i
         y = ($2.to_f+$4.to_f)/2.to_i
-        if label == ''
+        if label == '' || label == 'fill=false'
           @rectangles << [x2q($1), x2q($2), x2q($3), x2q($4)] 
         else label =~ /name=(\S+) +dir=(\S+)/ || label =~ /name=(\S+)/
           pin_name = $1
@@ -746,7 +749,7 @@ EOS
         @label_pos = [x2q($1.to_i), x2q($2.to_i)]        
       elsif l =~ /^T {@symname} (\S+) (\S+)/
         @symbol_type = 'BLOCK'
-        @label_pos = [x2q($1.to_i), x2q($2.to_i)]        
+        @label_pos = [x2q($1.to_i), x2q($2.to_i)]
       end
     }
   end
@@ -1292,6 +1295,7 @@ class QucsSchematic
         end
       end
       l.chop!
+      #puts l
       if properties && @component
         if l =~ /^ *} *$/ || l =~ /^ *\*([^}]*)}/ # like '*value=0}'
           parse_properties properties # ignore commened value
@@ -1327,7 +1331,7 @@ class QucsSchematic
           @texts << [x2q(x), x2q(y), 1.0, 1.0, "Author: #{$1}"]
           properties = nil
           next
-        elsif name == 'code'
+        elsif name == 'code' || name == 'code_shown'
           # properties =~ /name=(\S+)/
           properties = nil
           code = 'Code: '
@@ -1394,13 +1398,32 @@ class QucsSchematic
       value = $2
       value.sub!(/ *footprint=\S+/, '')
       value.sub!(/ *device=\S*/, '')
+      value.sub!(/ *savecurrent=true\S*/, '0')
       if value =~ /^\S+ *= *\S+/
         @component[:symattr] = {"InstName"=>inst_name, "Value2" => value}
       else
         @component[:symattr] = {"InstName"=>inst_name, "Value" => wrap_with_curly_bracket(value)}
       end
-    elsif properties =~ /name=(\S+).* +model=\"(\S+) +([^\"]*)\"/ || properties =~ /name=(\S+).* +model=(\S+) +([^\"]*)/
-      @component[:symattr] = {"InstName"=>$1, "Value" =>$2, "Value2" =>$3}
+    elsif properties =~ /name=(\S+) +model=\"(\S+) +([^\"]*)\"/ || properties =~ /name=(\S+) +model=(\S+) +([^\"]*)/
+      inst_name = $1
+      value = $2
+      value2 = $3
+      if value2 =~ /spiceprefix=(\S+)/
+        @component[:symattr] ||= {} 
+        @component[:symattr]['Prefix'] = $1
+        value2.sub!(/spiceprefix=(\S+)/, '')
+      end
+      @component[:symattr] = {"InstName"=>inst_name, "Value"=>value, "Value2"=>value2}
+    elsif properties =~ /name=(\S+) +(.*) +model=\"(\S+) +([^\"]*)\"/ || properties =~ /name=(\S+)+ (.*) +model=(\S+) +([^\"]*)/
+      inst_name = $1
+      value = $3
+      value2 = $2 + ' ' + $4
+      if value2 =~ /spiceprefix=(\S+)/
+        @component[:symattr] ||= {} 
+        @component[:symattr]['Prefix'] = $1
+        value2.sub!(/spiceprefix=(\S+)/, '')
+      end
+      @component[:symattr] = {"InstName"=>inst_name, "Value"=>value, "Value2"=>value2}
     elsif properties =~ /name=(\S+).* +model=(\S+)/
       @component[:symattr] = {"InstName"=>$1, "Value" =>$2}
     elsif properties =~ /name=(\S+) +(.*)/
