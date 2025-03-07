@@ -1913,7 +1913,7 @@ class Ltspice
   end
   def getData(variable, case_=0, time=nil) # variable, case=0, time=None):
     if variable.include?(",")
-      variable_names = re.split_p(",|\\(|\\)", variable)
+      variable_names = variable.split(/,|\(|\)/) # re.split(r',|\(|\)', name)
       return (getData(("V(" + variable_names[1]) + ")", case_, time)) - (getData(("V(" + variable_names[2]) + ")", case_, time))
     else
       variables_lowered = @_variables.map{|v| v.downcase()}

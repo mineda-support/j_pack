@@ -725,6 +725,7 @@ EOS
         npoints = $1.to_i
         p = $2.split(' ').map{|a| x2q(a)}
         npoints.times{|i|
+          next if p[(i*2+3)%8] == nil
           x1 = p[i*2]
           y1 = -p[i*2+1]
           x2 = p[(i*2+2)%8]

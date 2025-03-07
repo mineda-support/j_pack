@@ -209,13 +209,13 @@ class NgspiceControl < LTspiceControl
     }
     elements
   end
-  
+
   def read_xschem_sch file, recursive=false, caller=''
     elements = {}
     @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
-    File.read(file).each_line{|l|
+    File.exist?(file) && File.read(file).each_line{|l|
       l.chomp!
       lineno = lineno + 1 
       if l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
