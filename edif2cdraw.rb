@@ -151,7 +151,7 @@ EOF
                   f.puts "SYMATTR Prefix #{prefix}"
                 end
               }
-              f.puts "SYMATTR Value #{c.name}"
+              # f.puts "SYMATTR Value #{c.name}" --- this caused unwanted params: in netlist
               c.view.interface.symbol.commentGraphics.each{|cg|
                 x, y = cg.hash[:origin]
                 if cg.hash[:stringDisplay] == 'cdsName()'
