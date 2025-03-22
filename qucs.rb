@@ -408,6 +408,8 @@ class QucsSymbol
     @rectangles = []
     @portsyms = []
     @symbol_type = nil # 'CELL'
+    @symbols = []
+    @texts = []
   end
 
   XSCHEM_PREFIX = {
@@ -744,13 +746,16 @@ EOS
         r = x2q($3.to_i)
         s = x2q($4.to_i)
         @circles << [x-r, y-r, x+r, y+r]
-      elsif l =~ /^T {@name} (\S+) (\S+)/
+      elsif l =~ /^T {@name} (\S+) (\S+)/ || l =~ /^T {#{@cell}_@name} (\S+) (\S+)/
         @name_pos = [x2q($1.to_i), x2q($2.to_i)]        
-      elsif l =~ /^T {@value} (\S+) (\S+)/
+      elsif l =~ /^T {@value} (\S+) (\S+)/ || l =~ /^T {#{@cell}} (\S+) (\S+)/ 
         @label_pos = [x2q($1.to_i), x2q($2.to_i)]        
       elsif l =~ /^T {@symname} (\S+) (\S+)/
         @symbol_type = 'BLOCK'
         @label_pos = [x2q($1.to_i), x2q($2.to_i)]
+      elsif l =~ /^T {(\S+)} (\S+) (\S+)/
+        txt = $1
+        @texts << [x2q($2.to_i), x2q($3.to_i), 0, 0, txt]
       end
     }
   end
@@ -983,6 +988,9 @@ EOS
     }
     @circles.each{|c|
       result << "CIRCLE Normal #{c.map{|a| q2c(a).to_s}.join(' ')}\n"
+    }
+    @texts.each{|txt|
+      result << "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 2 #{txt[4]}\n"
     }
     if @name_pos && @label_pos
       result << "WINDOW 0 #{q2c @name_pos[0]} #{q2c @name_pos[1]} Left 2\n"
