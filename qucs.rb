@@ -990,7 +990,7 @@ EOS
       result << "CIRCLE Normal #{c.map{|a| q2c(a).to_s}.join(' ')}\n"
     }
     @texts.each{|txt|
-      result << "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 2 #{txt[4]}\n"
+      result << "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 1 #{txt[4]}\n"
     }
     if @name_pos && @label_pos
       result << "WINDOW 0 #{q2c @name_pos[0]} #{q2c @name_pos[1]} Left 2\n"
