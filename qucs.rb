@@ -701,8 +701,11 @@ EOS
     desc && desc.each_line{|l|
       if l=~/^[KG] {type=(\S+)/ # curios how 'G type=' and 'K type=' different
         @prefix = XSCHEM_PREFIX[$1.to_sym] # default prefix
-      elsif l=~/^template=\"name=(.)/
+      elsif l=~/^template=\"name=(.).*model=(\S+).*(w=.*l=\S+)/
+        # puts "l=!!!! #{l}"
         @prefix = $1 # some diveces do not have spiceprefix
+        @value = $2
+        @value2 = $3
       elsif l=~/spiceprefix=(.)/
         @prefix = $1
       elsif l =~ /^B \S+ (\S+) (\S+) (\S+) (\S+) {(.*)}/
@@ -996,11 +999,13 @@ EOS
       result << "WINDOW 0 #{q2c @name_pos[0]} #{q2c @name_pos[1]} Left 2\n"
       result << "WINDOW 3 #{q2c @label_pos[0]} #{q2c @label_pos[1]} Left 2\n"
     else
-      result << "WINDOW 0 #{(xmin+xmax)/2} #{(ymin+ymax)/2} Left 2\n"
+      result << "WINDOW 0 #{(xmin+xmax)/2} #{(ymin+ymax)/2 + 20} Left 2\n"
       result << "WINDOW 3 #{(xmin+xmax)/2} #{(ymin+ymax)/2 - 20} Left 2\n"
     end
     # result << "SYMATTR Value #{@prefix}\n"
     result << "SYMATTR Prefix #{@prefix}\n" if @prefix
+    result << "SYMATTR Value #{@value}\n" if @value
+    result << "SYMATTR Value2 #{@value2}\n" if @value2
     @portsyms.each{|p|
       result << "PIN #{p[:xy].map{|a| q2c(a).to_s}.join(' ')} NONE 0\n"
       # result << "PINATTR PinName P#{p[:SpiceOrder]}\n" # Pn should be replaced
