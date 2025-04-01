@@ -11,7 +11,7 @@ load 'ltspctl.rb'
 load 'postprocess.rb'
 load 'compact_model.rb'
 load './customize.rb' if File.exist? './customize.rb'
-require 'byebug'
+#require 'byebug'
 require 'fileutils'
 
 class NgspiceControl < LTspiceControl

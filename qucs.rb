@@ -2,7 +2,7 @@
 # Copyright Anagix Corporation 2009-2024
 
 require 'rubygems'
-require 'byebug'
+#require 'byebug'
 # require 'ruby-debug'
 require 'fileutils'
 require 'yaml'

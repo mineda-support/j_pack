@@ -6,7 +6,7 @@ load 'spice_parser.rb'
 load 'xyce.rb'
 load 'postprocess.rb'
 load 'compact_model.rb'
-require 'byebug'
+#require 'byebug'
 require 'fileutils'
 
 class QucsControl

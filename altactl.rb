@@ -6,7 +6,7 @@ $:.unshift '.'
 # $alb=nil # set if minitest exist and want to run standalone (=w/o ALB/ALTA) 
 #if $alb.nil?
 $:.unshift File.join(lib_path, '../ade_express')
-require 'byebug'
+#require 'byebug'
 require 'fileutils'
 require 'optparse'
 #require 'lib_util'
