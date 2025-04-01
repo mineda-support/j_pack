@@ -179,8 +179,8 @@ end
 if $0 == __FILE__
   #  current = Xschem.new
   #  current.get_cells_and_symbols # run xschem.rb in the xschem directory
-  if File.exist?(target = 'C:\Users\seiji\KLayout\salt\IP62\Technology\tech\symbols\Xschem\IP62_5_stdcell') ||
-     File.exist?(target = 'c:/Users/seiji/KLayout/salt/IP62/Samples/Xschem/test_devices') ||    
+  if #File.exist?(target = 'C:\Users\seiji\KLayout\salt\IP62\Technology\tech\symbols\Xschem\IP62_5_stdcell') ||
+     #File.exist?(target = 'c:/Users/seiji/KLayout/salt/IP62/Samples/Xschem/test_devices') ||    
      File.exist?(target = 'c:/Users/seiji/KLayout/salt/IP62/Technology/tech/symbols/Xschem/IP62LIB') ||
      File.exist?(target = 'c:/Users/seiji/work/nejime/circuits') ||
      File.exist?(target = 'c:/Users/seiji/work/nejime/test') ||
@@ -189,7 +189,7 @@ if $0 == __FILE__
      #File.exist?(target = 'c:/Users/seiji/Seafiles/Seafile/nejime/circuits') ||
      File.exist?(target = 'c:/Users/seiji/Seafiles/Seafile/nejime/test')
     #xschem2cdraw 'c:/Users/seiji/work/nejime/xschem_library/devices/', 'c:/Users/seiji/work/nejime/xschem_library/devices/'
-    xschem2cdraw target, 'c:/tmp/IP62_5_stdcell' #'c:/tmp/test_devices' #'c:/tmp/cdraw' # target
+    xschem2cdraw target, File.join(target, 'LTspice') #'c:/tmp/IP62_5_stdcell' #'c:/tmp/test_devices' #'c:/tmp/cdraw' # target
   end
     ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'  
    # xschem2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'

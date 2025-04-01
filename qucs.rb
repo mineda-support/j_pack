@@ -698,14 +698,25 @@ EOS
   def xschem_symbol_in desc
     device, @prefix = XSCHEM_DEVICE_MAP[@cell.to_sym]
     pin_order = 1
+    template = nil
     desc && desc.each_line{|l|
-      if l=~/^[KG] {type=(\S+)/ # curios how 'G type=' and 'K type=' different
-        @prefix = XSCHEM_PREFIX[$1.to_sym] # default prefix
-      elsif l=~/^template=\"name=(.).*model=(\S+).*(w=.*l=\S+)/
+      puts l
+      if template
+        template = template + ' ' + l.chop
+        next unless l.chop =~ /^[^\"]*\" *$/    
+        l = template
+        template = nil           
+        puts "template = #{l}"
+      end
+      if l=~/^template=\"[^\"]*$/
+        template = l.chop
+      elsif l=~/^template=\"name=(.).*model=(\S+).*(w=.*l=\S+|x=.*y=\S+)/
         # puts "l=!!!! #{l}"
         @prefix = $1 # some diveces do not have spiceprefix
         @value = $2
         @value2 = $3
+      elsif l=~/^[KG] {type=(\S+)/ # curios how 'G type=' and 'K type=' different
+        @prefix = XSCHEM_PREFIX[$1.to_sym] # default prefix
       elsif l=~/spiceprefix=(.)/
         @prefix = $1
       elsif l =~ /^B \S+ (\S+) (\S+) (\S+) (\S+) {(.*)}/
