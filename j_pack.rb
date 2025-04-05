@@ -14,6 +14,7 @@ require 'ltspctl'
 require 'ngspice'
 require 'ngspctl'
 require 'qucsctl'
+require 'bsim3_fit'
 
 def create_cdraw
   symbols = Dir.glob("*.asy").map{|a| File.basename(a).sub('.asy','')}
