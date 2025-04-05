@@ -1,14 +1,14 @@
 ['alta2', 'j_pack'].each{|f| a_path = File.join(ENV['HOMEPATH'], f)
   $:.unshift a_path if File.exist?(a_path) && !$:.include?(a_path)
 }
-load 'j_pack.rb' 
+
 
 p "PWD = " + Dir.pwd
 
 require 'csv'
 require 'matrix'
 require 'json'
-require 'compact_model'
+#require 'compact_model'
 
 Q = 1.6e-19 unless defined? Q
 ESi = 12 unless defined? ESi
@@ -23,7 +23,6 @@ Vt = K*T/Q unless defined? Vt
 J_data = {"x" => [],"y" =>[],"z" =>[],"vgs"=> 0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"gmax"=>[],"name" =>"","mode" =>"lines","meas"=>true} unless defined? J_data
 
 J_table = [{"plot_number"=>0,"title"=>[],"title_x"=>[],"title_y"=>[],"day" => "","basename"=>"","filename"=>"","ver"=>0.99,"act"=>" ","device"=>"","dir"=>"","ext"=>"json","step"=>"","plotdata"=>[]},{"measdata"=>[],"plotdata"=>[]}] unless defined? J_table
-
 J_vth_list = {"vgs"=>0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"memo" =>""} unless defined? J_vth_list
 
 
@@ -88,7 +87,6 @@ class ModelFit
       step = [data["step"],"STEP0"].max
     end
     v_tmp = ver_check data
-#    p v_tmp
     data["ver"] = v_tmp
     ver  = (data["ver"]+0.01).round(3)
     if data["device"].empty? then
@@ -890,9 +888,10 @@ class Bsim3Fit < ModelFit
     meas1[0]["name"] = "meas."
     meas1[0]["meas"] = true
     y1 =[]
-    y2=[]
-    for i in 0..6 do
-      x = - i * 0.5
+    y2 =[]
+    #for i in 0..6 do
+    for i in 0..4 do
+        x = - i * 0.5
       x1[i] = x
       y = Math.sqrt(phis - x)
       y1[i] = (k2 * y*y + k1 * y + vth0 -k1 * phiss + k2 * phis).round(5).dup
@@ -938,6 +937,11 @@ class Bsim3Fit < ModelFit
     #Vth-Vbs Graph Calculates and stores in "vthdata"
   end
 
+  ### plot [STEP1] Graphs ["gmdata","idvgsdata","vthdata"]
+  def step1_plot_graphs
+    g_list = ["gmdata","idvgsdata","vthdata"]
+    g_list.each{|g| plot_graph g}
+  end
 
   ### [STEP2] Mobility Estimation Ueff[U0,UA,UB,UC]
   ###           Analysis in [STEP2] is performed using the same data as in [STEP1]
@@ -947,16 +951,9 @@ class Bsim3Fit < ModelFit
 
 
   ### [STEP2-1]Calc. Ueff-Vgs Curve ["measdata"][i]["y"]:: Id => ueff  
-  def step2_calculate_ueff_vgs_relation model: @model, mag: 1.0
-=begin
-    ### backup ["measdata"] => ["step1_org"]
-    dist ="step1_org"
-    if (exist_graph(dist) == nil) then
-      copy_graph "measdata",dist,true
-      p "['measdata'][i]['y'] is changed Ueff data"
-    end
-=end
-    tox  = (model.get :TOX).to_f
+  def step2_calculate_ueff_vgs_relation mag: 1.0
+    
+    tox  = (@model.get :TOX).to_f
     cox = Eox*E0/tox
 
     ### change ["measdata"][i]["z"] ####
@@ -1024,7 +1021,7 @@ class Bsim3Fit < ModelFit
 
       xy0 = (step2_calculate_ueff_vgs_relation mag: 1.0).dup
 
-      @jtable[1]["ueff1data"]=xy0.dup
+      @jtable[1]["ueff0data"]=xy0.dup
 
       xy = (step2_calculate_ueff_vgs_relation mag: mag).dup
 
@@ -1035,56 +1032,25 @@ class Bsim3Fit < ModelFit
       vbss = []
       
       for j in 0..xy.size - 1 do
-        x11, x12, x13 = 0.0,0.0,0.0
-        x21, x22, x23 = 0.0,0.0,0.0
-        x31, x32, x33 = 0.0,0.0,0.0
-        y11, y22, y33 = 0.0,0.0,0.0
-
         vds = xy[j]["vds"]
         vbs = xy[j]["vbs"]
         vth = xy[j]["vth"]
         vbss << vbs
 
+        #calculation needs 1/Ueff data
         for i in 0..xy[j]["x"].size - 1 do
 
-          x = xy[j]["x"][i].abs
-          y = 1.0/xy[j]["y"][i].abs
-          f1 = 1
-          f2 = x + vth
-          f3 = (x+vth)**2
-
-          y11 += y*f1
-          x11 += f1*f1
-          x12 += f2*f1
-          x13 += f3*f1
-          
-          y22 += y*f2
-          x21 += f1*f2
-          x22 += f2*f2
-          x23 += f3*f2
-
-          y33 += y*f3
-          x31 += f1*f3
-          x32 += f2*f3
-          x33 += f3*f3
+          xy[j]["x"][i] = xy[j]["x"][i].abs + vth
+          xy[j]["y"][i] = 1.0/xy[j]["y"][i].abs
         end # end of i
 
-        a1 = [x11,x12,x13]
-        a2 = [x21,x22,x23]
-        a3 = [x31,x32,x33]
+        zs = []
+        zs = determine_2nd xy[j]["x"].dup , xy[j]["y"].dup
 
-        yy = [y11,y22,y33]
+        u0 = 1.0/zs[0]
+        ua = zs[1]*u0*tox
+        ub = zs[2]*u0*tox**2
 
-        f = Matrix.rows([a1,a2,a3], true).inv
-        k = Matrix.columns([yy])
-
-        zs = f*k
-
-        u0 = 1.0/zs[0,0]
-        ua = zs[1,0]*u0*tox
-        ub = zs[2,0]*u0*tox**2
-
-   #     puts [u0.to_s + uaa + uba
         u0ss << u0
         uass << ua
         ubss << ub
@@ -1165,23 +1131,13 @@ class Bsim3Fit < ModelFit
       puts ucx
 
       zz = []
-#      @jtable = get_ueff model
-#      @jtable[0]["basename"] ='json/Vg-Ueff'
-      @jtable[0]["act"] ="Determine Ueff "
-#      @jtable[0]["ver"] = 0.99
-=begin
-      ii = xy.size
-      @jtable[1]["measdata"].shift(ii)
-      for i in 0..(ii-1) do
-        data[1]["measdata"] << xy[i]
-      end
-=end
+      @jtable[0]["act"] =" Estimate Ueff "
       
      # data
     end
 
     ### verification Ueff(Vgs) ###
-    def verification_ueff source ="ueffdata"
+    def verification_ueff source ="ueff0data"
       u0  = (@model.get :U0).to_f
       ua  = (@model.get :UA).to_f
       ub  = (@model.get :UB).to_f
@@ -1191,12 +1147,12 @@ class Bsim3Fit < ModelFit
       ueff = duplicate_data(source)
       ii   = ueff.size
       for i in 0..ii - 1 do
-        ueff[i+ii]     = ueff[i].dup
-        ueff[i+ii]["y"]=[]
-        ueff[i+ii]["z"]=[]
-        vth            = ueff[i]["vth"].dup
-        vbs            = ueff[i]["vbs"].dup
-        jj             = ueff[i]["x"].size
+        ueff[i+ii]      = ueff[i].dup
+        ueff[i+ii]["y"] = []
+        ueff[i+ii]["z"] = []
+        vth             = ueff[i]["vth"].dup
+        vbs             = ueff[i]["vbs"].dup
+        jj              = ueff[i]["x"].size
         ueff[i]["name"]   = "meas("+ vbs.to_s + ")"
         ueff[i+ii]["name"]= "cal.("+ vbs.to_s + ")"
         for j in 0..jj - 1 do
@@ -1531,21 +1487,25 @@ class Bsim3Fit < ModelFit
 
 
 if $0 == __FILE__
-=begin
-  Dir.chdir 'c:/Users/seiji/work/SvelteKit/new_alta/Grape/bsim3fit'
+  puts "DIR=#{Dir.pwd}"
+  $:.unshift('.')
+  $:.unshift('./ade_express')
+  load 'j_pack.rb'
+  Dir.chdir 'C:\Users\swear\Documents\Seafile\My Library\bsim3'
   params = {
-    wdir: File.join('c:/Users',ENV['USERNAME'],'work/SvelteKit/new_alta/Grape/bsim3fit'),
-    model: 'test.lib',
-    model_org: "C:/Users/seiji/KLayout/salt/PTS06/Technology/tech/models/MinedaPTS06_TT",
-    jtable: 'json/test0325_with_condition.json'
-  }
-=end
-  mf = Bsim3Fit.new #params[:model], params[:model_org]
-  mf.imitate_measdata "json/test0329.json" #File.join(params[:wdir], params[:jtable])
+    wdir: 'C:\Users\swear\Documents\Seafile\My Library\bsim3',
+    model: 'models/test.lib',
+    model_org: "models/MinedaPTS06_TT",
+    jtable: 'json/test0329.json'
+    }
+  mf = Bsim3Fit.new params[:model], params[:model_org]
+  mf.imitate_measdata File.join(params[:wdir], params[:jtable])
   mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 0.05, vbs: [0.0, -0.5 , -1.0, -1.5,-2.0], lw: [[30e-6,30e-6]], mode: "lines",
   name: ["vbs=0.0","vbs=-0.5","vbs=-1.0","vbs=-1.5","vbs=-2.0"]
   mf.step1_estimate_vth_k1_k2
   mf.step1_calc_vth_vbs
+  #  mf.plot_graph 'measdata' # "vthdata"
   mf.plot_graph "vthdata"
-  p
+  p  
+
 end
