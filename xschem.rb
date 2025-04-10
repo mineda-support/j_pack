@@ -181,6 +181,7 @@ if $0 == __FILE__
   #  current.get_cells_and_symbols # run xschem.rb in the xschem directory
   if #File.exist?(target = 'C:\Users\seiji\KLayout\salt\IP62\Technology\tech\symbols\Xschem\IP62_5_stdcell') ||
      #File.exist?(target = 'c:/Users/seiji/KLayout/salt/IP62/Samples/Xschem/test_devices') ||    
+     File.exist?(target = 'c:/Users/seiji/work/TAMAGAWA/test') ||    
      File.exist?(target = 'c:/Users/seiji/KLayout/salt/IP62/Technology/tech/symbols/Xschem/IP62LIB') ||
      File.exist?(target = 'c:/Users/seiji/work/nejime/circuits') ||
      File.exist?(target = 'c:/Users/seiji/work/nejime/test') ||

@@ -1346,7 +1346,7 @@ class QucsSchematic
         rotation = $4
         mirror = $5
         properties = $6
-        #puts "properties='#{properties} for #{name}'"
+        # puts "properties='#{properties} for #{name}'"
         if name == 'lab_pin'
           properties =~ /lab=(\S+)/
           @wires << [x2q(x), x2q(y), x2q(x), x2q(y), $1]
@@ -1357,9 +1357,12 @@ class QucsSchematic
           properties = nil
           next
         elsif name == 'code' || name == 'code_shown'
-          # properties =~ /name=(\S+)/
-          properties = nil
-          code = 'Code: '
+          if properties =~ /value="(.*)"/
+            properties = nil
+            @texts << [x2q(x), x2q(y), 0.2, 0.2, 'Code: ' + $1]
+          elsif properties =~ /value="([^"]*)/
+            code = 'Code: ' + $1
+          end
           next
         end
         if ['ipin', 'opin', 'iopin', 'lab_wire'].include? name
@@ -1392,6 +1395,7 @@ class QucsSchematic
       elsif l =~ /^L \S+ +(\S+) +(\S+) +(\S+) +(\S+) +(\S+)/
         @lines << [x2q($2), x2q($3), x2q($4), x2q($5)] 
       end
+      # puts @components
     }
 
     if File.exist?(@cell+'.sym')
@@ -1424,6 +1428,7 @@ class QucsSchematic
       value.sub!(/ *footprint=\S+/, '')
       value.sub!(/ *device=\S*/, '')
       value.sub!(/ *savecurrent=true\S*/, '0')
+      value.sub!(/ *savecurrent=false\S*/, '')
       if value =~ /^\S+ *= *\S+/
         @component[:symattr] = {"InstName"=>inst_name, "Value2" => value}
       else
