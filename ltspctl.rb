@@ -98,7 +98,7 @@ EOF
       lineno = lineno + 1 
       if l =~ /SYMATTR InstName (.*)$/
         name = $1 # is like X1
-        if recursive && name[0].downcase == 'x'
+      if recursive && name[0].downcase == 'x' && File.exist?(File.join(File.dirname(file), type+'.asc'))
           caller << '.' + name
           @ckts[type] ||= read_asc(File.join(File.dirname(file), type+'.asc'), true, caller)
           @ckts[caller] = type
@@ -573,7 +573,7 @@ EOF
     include_files = []
     home = ENV['HOMEPATH']||ENV['HOME']
     elements['include'].each{|l|
-      if l[:control] =~ /^\.\S+ +(\S+)/ 
+      if l[:control] =~ /^\.\S+ +(\S+)\\n*/ 
         model_file = $1.sub(/%HOMEPATH%|%HOME%|$HOMEPATH|$HOME/, home).gsub("\\", '/').gsub("\"", '')
         include_files << model_file
         model_lines << l[:lineno]
