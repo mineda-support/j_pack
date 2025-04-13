@@ -26,7 +26,7 @@ def numeric?(object)
 end
 
 def eng2number val
-  return val if numeric?(val)
+  return val.to_f if numeric?(val)
   if val.strip.downcase =~ /(^.*\d)(meg)([^fpnumkg]*)/
     return $1.to_f * 1e6
   end
