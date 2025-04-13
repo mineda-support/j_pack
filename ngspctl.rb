@@ -213,12 +213,23 @@ class NgspiceControl < LTspiceControl
   def read_xschem_sch file, recursive=false, caller=''
     elements = {}
     @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
-    name = type = value = value2 = nil
+    name = type = value = value2 = control = nil
     lineno = line1 = line2 = 0 
     File.exist?(file) && File.read(file).each_line{|l|
       l.chomp!
       lineno = lineno + 1 
-      if l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
+      if control
+        if l =~ /\.endc/
+          control = nil
+          next
+        end 
+        # l =~ /(\S+) (.*$)/
+        elements['.control'] << {value: l, lineno: lineno}
+        next
+      elsif l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$/
+        elements['.control'] = []
+        control = true
+      elsif l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
         name = $2
         elements[name] ||= []
         elements[name] <<  {control: $1, lineno: lineno}
@@ -239,19 +250,31 @@ class NgspiceControl < LTspiceControl
         end
       end
     }
+    elements['.control'] && elements['.control'].each_with_index{|c, i|
+      elements['.control' + i.to_s] = c
+    }
+    elements.delete '.control'
     elements
   end
 
   def read_net file
     puts "read_net reads #{file}"
     elements = {}
-    name = type = value = value2 = nil
+    name = type = value = value2 = control = nil
     lineno = line1 = line2 = 0 
     #    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
     File.read(file).each_line{|l|
       l.chomp!
       lineno = lineno + 1 
-      if l=~ /^ *([Ll]\S*) +\((.*)\) +(\S+) +(.*) *$/ ||
+      if control
+        if l =~ /\.endc/
+          control = nil
+          next
+        end 
+        # l =~ /(\S+) (.*$)/
+        elements['.control'] << {value: l, lineno: lineno}
+        next
+      elsif l=~ /^ *([Ll]\S*) +\((.*)\) +(\S+) +(.*) *$/ ||
          l=~ /^ *([Ll]\S*) +(\S+ \S+) +(\S+) +(.*) *$/ ||
          l=~ /^ *([Ll]\S*) +\((.*)\) *$/ ||
          l=~ /^ *([Ll]\S*) +(\S+ \S+) *$/
@@ -307,6 +330,10 @@ class NgspiceControl < LTspiceControl
             elements[name] <<  {comment: control[1..-1], lineno: lineno}
           end
         end
+        control = nil
+      elsif l =~ /\.control/
+        elements['.control'] = []
+        control = true
       end
     }
     elements
@@ -724,7 +751,7 @@ class NgspiceControl < LTspiceControl
             traces[count+i/2][:y] << Complex(values[j], values[j+1])
           end
         else
-          if old_value.nil?  || old_value > values[0]
+          if old_value.nil?  || old_value > values[0].to_f
             count = traces.size
             traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
           end
@@ -733,7 +760,7 @@ class NgspiceControl < LTspiceControl
         end
       }
       old_index = index
-      old_value = values[0]
+      old_value = values[0].to_f
     }
     [vars, traces]
   end
@@ -829,17 +856,21 @@ class NgspiceControl < LTspiceControl
 end
 if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
-  file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.spice'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/simulation/MNO_parameter_different.spice'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MNO_parameter_different.sch'
   ckt = NgspiceControl.new file, true, true # test recursive
-  #puts ckt.elements.inspect
-  #puts ckt.models.inspect
-  ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
-  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
+  puts ckt.elements.inspect
+  puts ckt.models.inspect
+  #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
+  #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
-  puts r[1][0][:y] if r[1] && r[1][0]
+  #puts r[1][0][:y] if r[1] && r[1][0]
+  ckt.simulate probes: ['v-sweep', 'i(Vds)']
   ckt = NgspiceControl.new file, true, true # test recursive
-  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
+  #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
+  r = ckt.get_traces('v-sweep', 'i(Vds)')
   puts 'sim end'
 end

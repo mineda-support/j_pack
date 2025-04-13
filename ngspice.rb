@@ -3,7 +3,14 @@
 #require 'rubygems'
 #require 'ruby-debug'
 #
-puts Dir.pwd
+if $0 == __FILE__
+  puts Dir.pwd
+  Dir.chdir '../j_pack'
+  $: << '.'
+  $: << './ade_express'
+  puts "$: = #{$:}"
+  require 'spice_parser'
+end
 #require './j_pack'
 require 'pp'
 #require './invoker.rb'
@@ -189,11 +196,13 @@ end
 
 if $0 == __FILE__
   sim = NGspice.new
-  sim.run ARGV[0]
-  result = sim.command 'print line v(11) v.x0.v1#branch v.x0.v2#branch v.x0.v3#branch v.x0.v4#branch v.x0.v5#branch'
-  result2 = sim.command 'print line v(21)'
-  p result['v(11)']
-  p result2
-  sim.save 'out.csv', 'v(11)', 'v.x0.v5#branch'
+  sim.run ARGV[0] || File.join(ENV['HOMEPATH'], 'work/TAMAGAWA/test/simulation/MNO_parameter_different.spice')
+  # result = sim.command 'print line v(11) v.x0.v1#branch v.x0.v2#branch v.x0.v3#branch v.x0.v4#branch v.x0.v5#branch'
+  # result2 = sim.command 'print line v(21)'
+  result = sim.command 'print line net1 vds#branch'
+  #p result['v(11)']
+  #p result2
+  p result
+  sim.save 'out.csv', 'net1', 'vds#branch'
   sim.end
 end
