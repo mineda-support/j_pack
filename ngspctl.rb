@@ -224,10 +224,10 @@ class NgspiceControl < LTspiceControl
           next
         end 
         # l =~ /(\S+) (.*$)/
-        elements['.control'] << {value: l, lineno: lineno}
+        elements['control'] << {value: l, lineno: lineno}
         next
       elsif l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$/
-        elements['.control'] = []
+        elements['control'] = []
         control = true
       elsif l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
         name = $2
@@ -250,10 +250,10 @@ class NgspiceControl < LTspiceControl
         end
       end
     }
-    elements['.control'] && elements['.control'].each_with_index{|c, i|
-      elements['.control' + i.to_s] = c
+    elements['control'] && elements['control'].each_with_index{|c, i|
+      elements['control' + i.to_s] = c
     }
-    elements.delete '.control'
+    elements.delete 'control'
     elements
   end
 
@@ -272,7 +272,7 @@ class NgspiceControl < LTspiceControl
           next
         end 
         # l =~ /(\S+) (.*$)/
-        elements['.control'] << {value: l, lineno: lineno}
+        elements['control'] << {value: l, lineno: lineno}
         next
       elsif l=~ /^ *([Ll]\S*) +\((.*)\) +(\S+) +(.*) *$/ ||
          l=~ /^ *([Ll]\S*) +(\S+ \S+) +(\S+) +(.*) *$/ ||
@@ -331,8 +331,8 @@ class NgspiceControl < LTspiceControl
           end
         end
         control = nil
-      elsif l =~ /\.control/
-        elements['.control'] = []
+      elsif l =~ /control/
+        elements['control'] = []
         control = true
       end
     }
@@ -445,7 +445,11 @@ class NgspiceControl < LTspiceControl
     results = [[], []]
     logs = with_stringio(){
       start.step(by: step, to: stop){|v|
-        Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
+        if steps[0]['name'].start_with '@'
+          Ngspice.command "alter #{steps[0]['name']}=#{v}"
+        else
+          Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
+        end
         Ngspice.command 'reset'
         Ngspice.command 'listing param'
         Ngspice.command 'run'
@@ -569,7 +573,11 @@ class NgspiceControl < LTspiceControl
         $stderr.puts "start step analysis with (#{start}, #{stop}, #{step})"
         #logs = with_stringio(){
           start.step(by: step, to: stop){|v|
-            Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
+            if steps[0]['name'].start_with? '@'
+              Ngspice.command "alter #{steps[0]['name']}=#{v}"
+            else
+              Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
+            end
             Ngspice.command 'reset'
             Ngspice.command 'listing param'
             simulate_core analysis
@@ -859,8 +867,10 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
-  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/simulation/MNO_parameter_different.spice'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/simulation/MNO_parameter_different.spice'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MPO_parameter_different.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MNO_parameter_different.sch'
+
   ckt = NgspiceControl.new file, true, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect
