@@ -392,11 +392,11 @@ EOF
       l.chomp!
       l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
       $stderr.puts l
-      if l =~ /^ *\.ac +(.*)/
+      if l =~ /^ *\.*ac +(.*)/
         analysis[:ac] = $1
-      elsif l =~ /^ *\.tran +(.*)/
+      elsif l =~ /^ *\.*tran +(.*)/
         analysis[:tran] = $1
-      elsif l =~ /^ *\.dc +(.*)/
+      elsif l =~ /^ *\.*dc +(.*)/
         analysis[:dc] = $1
       elsif comment_step && l =~ /#{comment_step}/
         steps = LTspice.new.step2params(l)

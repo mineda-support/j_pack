@@ -516,27 +516,17 @@ class NgspiceControl < LTspiceControl
             # -q: quit after doing things 
             # -o: output directory
           wait_for File.basename(file), 'due to some error'
-
           $stderr.puts "file='#{file}'"
           sleep 1 # weird but file is not available w/o sleep 1
-          netlist = ''
-          home = (ENV['HOMEPATH'] || ENV['HOME'])
-          File.read(file.gsub(/\\/, '/')).each_line{|l|
-            if l =~ /^ *\.step/
-              steps = LTspice.new.step2params(l)
-              netlist << '*' + l
-              $stderr.puts "commented out: #{l}"
-            else
-              netlist << l.sub(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
-            end
-          }
+          netlist, steps = parse(file, analysis, '^ *\.step')
+          $stderr.puts "after parsing steps\n#{netlist}"
         }
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
       netlist, steps = parse(@file, analysis, '^ *\.step')
-      $stderr.puts "netlist = #{netlist}"
-      $stderr.puts "analysis = #{analysis}"
     end
+    $stderr.puts "netlist = #{netlist}"
+    $stderr.puts "analysis = #{analysis}"
     @netlist = netlist
     $stderr.puts "analysis directives in netlist: #{analysis.inspect}" # unless analysis.empty?
     Dir.chdir(File.dirname @file){
@@ -566,30 +556,35 @@ class NgspiceControl < LTspiceControl
       }
       @@step_results[@file] = [[], []]
       node_list = variables[0] ? variables[0][:probes] : nil
+      #debugger
+      $stderr.puts "steps = #{steps.inspect}"
       if steps[0] == nil || node_list == nil
         simulate_core analysis
       else
         start, stop, step = steps[0]['values'].map{|v| eng2number(v)}
         $stderr.puts "start step analysis with (#{start}, #{stop}, #{step})"
-        #logs = with_stringio(){
+        logs = with_stringio(){
           start.step(by: step, to: stop){|v|
             if steps[0]['name'].start_with? '@'
+              $stderr.puts "**** alter #{steps[0]['name']}=#{v}"
               Ngspice.command "alter #{steps[0]['name']}=#{v}"
+              # Ngspice.command 'reset'
+              Ngspice.command 'show ' + steps[0]['name'][1..-1]
             else
               Ngspice.command "alterparam #{steps[0]['name']}=#{v}"
+              Ngspice.command 'reset'              
+              Ngspice.command 'listing param'
             end
-            Ngspice.command 'reset'
-            Ngspice.command 'listing param'
             simulate_core analysis
             r = get_active_traces *node_list
             $stderr.puts "node_list = #{node_list}"
-            $stderr.puts "r=#{r.inspect}"
+            # $stderr.puts "r=#{r.inspect}"
             r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
             @@step_results[@file][0] = r[0]
             @@step_results[@file][1] << r[1][0]
           }
-        #}
-        #$stderr.puts logs
+        }
+        $stderr.puts logs
       end
     }
     # @result = Ngspice.get_result
