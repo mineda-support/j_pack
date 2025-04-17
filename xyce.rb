@@ -659,7 +659,7 @@ class Xyce < Spice
   private :comment, :comment2
 
   def run atypes, args='', marching=false, display=nil
-    File.delete @output if File.exists? @output
+    FileUtils.rm(@output, force: true) if File.exists? @output
     if /mswin32|mingw|cygwin/ =~ RUBY_PLATFORM    
       @p = IO.popen "runxyce #{get_short_path_name @input}", 'r+'
     else
@@ -808,7 +808,7 @@ class Xyce < Spice
     out.close if out
 
     begin
-      Dir.glob('tmp*.tmp'){|f| File.delete f}
+      Dir.glob('tmp*.tmp'){|f| FileUtils.rm(f, force: true)}
     rescue => error
       puts error
     end

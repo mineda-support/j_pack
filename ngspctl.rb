@@ -482,7 +482,7 @@ class NgspiceControl < LTspiceControl
       Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
         FileUtils.cp @file, @file.sub('.asc', '.tmp')
         run_ltspice '-netlist', File.basename(@file.sub('.asc', '.tmp'))
-        wait_for File.basename(file), 'due to some error'
+        wait_for File.basename(file), Time.now, 'due to some error'
       }
       File.open(file, 'r:Windows-1252').read.encode('UTF-8').gsub(181.chr(Encoding::UTF_8), 'u').each_line{|l|
         if l =~ /^\.tran +(\S+)/
@@ -507,7 +507,8 @@ class NgspiceControl < LTspiceControl
         Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
           file = @file.sub '.sch', '.spice'
-          File.delete file if file && File.exist?(file)
+          #File.delete file if file && File.exist?(file)
+          FileUtils.rm(file, force: true) if file && File.exist?(file)
           run "-s -n -x -q -o .", @file # xschem options:
             # -s: set netlist type to spice
             # -n: create netlist
@@ -515,7 +516,7 @@ class NgspiceControl < LTspiceControl
             # -x: command mode (no X)
             # -q: quit after doing things 
             # -o: output directory
-          wait_for File.basename(file), 'due to some error'
+          wait_for File.basename(file), Time.now, 'due to some error'
           $stderr.puts "file='#{file}'"
           sleep 1 # weird but file is not available w/o sleep 1
           netlist, steps = parse(file, analysis, '^ *\.step')
@@ -863,8 +864,9 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/simulation/MNO_parameter_different.spice'
-  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MPO_parameter_different.spice'
-  #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MNO_parameter_different.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MPO_parameter_different.spice'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'KLayout/salt/IP62/Samples/test_devices/Xschem/pmos.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
 
   ckt = NgspiceControl.new file, true, true # test recursive
   puts ckt.elements.inspect
@@ -876,6 +878,7 @@ if $0 == __FILE__
   ckt.simulate probes: ['v-sweep', 'i(Vds)']
   ckt = NgspiceControl.new file, true, true # test recursive
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
-  r = ckt.get_traces('v-sweep', 'i(Vds)')
+  #r = ckt.get_traces('v-sweep', 'i(Vds)')
+  r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
   puts 'sim end'
 end

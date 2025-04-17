@@ -102,7 +102,7 @@ def model_files include_files
   if model_files.size > 0
      model_files
   else
-    [include_files[0]]
+    include_files.size > 0 ? [include_files[0]] : []
   end
 end
 

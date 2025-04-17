@@ -573,8 +573,9 @@ EOF
     include_files = []
     home = ENV['HOMEPATH']||ENV['HOME']
     elements['include'].each{|l|
-      if l[:control] =~ /^\.\S+ +(\S+)\\n*/ 
-        model_file = $1.sub(/%HOMEPATH%|%HOME%|$HOMEPATH|$HOME/, home).gsub("\\", '/').gsub("\"", '')
+      #if l[:control] =~ /^\.\S+ +(\S+)\\n*/ 
+      if l[:control] =~ /^\.\S+ +(\S+) *$/ 
+        model_file = $1.sub(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home).gsub("\\", '/').gsub("\"", '').gsub(/\/+/, '/')
         include_files << model_file
         model_lines << l[:lineno]
       end
@@ -1186,7 +1187,8 @@ end
 
 if $0 == __FILE__
   #file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Idvd_nch_pch.asc'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Idvd_nch_pch.asc'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/LTspice/test_multiplicity.asc'
   ckt = LTspiceControl.new file, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect
