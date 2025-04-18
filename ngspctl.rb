@@ -478,7 +478,7 @@ class NgspiceControl < LTspiceControl
     $stderr.puts "@file = #{@file}"
     if @file =~ /\.asc/
       file = @file.sub('.asc', '.net')
-      File.delete file if File.exist? file
+      FileUtils.rm(file, force: true) if File.exist? file
       Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
         FileUtils.cp @file, @file.sub('.asc', '.tmp')
         run_ltspice '-netlist', File.basename(@file.sub('.asc', '.tmp'))
@@ -728,14 +728,14 @@ class NgspiceControl < LTspiceControl
     # variables.delete 'v-sweep'
     # rc = true if variables[0] == 'frequency'
     variables.each_with_index{|name, i|
-      if variables.include? name
+      #if variables.include? name
         indices <<  i
         if variables[0] == 'frequency' && name =~ /real\((.*)\)/
             vars << $1
         else
           vars << name
         end
-      end
+      #end
     }
     old_index = index = -100000
     count = 0
@@ -745,6 +745,12 @@ class NgspiceControl < LTspiceControl
       values = values[1..-1]
       # puts "index: #{index} > old_index: #{old_index}"
       break if index < old_index
+      if old_value.nil?  || old_value > values[0].to_f
+        count = traces.size
+        (variables.size-1).times{|i|
+          traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
+        }
+      end
       indices[1..-1].each_with_index{|j, i|
         if variables[0] == 'frequency' 
           if i % 2 == 0
@@ -755,10 +761,6 @@ class NgspiceControl < LTspiceControl
             traces[count+i/2][:y] << Complex(values[j], values[j+1])
           end
         else
-          if old_value.nil?  || old_value > values[0].to_f
-            count = traces.size
-            traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
-          end
           traces[count+i][:x] << values[0]
           traces[count+i][:y] << values[j]
         end
@@ -875,8 +877,10 @@ if $0 == __FILE__
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
-  ckt.simulate probes: ['v-sweep', 'i(Vds)']
-  ckt = NgspiceControl.new file, true, true # test recursive
+  ckt.simulate probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
+  r = ckt.get_traces 'v-sweep', 'i(vmeas)', 'i(vmeas1)'
+  #ckt = NgspiceControl.new file, true, true # test recursive
+
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-sweep', 'i(Vds)')
   r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
