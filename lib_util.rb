@@ -698,7 +698,7 @@ def compare_netlist neta, sima, netb, simb, element_name_map={}, inhibited_node_
   $stdout.flush
   $stdout = STDOUT
   result = File.read mytmp('/tmp/compare')
-  File.delete mytmp('/tmp/compare')
+  FileUtils.rm(mytmp('/tmp/compare'), force: true)
   result
 end
 

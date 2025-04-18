@@ -494,7 +494,7 @@ EOF
   def delete_file_with_retry raw_file
     num_attempts = 0
     begin
-      File.delete raw_file if File.exist? raw_file 
+      FileUtils.rm(raw_file, force: true) if File.exist? raw_file 
     rescue Exception, RuntimeError, SyntaxError => e
       if num_attempts <= 10
         sleep 1

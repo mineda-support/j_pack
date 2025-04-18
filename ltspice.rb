@@ -765,7 +765,7 @@ class LTspice < Spice
     display ||= ENV['DISPLAY']||'localhost:1'
     puts "run: display = #{display}"
 #    File.delete @rawfile if File.exists? @rawfile
-    File.delete 'rawfiles' if File.exist? 'rawfiles'
+    FileUtils.rm('rawfiles', force: true) if File.exist? 'rawfiles'
     marching_display = ''
     marching_display = display||ENV['DISPLAY']||'localhost:1' if marching
     begin
@@ -795,8 +795,8 @@ class LTspice < Spice
         input = input_copy.dup
         comment input, type
         File.open('input.'+type, 'w'){|otf| otf.print input}
-	      File.delete 'input.op.raw' if File.exist? 'input.op.raw'
-        File.delete type+'.raw' if File.exist? type+'.raw'
+	      FileUtils.rm('input.op.raw', force: true) if File.exist? 'input.op.raw'
+        FileUtils.rm(type+'.raw', force: true) if File.exist? type+'.raw'
         puts "Execute #{type} analysis: scad3 #{args} input.#{type}"
         execute args, "input.#{type}", marching_display # @rawfile='input.raw' is deleted
         check_log(log_name())
@@ -831,10 +831,10 @@ class LTspice < Spice
       display = marching_display
     end
 
-    File.delete 'completed' if File.exist? 'completed'
+    FileUtils.rm('completed', force: true) if File.exist? 'completed'
     rawfile = input.sub(File.extname(input),'') +'.raw'
-    File.delete rawfile if File.exist? rawfile
-    File.delete 'wine.log' if File.exist?('wine.log')
+    FileUtils.rm(rawfile, force: true) if File.exist? rawfile
+    FileUtils.rm('wine.log', force: true) if File.exist?('wine.log')
     if /mswin32|mingw|cygwin/ =~ RUBY_PLATFORM
       command = get_short_path_name(ltspice_path())
       puts "execute under win: #{command} #{arg} #{input}"
@@ -981,7 +981,7 @@ class LTspice < Spice
       ltsputil_sub '-coa', input, input.sub('.raw','.ascii')
       input = input.sub('.raw','.ascii')
     end
-    Dir.glob('tmp*.tmp'){|f| File.delete f}
+    Dir.glob('tmp*.tmp'){|f| FileUtils.rm(f, force: true)}
     rawdata = File.read input
     File.open(output, 'w'){|otf|
       if nv = get_size(rawdata)   # nv was nil when sleep 1 was absent
@@ -1122,7 +1122,7 @@ class LTspice < Spice
     out.close if out
 
     begin
-      Dir.glob('tmp*.tmp'){|f| File.delete f}
+      Dir.glob('tmp*.tmp'){|f| FileUtils.rm(f, force: true)}
     rescue => error
       puts error
     end
@@ -1172,7 +1172,7 @@ class LTspice < Spice
     end
     @p.close
 #    system '/bin/rm tmp*.tmp'
-    Dir.glob('tmp*.tmp'){|f| File.delete f}
+    Dir.glob('tmp*.tmp'){|f| FileUtils.rm(f, force: true)}
   end
 
   def on_WSL?
@@ -1320,7 +1320,7 @@ class LTspice < Spice
       data << [freq.to_f, db, phase]
     }
     out.close if out
-    Dir.glob('tmp*.tmp'){|f| File.delete f}
+    Dir.glob('tmp*.tmp'){|f| FileUtils.rm(f, force: true)}
     return Wave.new(nodes, data, file)
   end
 

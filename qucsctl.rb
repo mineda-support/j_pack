@@ -223,13 +223,13 @@ EOF
 
   def simulate
     file = @file.sub('.sch', '.net')
-    File.delete file if File.exist? file
+    FileUtils.rm(file, force: true) if File.exist? file
     Dir.chdir(File.dirname @file){
       netlister @file, File.basename(file)
       wait_for File.basename(file), 'due to some error'
     }
     if @out_file = find_outfile(file)
-      File.delete @out_file if File.exist? @out_file 
+      FileUtils.rm(@out_file, force: true) if File.exist? @out_file 
     end
 
     Dir.chdir(File.dirname file){ # chdir or -Run does not work 
