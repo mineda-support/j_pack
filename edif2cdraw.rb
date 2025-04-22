@@ -140,8 +140,10 @@ EOF
                       f.puts "LINE Normal #{q2c(fig[i+1][0])} #{q2c(fig[i+1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}"
                       f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}" if fig[0] == :polygon
                     }
-                    when:circle
+                  when :circle
                     f.puts "CIRCLE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
+                  when :arc  ### arc implementation needs to be corrected!!!
+                    f.puts "ARC Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])} #{q2c(fig[3][0])} #{q2c(fig[3][1])} #{q2c(fig[3][0])} #{q2c(fig[3][1])}"
                   end
                 }
               }
@@ -410,6 +412,11 @@ class EdifFigure
         if f[1][0] == :pointList
           @figures << [f[0], *f[1][1..-1].map{|a| pt a}]
         end
+      when :shape
+        if f[1][1][0] == :arc
+          g = f[1][1]
+          @figures << [:arc, pt(g[1]), pt(g[2]), pt(g[3])]
+        end
       end
     }
   end
@@ -506,7 +513,12 @@ class EdifPortImplementation
     @hash[:connectLocation] =pt(s.edif_get(:connectLocation).edif_value(:dot))
   end
   def pt s
-    [s[1], -s[2]]
+    if s
+      [s[1], -s[2]]
+    else
+      # puts 'error'
+      nil
+    end
   end
 end
 
@@ -604,7 +616,7 @@ puts Dir.pwd
 if $0 == __FILE__
   #file = './j_pack/AMP_01_00_edif.out'
   #file = "./j_pack/a_462_G_Anagix.edif"
-  #file = "./j_pack/edif.out"
+  file = "C:/Users/seiji/Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/edif_MNO.edif"
   require 'sxp'
   require 'debug'
   desc = SXP.read(File.read(file).encode('UTF-8'))
