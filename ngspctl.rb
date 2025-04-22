@@ -62,6 +62,7 @@ class NgspiceControl < LTspiceControl
   
   def view file, options=nil
     Dir.chdir(File.dirname file){
+      pwd = Dir.pwd
       case File.extname file
       when '.asc'
         command = "#{ltspiceexe} #{options} #{File.basename(file)}"
@@ -69,7 +70,7 @@ class NgspiceControl < LTspiceControl
         if sch_type(file) == 'eeschema'
           command = "#{eeschemaexe} #{options} #{File.basename(file)}"
         elsif sch_type(file) == 'xschem'
-          command = "#{xschemexe} #{options} #{File.basename(file)}"
+          command = "#{xschemexe} #{options} #{File.join(pwd, File.basename(file))}" # necessary to pass pwd for xschem
         else
           raise 'Error: unknown sch file format'
         end
@@ -469,6 +470,33 @@ class NgspiceControl < LTspiceControl
     puts result
   end
 
+  def parse file, analysis, comment_step=nil
+    netlist = ''
+    steps = []
+    home = (ENV['HOMEPATH'] || ENV['HOME'])
+    $stderr.puts "file = #{file}"
+    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
+      l.chomp!
+      l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
+      $stderr.puts l
+      if l =~ /^ *\.*ac +(.*)/
+        analysis[:ac] = $1
+      elsif l =~ /^ *\.*tran +(.*)/
+        analysis[:tran] = $1
+      elsif l =~ /^ *\.*dc +(.*)/
+        analysis[:dc] = $1
+      elsif comment_step && l =~ /#{comment_step}/
+        steps = LTspice.new.step2params(l)
+        netlist << '*' + l + "\n"
+        $stderr.puts "commented: #{l}"
+      else
+        netlist << l + "\n"
+      end
+    }
+    [netlist, steps]
+  end
+  private :parse
+
   def simulate0 variables
     # system "unix2dos #{@file}" if on_WSL?() # NgspiceXVII saves asc file in LF, but -netlist option needs CRLF!
     file = nil
@@ -509,7 +537,8 @@ class NgspiceControl < LTspiceControl
           file = @file.sub '.sch', '.spice'
           #File.delete file if file && File.exist?(file)
           FileUtils.rm(file, force: true) if file && File.exist?(file)
-          run "-s -n -x -q -o .", @file # xschem options:
+          run "-s -n -x -q -o .", File.join(pwd, @file) # passing only @file causes load_schematic(): unable to open file
+            # xschem options:
             # -s: set netlist type to spice
             # -n: create netlist
             # -i: do not load any xschemrc file
