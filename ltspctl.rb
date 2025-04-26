@@ -907,41 +907,40 @@ EOF
       if ENV['USE_PYCALL']
         x_data = PyCall.eval("list(l.getFrequency())").to_a
       else
-        x_data = @ltspice.getFrequency()
+        x_data = @ltspice.getFrequency().to_a
       end
       if x_data.nil? || x_data.size == 0
         puts 'Error: AC analysis results are not available'
         return
       end
-    elsif node_list[0] == variables[0].to_s #.downcase == 'time' 
+    elsif node_list[0] =~ /[\*\+-\/\(]*#{variables[0].to_s}[\*\+-\/\)]*/ 
       if ENV['USE_PYCALL']
         x_data = PyCall.eval "list(l.time_raw)"
       else
-        if node_list[0].downcase == 'time'
-          x_data = @ltspice.getTime()
-        else
-          x_data = @ltspice.time_raw
-        end
+        x_data = @ltspice.getTime().to_a
       end
-    #x_data = x_data.map{|a| a.to_f.abs}
-      x_data = x_data.map{|a| a.to_f}
-      # puts "x_data = #{x_data}"
-    else
+    else # setting x_data might be useless
       if ENV['USE_PYCALL']
         x_data = PyCall.eval "list(l.getData('#{node_list[0]}'))"
       else
-        x_data = @ltspice.getData(node_list[0]).to_a
+        x_data = @ltspice.getData(node_list[0]).to_a 
       end
     end
+    x_data = x_data.map{|a| a.to_f}
 
-    equations = node_list[1..-1].map{|a|a.dup}
-    vars = variables.select{|v| equations.join(',').include? v}
+    equations = node_list.map{|a|a.dup}
+    equations_joined = equations.join(',')
+    vars = variables.select{|v| equations_joined.include? v} # variables used in equations
     equations.each{|eq|
       vars.each_with_index{|v, i|
-        eq.gsub! v, "values[#{i}][j]"
+        if node_list[0] =~ /[\*\+-\/\(]*#{v}[\*\+-\/\)]*/
+          eq.gsub! v, "x_data[j]"
+        else
+          eq.gsub! v, "values[#{i}][j]"
+        end
       }
     }
-    #puts "#{node_list[1..-1]} => #{equations}"
+    #puts "#{node_list[0..-1]} => #{equations}"
 
     if ENV['USE_PYCALL']
       num_cases = PyCall.eval "l.getCaseNumber()"
@@ -949,16 +948,22 @@ EOF
       num_cases = @ltspice.getCaseNumber()
     end
     @traces = []
+    trace_x = Array_with_interpolation.new 
+    x_data.each{|x|
+      trace_x << x
+    }
     num_cases.times{|i|
+      if node_list[0].downcase == 'time' && i >= 1
+        x_data = @ltspice.getTime(i)
+        x_data = x_data.map{|a| a.to_f}
+      end
       @traces << node_list[1..-1].map.with_index{|y, k|
-        trace = {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: y}
-        # y_data = PyCall.eval "l.getData('#{y}', #{i})"
         values = []
         vars.each{|v|
           if ENV['USE_PYCALL']
             value = PyCall.eval("l.getData('#{v}', #{i}).tolist()")
           else
-            value = @ltspice.getData(v, i).to_a
+            value = @ltspice.getData(v, i).to_a #convert Numo to Array
           end
           if node_list[0].downcase == 'frequency'
             values << value.map{|a| Complex(a.real.to_f, a.imag.to_f)}
@@ -966,22 +971,27 @@ EOF
             values << value
           end
         }
-        #puts "equations[#{k}] = '#{equations[k]}'"
-        @pass_values = {cur_x: nil, prev_x: nil, prev_y: [], count: 0}
-        if node_list[0].downcase == 'time' && i >= 1
-          x_data = @ltspice.getTime(i)
-          x_data = x_data.map{|a| a.to_f}
+        trace = {y: Array_with_interpolation.new, name: y}
+        if node_list[0] == variables[0]
+          trace[:x] = trace_x
+        else
+          trace[:x] = Array_with_interpolation.new
+          x_data.each_with_index{|v, j|
+            val = eval(equations[0]) # equations[k] = equation using 'values[i, j]'
+            trace[:x] << val
+          }
         end
-        x_data.each_with_index{|v, j|
+        puts "equations[#{k+1}] = '#{equations[k+1]}'"
+
+        @pass_values = {cur_x: nil, prev_x: nil, prev_y: [], count: 0}
+        trace_x.each_with_index{|v, j|
           @pass_values[:count] = 0
           @pass_values[:prev_x] = @pass_values[:cur_x]
           @pass_values[:cur_x] = v
-          if val = eval(equations[k])
-            trace[:x] << v
-            trace[:y] << val
-          end
+          val = eval(equations[k+1]) # equations[k] = equation using 'values[i, j]'
+          trace[:y] << val              
         }
-        trace
+        trace # will be appended to @traces
       }
     }
     [node_list, @traces.flatten]
@@ -1188,8 +1198,12 @@ end
 if $0 == __FILE__
   #file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Idvd_nch_pch.asc'
-  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/LTspice/test_multiplicity.asc'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/LTspice/test_multiplicity.asc'
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/test_MPO_3.asc'
   ckt = LTspiceControl.new file, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect
+  ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
+  #r = ckt.get_traces  'v2', '-Id(m0:M1)'
+  r = ckt.get_traces  '-v2', '-Id(m0:M1)'  
 end
