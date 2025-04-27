@@ -11,27 +11,28 @@ require 'matrix'
 require 'json'
 require 'compact_model'
 
-Q = 1.6e-19 unless defined? Q
-ESi = 12 unless defined? ESi
-Eox = 3.9 unless defined? Eox
-E0 = 8.854e-12 unless defined? E0
-T = 300.0 unless defined? T
-K = 1.38e-23 unless defined? K
-Ni = 1.5e+10 unless defined? Ni
-Vt = K*T/Q unless defined? Vt  
+Q   = 1.6e-19   unless defined? Q-
+ESi = 12        unless defined? ESi
+Eox = 3.9       unless defined? Eox
+E0  = 8.854e-12 unless defined? E0
+T   = 300.0     unless defined? T
+K   = 1.38e-23  unless defined? K
+Ni  = 1.5e+10   unless defined? Ni
+Vt  = K*T/Q     unless defined? Vt  
 
 
 J_data = {"x" => [],"y" =>[],"z" =>[],"vgs"=> 0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"gmax"=>[],"name" =>"","mode" =>"lines","meas"=>true} unless defined? J_data
 
 J_table = [{"plot_number"=>0,"title"=>[],"title_x"=>[],"title_y"=>[],"day" => "","basename"=>"","filename"=>"","ver"=>0.99,"act"=>" ","device"=>"","dir"=>"","ext"=>"json","step"=>"","plotdata"=>[]},{"measdata"=>[],"plotdata"=>[]}] unless defined? J_table
-J_vth_list = {"vgs"=>0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"memo" =>""} unless defined? J_vth_list
+J_vth_list = {"vds"=>[],"vbs" =>[],"vth" =>[],"l"=>[],"w"=>[],"memo" =>[]} unless defined? J_vth_list
 
 
 class ModelFit
   attr_accessor :model, :model_org, :jtable
-  def initialize model="models/test.lib", model_org="models/MinedaPTS06_TT"
+  def initialize model="models/test.lib", model_org="models/MinedaPTS06_TT",vth_lists='models/vth_test'
     @model     = CompactModel::new model
     @model_org = CompactModel::new model_org
+    @vth_list  = read_vth vth_lists
     @jtable    = J_table.dup  
 #    @jtable =  [{"plot_number"=>0,"title"=>[],"title_x"=>[],"title_y"=>[],"day" => "","basename"=>"","filename"=>"","ver"=>0.99,"act"=>" ","device"=>"","dir"=>"","ext"=>"","step"=>"","plotdata"=>[]},{"measdata"=>[],"plotdata"=>[]}] unless defined? J_table
   end
@@ -40,28 +41,31 @@ class ModelFit
   def read_csv csv_file = './csv/test1.csv'
     table = CSV.table(csv_file).by_col!
   end
-  private :read_csv
+  #private :read_csv
 
   def read_measdata ctable, basename='json/vgid'
-
+  #  p [ctable[0][39],ctable[1][39],ctable[2][39],ctable[3][39]]
     meas = []
-    for j in 0..ctable.headers.size - 2 do
-      
+    for j in 0..ctable.headers.size - 2 do 
       meas[j] = J_data.dup
       meas[j]["name"] =ctable.headers[j+1]
-      p [j,ctable.size,meas[j]["name"]]
-      for i in 0..ctable.size - 2 do
-        meas[j]["x"][i] = ctable[0][i].round(5)
-        meas[j]["y"][i] = ctable[j+1][i]
+      meas[j]["x"]= [].dup
+      meas[j]["y"]= [].dup
+  #    p [j,ctable.size,meas[j]["name"]]
+      for i in 0..ctable.size - 1 do
+        meas[j]["x"][i] = ctable[0][i].round(5).dup
+        meas[j]["y"][i] = ctable[j+1][i].dup
       end
     end
-    @jtable[1]["measdata"] = meas
-    @jtable[0]["basename"]= basename
+  #  p [meas[0]["x"][39],meas[0]["y"][39],meas[1]["y"][39],meas[2]["y"][39]]
+    @jtable[1]["measdata"] = meas.dup
+    @jtable[0]["basename"]= basename.dup
     @jtable[0]["act"] = "csv to json,"
-    @jtable
+    #@jtable
+    true
   end
-  # read json file to table
 
+  # read json file to table
   def read_json json_file
     if !(FileTest.exist?(json_file)) then
       p json_file + "does not exist!!"
@@ -74,6 +78,22 @@ class ModelFit
 
   private :read_json
 
+  # read vth_list
+  def read_vth vth_list = vth_lists
+    if !(FileTest.exist?(vth_list)) then
+      @vth_list = J_vth_list.dup
+      File.open(vth_list, 'w') do |file|
+        JSON.dump(@vth_list, file)
+      end
+    else
+      File.open(vth_list,mode = "r") do |f|
+        @vth_list = JSON.load(f)
+      end
+    end
+  end
+
+  private :read_vth
+  
   ### write table to json_file
   def write_json table=@jtable
     data = table[0]
@@ -278,6 +298,21 @@ class Bsim3Fit < ModelFit
     ddata
   end
 
+  #### (1.5) Hash duplication #####
+  def duplicate_hash from 
+    data  = from.dup
+    # p data.size
+    ddata = []
+    d_list = data[0].keys
+    for i in 0..data.size - 1 do
+      ddata[i] = J_data.dup
+      d_list.each {|x|
+      ddata[i][x] = data[i][x].dup
+      }
+    end 
+    ddata
+  end
+
   ### (2) duplicate @jtable[0]  ###
   def duplicate_head
     head = @jtable[0].dup
@@ -307,23 +342,27 @@ class Bsim3Fit < ModelFit
   #### data change by step ####
   def change_step datas: @jtable[1]["measdata"],step: 0.2
     data_c = []
-    for j in 0..datas.size - 1 do
-      data_c << datas[j].dup
-      data_c[j]["x"]=[]
-      data_c[j]["y"]=[]
-      data_c[j]["z"]=[]
-      for i in 0..datas[j]["x"].size - 1 do
-        xxx = datas[j]["x"][i]
-        if (xxx.modulo(step).round(2)== 0 || xxx.modulo(step).round(2)== step ) then
-          data_c[j]["x"] << datas[j]["x"][i].round(2)
-          data_c[j]["y"] << datas[j]["y"][i]
-          if datas[j]["z"].nil? != true then
-            data_c[j]["z"] << datas[j]["z"][i]
+    if step == 0 then
+      return datas
+    else
+      for j in 0..datas.size - 1 do
+        data_c << datas[j].dup
+        data_c[j]["x"]=[]
+        data_c[j]["y"]=[]
+        data_c[j]["z"]=[]
+        for i in 0..datas[j]["x"].size - 1 do
+          xxx = datas[j]["x"][i]
+          if (xxx.modulo(step).round(2)== 0 || xxx.modulo(step).round(2)== step ) then
+            data_c[j]["x"] << datas[j]["x"][i].round(2)
+            data_c[j]["y"] << datas[j]["y"][i]
+            if datas[j]["z"].nil? != true then
+              data_c[j]["z"] << datas[j]["z"][i]
+            end
           end
         end
       end
+      return data_c
     end
-    data_c
   end
 
   ### y-data and z-data change ####
@@ -682,11 +721,21 @@ class Bsim3Fit < ModelFit
 
 
   ### [STEP1]  Delta-Vth Calculation ###
-  def step1_calc_delta model=@model,vbs: 0.0,vds: 0.05,l: 30e-6,w:30e-6
+  def calc_vth_delta model=@model,vbs: 0.0,vds: 0.05,l: 30e-6,w:30e-6
     #model parameters
-    nsub   =  (model.get:NSUB).to_f
+    if (model.get:NSUB).empty? then
+     nsub   =  6.0E16
+    else
+      nsub   =  (model.get:NSUB).to_f
+    end
     nch    =  (model.get:NCH).to_f
     tox    =  (model.get:TOX).to_f 
+    lint   =  (model.get:LINT).to_f 
+    wint   =  (model.get:WINT).to_f 
+    leff   =  l - 2.0 * lint
+    weff   =  w + 2.0 * wint
+    nds    =  1.0e20
+
     nlx    =  (model.get:NLX).to_f
     k1     =  (model.get:K1).to_f
     k2     =  (model.get:K2).to_f
@@ -702,12 +751,7 @@ class Bsim3Fit < ModelFit
     dvt0w  =  (model.get:DVT0W).to_f
     dvt1w  =  (model.get:DVT1W).to_f
     dvt2w  =  (model.get:DVT2W).to_f
-    lint   =  (model.get:LINT).to_f
-    wint   =  (model.get:WINT).to_f
-    leff   =  l + 2.0 * lint
-    weff   =  w + 2.0 * wint
-    nds    =  1.0e20
-    nsub   =  6.0E16
+   
     # parameters
     phis  = 2.0*Vt*Math.log(nsub/Ni)
     phiss = Math.sqrt(phis)
@@ -732,7 +776,8 @@ class Bsim3Fit < ModelFit
     p "delta40 ="  + format("%4.4f",delta40)
     delta =delta10 + delta11 + delta20 + delta30 + delta40
     p "delta   ="  + format("%4.4f",delta)
-    delta
+    p "dvt0=%{dvt0},dvt1=%{dvt1},eta0=%{eta0},etab=%{etab},lt=%{lt},lt0=%{lt0},phis=%{phis},vbi=%{vbi},dvthl1=%{delta20},dvthl2=%{delta30}"
+    return {"dvt0"=>dvt0,"dvt1"=>dvt1,"eta0"=>eta0,"etab"=>etab,"lt"=>lt,"lt0"=>lt0,"phis"=>phis,"vbi"=>vbi,"dvthl1"=>delta20,"dvthl2"=>delta30}
   end
 
   ### [STEP1] Some Graphs Caliculation  #####
@@ -1175,95 +1220,103 @@ class Bsim3Fit < ModelFit
   end
 
   #### [STEP3-2] Transform Id-Vgs-L => Rds-L
+  def step3_transform_id_vgs_to_rd_l step: 0.5,flg: false ,from: 3.0, to: 5.0
+    p [from,to]    
+    id   = change_step step: step
+
+    trans         = J_data.dup
+    trans["vds"]  = id[0]["vds"]
+    trans["vbs"]  = id[0]["vbs"]
+    trans["w"]    = id[0]["w"]
+    trans["mode"] = id[0]["mode"]
+    trans["a"]    = 0.0
+    trans["b"]    = 0.0
+    trans["meas"] = true
+    trans["x"]    = []
+    trans["y"]    = []      
     
-  def transform_id_vgs_to_rd_l step: 0.5,flg: false
-    #  lint_m = convert_rds meas          #convert Rds-Vgs Curve
+    vmin          = from
+    vmax          = to
+    imax          = id[0]["x"].index { |v| v >= vmax }
+    imin          = id[0]["x"].index { |v| v >= vmin }
+    p [id[0]["x"][imax],imax,id[0]["x"].size - 1]
+    zz            = [] 
+    z             = trans.dup
+    z["x"]        = []
+    z["y"]        = []
+    z["name"]     = ""
 
-    zz =[]
-    id   = change_step step: delta
-
-    delta = 2.0
-    imax  = id[0]["x"].size
-    ii    = id[0]["x"].index { |v| v>= delta }
-
-    for i in ii..imax - 1 do #Vgs= 1.0-5.0V(401 points)
-      z = { "x"=>[],"y"=>[],"name" => "","w"=>0.0,"vgs"=>0.0,"mode"=>"lines"}.dup
-      z["vgs"]  = id[0]["x"][i]               ### Vgs ###
-      z["w"]    = id[0]["w"]
-      z["name"] = format("vgs=%3.3f",id[0]["x"][i])
-        
+    for i in imin..imax  do #Vgs= 2.0-5.0V(401 points)
+      z["name"] = "vgs = #{id[0]["x"][i].round(3)}"
       for j in 0..id.size - 1 do
-        vds = id[j]["vds"]
-        ww =  id[j]["w"]*1.0e6
-        z["x"] << id[j]["l"]                 ### l   ###
-        z["y"] << vds / (id[j]["y"][i] )/ww  ### rds ###
-      end
-      zz << z.dup
-
+        ww        = z["w"]*1.0e6
+        vds       = z["vds"]
+      
+        z["vgs"]  = id[j]["x"][i]             ### vgs ###
+        z["x"][j] = id[j]["l"].dup                ###  l  ###
+        #z["y"][j] = ((id[j]["x"][i] - id[j]["x"][i - 1]) / (id[j]["y"][i] - id[j]["y"][i - 1])/(ww)).round(5).dup  ### rds = 1/Gm ###
+        #z["y"][j] = ((id[j]["x"][i]) / (id[j]["y"][i])/(ww)).round(5).dup  ### rds = 1/Gm ###
+        z["y"][j]  = vds / (id[j]["y"][i] )*ww  ### rds ###
+#        p [vds,ww,vds / (id[j]["y"][i] )*ww, 1/(id[j]["y"][i] ),z["vgs"]]
+      end 
+      zz[i - imin]      = z.dup
+      zz[i - imin]["x"] = z["x"].dup
+      zz[i - imin]["y"] = z["y"].dup
+      z  = trans.dup
     end
-    rds = { "x"=>[],"y"=>[],"name" => "","w"=>0.0,"vgs"=>0.0,"a"=>0.0,"b"=>0.0,"mode"=>"lines"}
+
     #calcurate Rds-L curve Rds = a(i)*l + b(i)
     a = []
     b = []
-    zz.each{|z|
-      y = determine_1st z["x"] ,z["y"]
+    for i in 0..zz.size - 1 do
+      y = determine_1st zz[i]["x"] ,zz[i]["y"]
       a << y[1]
       b << y[2]
-    }
-
-    rds_l =[]
-    for i in 0..zz.size - 1 do
-      rds_l[i]         = rds.dup
-      rds_l[i]["x"]    = zz[i]["x"].dup
-      rds_l[i]["vgs"]  = zz[i]["vgs"].dup
-      rds_l[i]["w"]    = zz[i]["w"].dup
-      rds_l[i]["y"]    = []
-      rds_l[i]["a"]    = a[i]
-      rds_l[i]["b"]    = b[i]
-      rds_l[i]["name"] = "cal. vgs=" + rds_l[i]["vgs"].round(2).to_s
+      zz[i]["a"] = y[1]
+      zz[i]["b"] = y[2]
     end
-      
+
+    rds_l =duplicate_hash(zz)
     for i in 0..rds_l.size - 1 do
-      rds_l[i]["x"].insert(0,-b[i]/a[i])
-      rds_l[i]["y"]= [0.0]
+      rds_l[i]["y"]    = []
+      rds_l[i]["meas"] = false
+      #rds_l[i]["x"].insert(0,-rds_l[i]["b"]/rds_l[i]["a"]).dup
+      #rds_l[i]["y"].insert(0,0.0).dup
+      rds_l[i]["x"].insert(0,-2e-6).dup
+      rds_l[i]["y"].insert(0,0.0).dup
       for j in 0..rds_l[i]["x"].size - 1 do
-        x =rds_l[i]["x"][j]
-        rds_l[i]["y"][j]= a[i]*x + b[i]
+        x = rds_l[i]["x"][j]
+        rds_l[i]["y"][j] = rds_l[i]["a"]*x + rds_l[i]["b"]
       end
     end
+
 
     # add calculate data(rds_l) to mesure data(zz)
     zz.concat(rds_l)
     ### a,b data set
     zzz ={ "a" => a , "b" => b}
-    # write zz to graph "rds_l_data"
-    @jtable[1]["rds_l_data"] = zz
+    @jtable[1]["rds_l"] = zz
+    @jtable[1]["rds_la"] = zzz
 
-    list_graph
+
+    p  list_graph
     if flg then
-      return zzz
+      zzz
     else
-      return true
+      true
     end
   end
-    
-  #### L-RDSW for Display ######
 
-  def calc_show_rdsw l_rds,a: 0,b: 0
-    p a
-    p b
-  end
-
-    
   ####  [STEP3-3] Estimate RDSW & LINT
-  def estimate_lint_rdsw deltav = 0.1
-    ab = transform_id_vgs_to_rd_l delta: deltav ,flg: true
+  def step3_estimate_lint_rdsw step: 0.5,from:2.0, to: 4.9
+    ab = {}
+    ab =  step3_transform_id_vgs_to_rd_l flg: true,from: from,to: to,step: step
+
     a  = ab["a"]
     b  = ab["b"]
       
-    rds_l = duplicate_data "rds_l_data"
-
-    #calc_show_rdsw(rs_l,a: a,b: b)
+    rds_l = duplicate_data "rds_l"
+  
     zc = {"x"=>[],"y"=>[]}
     absum = 0.0
     abnum = 0
@@ -1277,75 +1330,227 @@ class Bsim3Fit < ModelFit
     abavg =absum/abnum
     p [absum,abnum,abavg]
       
-    a_avg =a.sum.to_f/a.size                                  
-=begin                                    
-
-
-      for i in 0..1000 do
-        zc["x"][i] = i * 1e-8 - 1e-6
-        zc["y"][i] =  * zc["x"][i] + y[2]
+    a_avg = a.sum.to_f/a.size  
+    b_avg = b.sum.to_f/b.size 
+    p [a_avg,b_avg,-b_avg/a_avg] 
+    x0    = abavg  - 1e-8
+    dx    = 1e-9
+    stdv0 = 0
+    for i in 0..a.size - 1 do
+      stdv0 += ((a[i] * x0 +b[i]) - (a_avg * x0 + b_avg))**2/(a_avg * x0 + b_avg).abs 
+    end
+    stdv0 = Math.sqrt(stdv0)/a.size
+    stdv1 = 0
+    x1   = (x0 + dx).round(12)
+    for i in 0..a.size - 1 do
+      stdv1 += ((a[i] * x1 +b[i]) - (a_avg * x1 + b_avg))**2/(a_avg * x1 + b_avg).abs 
+    end
+    stdv1 = Math.sqrt(stdv1)/a.size
+    ii = 0
+    while( (stdv1).abs > 0.001 && ii < 1000 && dx.abs > 1e-12) do
+      x0    = x1.round(12)
+      stdv0 = stdv1
+      stdv1 = 0
+      x1   = (x0 + dx).round(14)
+      for i in 0..a.size - 1 do
+        stdv1 += ((a[i] * x1 +b[i]) - (a_avg * x1 + b_avg))**2/(a_avg * x1 + b_avg).abs 
       end
-      zzz << zc.dup
-
-      #   puts zzz
-      dev =[]
-      rrr = []
-      for j in 0..zzz[0]["x"].size - 1 do
-        dd =0
-        rr = 0
-        for i in 0..zzz.size - 1 do
-          rr=rr + zzz[i]["y"][j]
-          for k in i+1..zzz.size - 1 do
-            dd =dd+(zzz[i]["y"][j]-zzz[k]["y"][j])**2
-          end
-        end
-        dev << dd.dup
-        rrr << rr.dup
+      stdv1 = Math.sqrt(stdv1)/a.size
+    #  p [ii,x1,(a_avg * x1 + b_avg),stdv1,stdv0,dx.round(14)]
+      if (stdv1 > stdv0) then
+        dx = - (dx * 0.5).round(14)
       end
-      #w = id[1]["measdata"][0]["w"]
-      ymin = dev.min
-      yindex =dev.index(dev.min)
-      xmin = zzz[0]["x"][yindex]
-      rr = rrr[yindex]/zzz.size
-      model.set :LINT => format("%5.3e",xmin/2.0).to_f
-      # model.set :WINT => format("%5.3e",0.0).to_f
-      #model.set :RDSW => format("%5.3e",rr/(w*1e6)).to_f
-      model.set :RDSW => format("%5.3e",rr).to_f
-      model.save
-      puts "Model parameter Set:"
-      puts format('[Lint = %5.3e]',xmin/2.0)
-      puts format('[Wint = %5.3e]',0.0)
-      puts format('[RDSW = %5.3e]',rr)
-      zzzz =[]
-      for i in 0..rs_l.size - 1 do
-        if i == 0 then
+      ii += 1
+    end
+    p "n = #{ii},LINT =#{(x1/2.0).round(12)},RDSW =#{(a_avg * x1 + b_avg).round(2)},STDV=#{stdv1.round(4)},dx = #{dx.round(16)}"
+  end
 
-        end
-        if (i % 50 ==0) then
-          zzzz << rs_l[i]
-        end
-      end
-    
-      zz ={"x"=>[],"y"=> []}
-      zz["x"][0] = 0.0
-      zz["y"][0] = rr#*w*1e6
-      zz["x"][1] = -xmin
-      zz["y"][1] = rr#*w*1e6
-      zz["x"][2] = -xmin
-      zz["y"][2] = 0.0
-
-      for k in 0..zz.size - 1 do
-        zz[k]["x"].insert(0,ab[k])
-        zz[k]["y"].insert(0,0)
-      end
-
-      zzzz << zz.dup
-      @jtable[1]["lintdata"] = zzzz
-      list_graph
-      true
-=end
+=begin
+  model.set :LINT => format("%5.3e",xmin/2.0)
+  model.set :RDSW => format("%5.3e",rr)
+  model.save
+  puts "Model parameter Set:"
+  puts format('[Lint = %5.3e]',xmin/2.0)
+  puts format('[Wint = %5.3e]',0.0)
+  puts format('[RDSW = %5.3e]',rr)
+  
+  zzzz =[]
+  for i in 0..rds_l.size - 1 do
+    #if i == 0 then
+    #end
+    if (i % 50 ==0) then
+      zzzz << rds_l[i]
+    end
   end
     
+  zz ={"x"=>[],"y"=> [],"meas"=>false}
+  zz["x"][0] = 0.0
+  zz["y"][0] = rr
+  zz["x"][1] = -xmin
+  zz["y"][1] = rr
+  zz["x"][2] = -xmin
+  zz["y"][2] = 0.0
+
+  @jtable[1]["rds_l"] << zz.dup
+  list_graph
+  true
+=end
+
+  ### [STEP6 VTH-L(NLX,DVT0,DVT1,DVT2,ETA0,ETAB)]
+  ### [STEP6-1] step6_get_vth_l source: "meas",VTH0: 0.6064,lvth: 30e-6  :: create VTH-L Curve
+  ### [STEP6-2] step6_calc_vth leff: 0.6e-6,weff: 4.0e-6,vbs: 0.0,cond: [lt0,xdep0,phi,vbi]
+  ### [STEP6-3] step6_estimate_dvt0_dvt1_dvt2_eta0_etab
+
+  ### [STEP3-1] step3_get_vth_l source: "meas",VTH0: 0.6064,lvth: 30e-6  :: create VTH-L Curve
+  def step6_get_vth_l source: "measdata",data: [[0.0,30e-6,30e-6,0.6434],[-0.5,30e-6,30e-6,0.8525],[-1.0,30e-6,30e-6,1.0264]]
+    meas = @jtable[1]["measdata"].dup
+    lint = (@model.get :LINT).to_f
+    wint = (@model.get :WINT).to_f
+
+    vth_data = {"leff"=>[],"weff"=>[],"vbs"=>[],"vth"=> []}
+    for i in 0..meas.size - 1 do
+      vth_data["leff"][i] = meas[i]["l"] - 2 * lint
+      vth_data["weff"][i] = meas[i]["w"] + 2 * lint
+      vth_data["vbs"][i]  = meas[i]["vbs"]
+      vth_data["vth"][i]  = meas[i]["vth"]
+    end
+
+    #for i in 0..data.size - 1 do
+      vth_data["vbs"]  << 0.0
+      vth_data["leff"] << 30e-6 - 2 * lint
+      vth_data["weff"] << 30e-6 + 2 * wint
+      vth_data["vth"]  << 0.6434    
+    #end
+    p vth_data
+  end
+  ###[STEP6] Vth-l
+  ###[STEP6](1)determine vth-l
+  def step6_determine_vth_l 
+    id = step6_get_vth_l source: "measdata",data: [[0.0,30e-6,30e-6,0.6434],[-0.5,30e-6,30e-6,0.8525],[-1.0,30e-6,30e-6,1.0264]]
+    lint = (@model.get :LINT).to_f
+    wint = (@model.get :WINT).to_f
+    rdsw = (@model.get :RDSW).to_f
+    tox  = (@model.get :TOX).to_f
+    nch  = (@model.get :NCH).to_f
+    na   = (@model.get :NSUB).to_f
+    xj   = (@model.get :XJ).to_f
+    dvt0 = (@model.get :DVT0).to_f
+    dvt1 = (@model.get :DVT1).to_f
+    nlx  = (@model.get :NLX).to_f
+    cox  = Eox*E0/tox
+    nds  =  1.0e20
+    nsub =  6.0E16
+    # parameters
+    vbi   = K*T/Q * Math.log(nch * nds/(Ni**2))
+    xdep  = Math.sqrt(2.0 * ESi * E0 * (phis - vbs)/(Q * nch))
+    xdep0 = Math.sqrt(2.0 * ESi * E0 * phis/(Q * nch))    
+    lt    = Math.sqrt(ESi * E0 * xdep/(E0 / tox)) * (1.0 + dvt2 * vbs)
+    lt0   = Math.sqrt(ESi * E0 * xdep/(E0 / tox))
+    ltw   = Math.sqrt(ESi * E0 * xdep/(E0 / tox)) * (1.0 + dvt2w * vbs)
+
+    phis  = 2.0*Vt*Math.log(na/Ni)
+    sphis = Math.sqrt(phis)
+  #   vbi   = 1.009
+    # This Is for PN Junc Vbi
+    # Not for MOS Vbi
+    
+    vv    = vbi - phis
+    lt = Math.sqrt(ESi*E0*xdep/cox)
+    p format('Vbi =%f : phs = %f lt = %e',vbi,phis,lt)
+    dvt0 = 2.2
+    dvt1 = 0.53
+
+    zz = {"x"=>[],"y"=>[],"vth0"=>[],"vv"=>[]}
+    zz["vth0"] = 0.6434
+    zz["vv"] = vv
+    for i in 0..id["leff"].size - 1 do
+      
+      l =  (id[i]["leff"]) / lt
+      vth = id[i]["vth"]
+      zz["x"] << l
+      zz["y"] << vth.abs
+    end  # end of i
+    a = calc_vth_l zz,dvt0,dvt1
+    if a > 1e-3 then
+      d0 =0.01
+      d1 =0.01
+      for i in 0..10000 do
+        a = calc_vth_l zz,dvt0,dvt1
+        b = calc_vth_l zz,dvt0+d0,dvt1
+        c = calc_vth_l zz,dvt0,dvt1+d1
+        if b >= a then
+#        p "no dvt0"
+          d0 = - d0*0.5
+          dvt0 =dvt0 + d0
+        else
+          dvt0 = dvt0 + d0
+        end
+        if c >= a then
+#p "no dvt1"
+          d1 = -d1*0.5
+          dvt1 =dvt1 + d1
+        else
+          dvt1 =dvt1 + d1
+        end
+#      dvt0 =dvt0 +d0
+#      dvt1 =dvt1 +d1
+      end
+      puts [i,a,dvt0,dvt1]
+      model.set :DVT0 => format("%4.3f",dvt0).to_f
+      model.set :DVT1 => format("%4.3f",dvt1).to_f
+      model.set :VTH0 => vth0
+      model.save
+      puts format('[VTH0 = %4.3fV]',vth0)
+      puts format('[DVT0 = %4.3f]',dvt0)
+      puts format('[DVT1 = %4.3f]',dvt1)
+    end
+    zz={"x"=> [],"y"=>[]}
+    for i in 1..100 do
+      zz["x"][i-1] = i*1e-6
+      x = zz["x"][i-1]
+      l =  (x -2.0*lint) / lt
+      zz["y"][i-1] = vth0.abs - dvt0*(Math.exp(-dvt1*l/2.0)+2.0*Math.exp(-dvt1*l))*vv
+    end
+    [zz]
+  end
+    
+  ##[STEP6](2)Vth-l calc
+  def calc_vth_l id,dvt0,dvt1
+
+    vth0 = id["vth0"].abs
+    vv  = id["vv"]
+    y2 = 0
+    for i in 0..id["x"].size - 1 do
+      x = id["x"][i]
+      y0 =id["y"][i].abs
+      y =vth0 - dvt0*(Math.exp(-dvt1*x/2.0)+2.0*Math.exp(-dvt1*x))*vv
+      y2 += y2 + (y - y0)**2
+    #  p [i,x,y,y0,dvt0,dvt1,y2]
+    end  # end of i
+    y2
+  end
+
+  #step6
+  def vth_by_l vth
+    vthx = []
+     for j in 0..vth[0]["x"].size - 1 do
+       z = { "x"=>[] , "y"=>[] }
+       
+     for i in 0..vth.size - 1 do
+        z[i]["x"][j] = vth[i]["x"][j]
+        z[i]["y"][j] = vth[i]["y"][j]
+      end
+      vhtx << z.dup
+    end
+    vthx
+  end
+
+  ### [STEP6-2] step6_calc_vth leff: 0.6e-6,weff: 4.0e-6,vbs: 0.0,cond: [lt0,xdep0,phi,vbi]
+
+
+
+  ### [STEP6-3] step6_estimate_dvt0_dvt1_dvt2_eta0_etab
+
   ### Normalize Vds-Id  *****
   def get_normalize_id table0
     table = table0.dup
@@ -1444,21 +1649,48 @@ if $0 == __FILE__
     wdir: 'C:\Users\swear\Documents\Seafile\My Library\bsim3',
     model: 'models/test.lib',
     model_org: "models/MinedaPTS06_TT",
-    jtable: 'json/test0329.json'
+    jtable: 'json/test0329.json',
+    jtable1: 'json/test0416_1.json'
   }
+
   mf = Bsim3Fit.new params[:model], params[:model_org]
   ### [STEP0]::Id-Vgs Curve Reads ###
   mf.imitate_measdata File.join(params[:wdir], params[:jtable])
   ### [STEP1]::Estimate VTH[VTH0,K1,K2] ###
   mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 0.05, vbs: [0.0, -0.5 , -1.0, -1.5,-2.0], lw: [[30e-6,30e-6]], mode: "lines",
                                 name: ["vbs=0.0","vbs=-0.5","vbs=-1.0","vbs=-1.5","vbs=-2.0"]
+  mf.print_condition
+=begin  
   mf.step1_estimate_vth_k1_k2
   mf.step1_calc_vth_vbs
-  mf.plot_graph "vthdata"  
+  mf.plot_graph "vthdata"
+
   ### [STEP2]::Estimate UEFF[U0,UA,UB,UC] ###
   mf.step2_estimation_u0_ua_ub_uc mag: 3.5,err: 1.0e-6 
   p mf.list_graph
   mf.step2_verification_ueff
   mf.plot_graph "ver_ueff"
+=end
+  ###[STEP3] Estimate RDSW & Lint from Vgs-Id(several L)
+  #  [STEP3-0] read Id-Vgs-l data            => imitateimitate_measdata
+  #  [STEP3-1] Calculate Vth-l               => calculate_vth_l_relation
+  #  [STEP3-2] Transform Id-Vgs-L to Rds-L   => transform_id_vgs_to_rd_l
+  #  [STEP3-3] Estimate RDSW & LINT
+  #  [STEP3-4] Calculation graphs for verification
+  
+  mf = Bsim3Fit.new params[:model], params[:model_org]
+  #  [STEP3-0] read Id-Vgs-l data            => imitateimitate_measdata
+  mf.imitate_measdata File.join(params[:wdir], params[:jtable1])
+  #  [STEP3-1] Calculate Vth-l               => calculate_vth_l_relation
+  mf.calculate_vth_l_relation flg: false, vgs: 0.0,vds: 0.05,vbs: 0.0,lw: [[0.6e-6,4e-6],[0.8e-6,4e-6],[1.0e-6,4e-6],[1.4e-6,4e-6],[2.0e-6,4e-6]] ,mode: "lines",name: ["l=0.6u","l=0.8u","l=1.0u","l=1.4u","l=2.0u"]
+  mf.print_condition
+  mf.step6_get_vth_l source: "meas",data:[[0.0,30e-6,30e-6,0.6434],[-0.5,30e-6,30e-6,0.8525],[-1.0,30e-6,30e-6,1.0264]]
+  mf.step6_determine_vth_l
+  #  [STEP3-2] Transform Id-Vgs-L to Rds-L   => transform_id_vgs_to_rd_l
+  #mf.step3_transform_id_vgs_to_rd_l step: 0.5,flg: false,from: 3.5,to: 4.9
+  ####  [STEP3-3] Estimate RDSW & LINT
+  mf.step3_estimate_lint_rdsw step: 0.1,from:3.5,to: 5.0
+  mf.plot_graph "rds_l"
+  #p mf.model.get :RDSW
+  #p mf.model.get :LINT
 end
-
