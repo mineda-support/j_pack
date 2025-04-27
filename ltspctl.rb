@@ -917,7 +917,11 @@ EOF
       if ENV['USE_PYCALL']
         x_data = PyCall.eval "list(l.time_raw)"
       else
-        x_data = @ltspice.getTime().to_a
+        if node_list[0].downcase == 'time'
+          x_data = @ltspice.getTime().to_a
+        else
+          x_data = @ltspice.time_raw.to_a
+        end
       end
     else # setting x_data might be useless
       if ENV['USE_PYCALL']
@@ -949,7 +953,7 @@ EOF
     end
     @traces = []
     trace_x = Array_with_interpolation.new 
-    x_data.each{|x|
+    x_data[0..x_data.length/num_cases-1].each{|x|
       trace_x << x
     }
     num_cases.times{|i|
@@ -976,7 +980,7 @@ EOF
           trace[:x] = trace_x
         else
           trace[:x] = Array_with_interpolation.new
-          x_data.each_with_index{|v, j|
+          x_data[0..x_data.length/num_cases-1].each_with_index{|v, j|
             val = eval(equations[0]) # equations[k] = equation using 'values[i, j]'
             trace[:x] << val
           }
@@ -1204,6 +1208,6 @@ if $0 == __FILE__
   puts ckt.elements.inspect
   puts ckt.models.inspect
   ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
-  #r = ckt.get_traces  'v2', '-Id(m0:M1)'
+  r = ckt.get_traces  'v2', '-Id(m0:M1)'
   r = ckt.get_traces  '-v2', '-Id(m0:M1)'  
 end
