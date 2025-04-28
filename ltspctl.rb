@@ -639,7 +639,7 @@ EOF
               yaxis: {title: vars[1..-1].join(','), linewidth:1, mirror: true},
               xaxis: {title: vars[0], linewidth:1, mirror: true}}
     # puts layout
-    if vars[0].downcase == 'frequency'
+    if vars[0] == 'frequency'
       layout[:xaxis][:type] = 'log'
       db = traces.map{|trace| {name: trace[:name], x: trace[:x], y: trace[:y].map{|a| 20.0*Math.log10(a.abs)}}}
       phase = traces.map{|trace| {name: trace[:name], x: trace[:x], y: trace[:y].map{|a| shift360(a.phase*(180.0/Math::PI))}}}
@@ -903,7 +903,8 @@ EOF
     # x_data = PyCall.eval "l.getData('#{node_list[0]}')"
     
     # puts "var0='#{var0}'"
-    if node_list[0].downcase == 'frequency' 
+    node_list[0].downcase!  # change node_list[0] downcase because variables[0] is forced downcase
+    if node_list[0] == 'frequency' 
       if ENV['USE_PYCALL']
         x_data = PyCall.eval("list(l.getFrequency())").to_a
       else
@@ -917,7 +918,7 @@ EOF
       if ENV['USE_PYCALL']
         x_data = PyCall.eval "list(l.time_raw)"
       else
-        if node_list[0].downcase == 'time'
+        if node_list[0] == 'time'
           x_data = @ltspice.getTime().to_a
         else
           x_data = @ltspice.time_raw.to_a
@@ -957,7 +958,7 @@ EOF
       trace_x << x
     }
     num_cases.times{|i|
-      if node_list[0].downcase == 'time' && i >= 1
+      if node_list[0] == 'time' && i >= 1
         x_data = @ltspice.getTime(i)
         x_data = x_data.map{|a| a.to_f}
       end
@@ -969,7 +970,7 @@ EOF
           else
             value = @ltspice.getData(v, i).to_a #convert Numo to Array
           end
-          if node_list[0].downcase == 'frequency'
+          if node_list[0] == 'frequency'
             values << value.map{|a| Complex(a.real.to_f, a.imag.to_f)}
           else
             values << value
@@ -1203,11 +1204,14 @@ if $0 == __FILE__
   #file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Idvd_nch_pch.asc'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/LTspice/test_multiplicity.asc'
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/test_MPO_3.asc'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/test_MPO_3.asc'
+  
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/SpiceModeling/高橋誓さん/test/VTH_VBG1.asc'
   ckt = LTspiceControl.new file, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect
-  ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
-  r = ckt.get_traces  'v2', '-Id(m0:M1)'
-  r = ckt.get_traces  '-v2', '-Id(m0:M1)'  
+  #ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
+  r = ckt.get_traces  'VG', 'Id(M1)'
+else  
+  #r = ckt.get_traces  '-v2', '-Id(m0:M1)'  
 end
