@@ -537,7 +537,8 @@ class NgspiceControl < LTspiceControl
           file = @file.sub '.sch', '.spice'
           #File.delete file if file && File.exist?(file)
           FileUtils.rm(file, force: true) if file && File.exist?(file)
-          run "-s -n -x -q -o .", File.join(pwd, @file) # passing only @file causes load_schematic(): unable to open file
+          start = Time.now
+          run "-s -n -x -q -o .", File.join(pwd, File.basename(@file)) # passing only @file causes load_schematic(): unable to open file
             # xschem options:
             # -s: set netlist type to spice
             # -n: create netlist
@@ -545,9 +546,9 @@ class NgspiceControl < LTspiceControl
             # -x: command mode (no X)
             # -q: quit after doing things 
             # -o: output directory
-          wait_for File.basename(file), Time.now, 'due to some error'
+          wait_for File.basename(file), start, 'due to some error'
           $stderr.puts "file='#{file}'"
-          sleep 1 # weird but file is not available w/o sleep 1
+          #sleep 1 # weird but file is not available w/o sleep 1
           netlist, steps = parse(file, analysis, '^ *\.step')
           $stderr.puts "after parsing steps\n#{netlist}"
         }
@@ -747,8 +748,26 @@ class NgspiceControl < LTspiceControl
     # node_list_to_get_result = Marshal.load(Marshal.dump node_list)
     # $stderr.puts "node_list='#{node_list}' @ get_active_traces"
     return [[], []] if node_list.size == 0
+    vars = info()[1..-1].map{|eq|
+      if eq =~ /(.+)#branch/
+        "i(#{$1})"
+      else
+        "v(#{eq})"
+      end
+    }.unshift(info()[0])
     variables = node_list_to_variables node_list
     $stderr.puts "variables=#{variables} @ get_active_traces"
+    equations_joined = variables.join(',')
+    vars = vars.select{|v| equations_joined.include? v} # variables used in equations
+    equation = variables[0]
+    vars.each_with_index{|v, i|
+      if variables[0] =~ /[\*\+-\/\(]*#{v}[\*\+-\/\)]*/
+        equation.gsub! v, "values[0]"
+      else
+        equation.gsub! v, "values[#{i}]"
+      end
+    }
+    puts "equation = '#{equation}'"
     @result = Ngspice.get_result variables[1..-1]
     # $stderr.puts @result
     indices = []
@@ -790,7 +809,7 @@ class NgspiceControl < LTspiceControl
             traces[count+i/2][:y] << Complex(values[j], values[j+1])
           end
         else
-          traces[count+i][:x] << values[0]
+          traces[count+i][:x] << eval(equation)
           traces[count+i][:y] << values[j]
         end
       }
@@ -897,7 +916,9 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/simulation/MNO_parameter_different.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MPO_parameter_different.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'KLayout/salt/IP62/Samples/test_devices/Xschem/pmos.sch'
-  file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MNO_1.sch'
+  file = 'c:/tmp/VTH_VBG1.sch'
 
   ckt = NgspiceControl.new file, true, true # test recursive
   puts ckt.elements.inspect
@@ -906,8 +927,8 @@ if $0 == __FILE__
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
-  ckt.simulate probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
-  r = ckt.get_traces 'v-sweep', 'i(vmeas)', 'i(vmeas1)'
+  ckt.simulate #probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
+  r = ckt.get_traces 'v-sweep', 'i(vmeas)'
   #ckt = NgspiceControl.new file, true, true # test recursive
 
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
