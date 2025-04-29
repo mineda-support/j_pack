@@ -307,7 +307,7 @@ EOF
   def wait_for file, start, error_message=nil
     count = 0
     puts "file=#{file}, start=#{start}"
-    until !File.exist?(file) || (File.mtime(file) >= start) do
+    until File.exist?(file) && (File.mtime(file) >= start) do
       $stderr.puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
       # puts "count=#{count}"
       if count == 20
