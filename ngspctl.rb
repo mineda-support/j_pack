@@ -548,7 +548,7 @@ class NgspiceControl < LTspiceControl
             # -o: output directory
           wait_for File.basename(file), start, 'due to some error'
           $stderr.puts "file='#{file}'"
-          #sleep 1 # weird but file is not available w/o sleep 1
+          sleep 1 # weird but file is not available w/o sleep 1
           netlist, steps = parse(file, analysis, '^ *\.step')
           $stderr.puts "after parsing steps\n#{netlist}"
         }
@@ -930,8 +930,8 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MPO_parameter_different.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'KLayout/salt/IP62/Samples/test_devices/Xschem/pmos.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
-  file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
-  #file = 'c:/tmp/VTH_VBG1.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
+  file = 'c:/tmp/VTH_VBG1.sch'
 
   ckt = NgspiceControl.new file, true, true # test recursive
   puts ckt.elements.inspect
@@ -940,7 +940,7 @@ if $0 == __FILE__
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
-  ckt.simulate #probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
+  ckt.simulate probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)'] # probes are necessary for step anaysis
   r = ckt.get_traces 'v-sweep', 'I(vmeas)'
   r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
   #ckt = NgspiceControl.new file, true, true # test recursive
