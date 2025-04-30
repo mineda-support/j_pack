@@ -794,17 +794,23 @@ class NgspiceControl < LTspiceControl
     }
     old_index = index = -100000
     count = 0
+    trend = 0
     old_value = nil
     @result.map{|h| h.values}.each{|values| # h is hash, so h.keys and h.values
       index = values[0].to_i
       values = values[1..-1].map{|v| v.to_f}
       # puts "index: #{index} > old_index: #{old_index}"
       break if index < old_index
-      if old_value.nil?  || old_value > values[0].to_f
-        count = traces.size
+      if old_value != nil && trend == 0
+          trend = 1 if values[0] > old_value
+          trend = -1 if values[0] < old_value
+      elsif old_value.nil? || (trend > 0 && values[0] < old_value) || (trend < 0 && values[0] > old_value)
+          count = traces.size
         (variables.size-1).times{|i|
           traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
         }
+        trend = 0
+        old_value = nil
       end
       indices[1..node_list.length-1].each_with_index{|j, i|
         if variables[0] == 'frequency' 
@@ -924,8 +930,8 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MPO_parameter_different.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'KLayout/salt/IP62/Samples/test_devices/Xschem/pmos.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
-  #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MNO_1.sch'
-  file = 'c:/tmp/VTH_VBG1.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
+  #file = 'c:/tmp/VTH_VBG1.sch'
 
   ckt = NgspiceControl.new file, true, true # test recursive
   puts ckt.elements.inspect
@@ -935,8 +941,8 @@ if $0 == __FILE__
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
   ckt.simulate #probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
+  r = ckt.get_traces 'v-sweep', 'I(vmeas)'
   r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
-  r = ckt.get_traces '-v-sweep', 'i(vmeas)'
   #ckt = NgspiceControl.new file, true, true # test recursive
 
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
