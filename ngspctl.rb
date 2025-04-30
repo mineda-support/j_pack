@@ -547,10 +547,10 @@ class NgspiceControl < LTspiceControl
             # -q: quit after doing things 
             # -o: output directory
           wait_for File.basename(file), start, 'due to some error'
-          $stderr.puts "file='#{file}'"
           sleep 1 # weird but file is not available w/o sleep 1
           netlist, steps = parse(file, analysis, '^ *\.step')
-          $stderr.puts "after parsing steps\n#{netlist}"
+          #$stderr.puts "after parsing steps\n#{netlist}"
+          $stderr.puts "after parsing, steps ='#{steps}'"
         }
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
@@ -592,10 +592,20 @@ class NgspiceControl < LTspiceControl
       if steps[0] == nil || node_list == nil
         simulate_core analysis
       else
-        start, stop, step = steps[0]['values'].map{|v| eng2number(v)}
-        $stderr.puts "start step analysis with (#{start}, #{stop}, #{step})"
-        logs = with_stringio(){
+        step_values = []
+        case steps[0]['step']
+        when 'lin'
+          start, stop, step = steps[0]['values'].map{|v| eng2number(v)}  
           start.step(by: step, to: stop){|v|
+            step_values << v
+          }
+        when 'list'
+          step_values = steps[0]['values'].map{|v| eng2number(v)}
+        end
+        
+        $stderr.puts "start step analysis with #{step_values.inspect}"
+        logs = with_stringio(){
+          step_values.each{|v|
             if steps[0]['name'].start_with? '@'
               $stderr.puts "**** alter #{steps[0]['name']}=#{v}"
               Ngspice.command "alter #{steps[0]['name']}=#{v}"
