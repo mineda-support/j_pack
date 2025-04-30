@@ -755,16 +755,23 @@ class NgspiceControl < LTspiceControl
         "v(#{eq})"
       end
     }.unshift(info()[0])
-    variables = node_list_to_variables node_list
+    $stderr.puts "vars=#{vars}"
+    variables = node_list_to_variables(node_list).map{|a| a.downcase}
     $stderr.puts "variables=#{variables} @ get_active_traces"
     equations_joined = variables.join(',')
     vars = vars.select{|v| equations_joined.include? v} # variables used in equations
     equation = variables[0]
-    vars.each_with_index{|v, i|
-      if variables[0] =~ /[\*\+-\/\(]*#{v}[\*\+-\/\)]*/
+    # variables << variables[0] if variables[0] != vars[0]
+    vars.each{|v|
+      val = v.sub(/\(/, '\(').sub(/\)/, '\)')
+      if v == info()[0]
         equation.gsub! v, "values[0]"
-      else
-        equation.gsub! v, "values[#{i}]"
+      elsif equation =~ /[\*\+-\/\(]*#{val}[\*\+-\/\)]*/ 
+        unless index = variables.find_index(v)
+          variables << v
+          index = variables.length - 1
+        end
+        equation.gsub! v, "values[#{index + 1}]"
       end
     }
     puts "equation = '#{equation}'"
@@ -775,7 +782,7 @@ class NgspiceControl < LTspiceControl
     traces = []
     # variables.delete 'v-sweep'
     # rc = true if variables[0] == 'frequency'
-    variables.each_with_index{|name, i|
+    node_list.each_with_index{|name, i|
       #if variables.include? name
         indices <<  i
         if variables[0] == 'frequency' && name =~ /real\((.*)\)/
@@ -788,9 +795,9 @@ class NgspiceControl < LTspiceControl
     old_index = index = -100000
     count = 0
     old_value = nil
-    @result.map{|h| h.values}.each{|values|
+    @result.map{|h| h.values}.each{|values| # h is hash, so h.keys and h.values
       index = values[0].to_i
-      values = values[1..-1]
+      values = values[1..-1].map{|v| v.to_f}
       # puts "index: #{index} > old_index: #{old_index}"
       break if index < old_index
       if old_value.nil?  || old_value > values[0].to_f
@@ -799,7 +806,7 @@ class NgspiceControl < LTspiceControl
           traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
         }
       end
-      indices[1..-1].each_with_index{|j, i|
+      indices[1..node_list.length-1].each_with_index{|j, i|
         if variables[0] == 'frequency' 
           if i % 2 == 0
             if index == 0
@@ -917,7 +924,7 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/MPO_parameter_different.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'KLayout/salt/IP62/Samples/test_devices/Xschem/pmos.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
-  file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MNO_1.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MNO_1.sch'
   file = 'c:/tmp/VTH_VBG1.sch'
 
   ckt = NgspiceControl.new file, true, true # test recursive
@@ -928,11 +935,12 @@ if $0 == __FILE__
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
   ckt.simulate #probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
-  r = ckt.get_traces 'v-sweep', 'i(vmeas)'
+  r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
+  r = ckt.get_traces '-v-sweep', 'i(vmeas)'
   #ckt = NgspiceControl.new file, true, true # test recursive
 
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-sweep', 'i(Vds)')
-  r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
+  #r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
   puts 'sim end'
 end
