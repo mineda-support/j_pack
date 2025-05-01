@@ -639,7 +639,9 @@ class NgspiceControl < LTspiceControl
       analysis.each{|k, v|
         Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
       }
-    end    
+    end  
+    sleep 1
+    #Ngspice.command 'set nomoremode'
   end
 
   def sim_log ckt=@file # should be revised!
