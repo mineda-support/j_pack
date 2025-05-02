@@ -383,33 +383,6 @@ EOF
     simulate0 variables
   end
 
-  def parse file, analysis, comment_step=nil
-    netlist = ''
-    steps = []
-    home = (ENV['HOMEPATH'] || ENV['HOME'])
-    $stderr.puts "file = #{file}"
-    File.open(file, 'r:Windows-1252').read.each_line{|l|
-      l.chomp!
-      l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
-      $stderr.puts l
-      if l =~ /^ *\.*ac +(.*)/
-        analysis[:ac] = $1
-      elsif l =~ /^ *\.*tran +(.*)/
-        analysis[:tran] = $1
-      elsif l =~ /^ *\.*dc +(.*)/
-        analysis[:dc] = $1
-      elsif comment_step && l =~ /#{comment_step}/
-        steps = LTspice.new.step2params(l)
-        netlist << '*' + l + "\n"
-        $stderr.puts "commented: #{l}"
-      else
-        netlist << l + "\n"
-      end
-    }
-    [netlist, steps]
-  end
-  private :parse
-
   def simulate0 variables
     # system "unix2dos #{@file}" if on_WSL?() # LTspiceXVII saves asc file in LF, but -netlist option needs CRLF!
     file = @file.sub('.asc', '.net')
@@ -449,7 +422,8 @@ EOF
       run '-netlist', ascfile.sub('.asc', '.tmp') # creates #{file} = xxx.net
       wait_for(file, start, 'due to some error')
     }
-    puts netlist = parse(file, analysis)
+    # netlist, steps = parse(file, analysis)
+    # puts "steps in #{file}= #{steps}"
     puts "analysis directives in netlist: #{analysis.inspect}" unless analysis.empty?
     extra_commands = ''
     variables.each{|v|
@@ -1204,14 +1178,14 @@ if $0 == __FILE__
   #file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Idvd_nch_pch.asc'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/LTspice/test_multiplicity.asc'
-  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/test_MPO_3.asc'
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/test_MPO_3.asc'
   
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/SpiceModeling/高橋誓さん/test/VTH_VBG1.asc'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/SpiceModeling/高橋誓さん/test/VTH_VBG1.asc'
   ckt = LTspiceControl.new file, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect
   #ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
-  r = ckt.get_traces  'VG', 'Id(M1)'
-else  
-  #r = ckt.get_traces  '-v2', '-Id(m0:M1)'  
+  #r = ckt.get_traces  'VG', 'Id(M1)'
+  r = ckt.get_traces  '-v2', '-Id(m0:M1)'  
+  puts 'finished'
 end
