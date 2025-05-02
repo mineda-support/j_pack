@@ -438,7 +438,7 @@ class NgspiceControl < LTspiceControl
     end
   end
   private :update
-  
+=begin
   def emulated_step_analysis step_desc = '.step param ccap 0.2p 1p 0.5p', node_list = ['frequency', 'V(out)/(V(net1)-V(net3))']
     steps = LTspice.new.step2params(step_desc)
     return nil if steps[0].nil?
@@ -462,6 +462,7 @@ class NgspiceControl < LTspiceControl
     $stderr.puts logs
     results
   end
+=end
 
   def simulate *variables
     result = with_stringio{
@@ -486,7 +487,7 @@ class NgspiceControl < LTspiceControl
       elsif l =~ /^ *\.*dc +(.*)/
         analysis[:dc] = $1
       elsif comment_step && l =~ /#{comment_step}/
-        steps = LTspice.new.step2params(l)
+        steps = step2params(l)
         netlist << '*' + l + "\n"
         $stderr.puts "commented: #{l}"
       else
@@ -497,6 +498,48 @@ class NgspiceControl < LTspiceControl
   end
   private :parse
 
+  def step2params net
+    return nil if net.nil?
+    # .step oct param srhr4k  0.8 1.2 3
+    # steps['srhr4k'] = {'type' => 'param', 'step' => 'oct', 'values' => [0.8, 1.2, 3]}
+    # .step v1 1 3.4 0.5
+    # steps['v1'] = {'type' => nil||'src', 'step' => nil||'linear', 'values'..}
+    # .step NPN 2N2222(VAF)
+    # steps['2N2222_VAF'] = {'type'=>'model', 'step'=>nil, ...}
+    steps = []
+    net.each_line{|line|
+      next unless line =~ /^ *\.step +(.*)$/
+      args = $1.split
+      step = args.shift
+      unless step =~ /lin|oct|dec/
+        args.unshift step
+        step = 'lin'
+      end
+      name = args.shift
+      type = nil
+      if name == 'param'
+        type = 'param'
+        name = args.shift
+      else
+        model = args.shift
+        if model  =~ /\S+\((\S+)\)/
+          type = 'model'
+          name = name + '_' + $1+'_'+$2
+        else
+          args.unshift model
+          type = 'src'
+        end
+      end
+      values = args
+      if values[0] == 'list'
+        step = 'list'
+        values.shift # values = ["list", "0.3u", "1u", "3u", "10u"]
+      end
+      steps << {'name' =>name, 'type'=>type, 'step'=>step, 'values'=>values}
+    }
+    steps.reverse
+  end
+  
   def simulate0 variables
     # system "unix2dos #{@file}" if on_WSL?() # NgspiceXVII saves asc file in LF, but -netlist option needs CRLF!
     file = nil
@@ -622,7 +665,9 @@ class NgspiceControl < LTspiceControl
             # $stderr.puts "r=#{r.inspect}"
             r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
             @@step_results[@file][0] = r[0]
-            @@step_results[@file][1] << r[1][0]
+            r[1].each{|s|
+              @@step_results[@file][1] << r[1][0]
+            }
           }
         }
         $stderr.puts logs
