@@ -362,6 +362,9 @@ class NgspiceControl < LTspiceControl
       end
       lines, result = set0 pairs, file, @elements, @mtime
       update(file, lines) 
+      puts '**** after update ****'
+      puts lines
+      puts '----------------------'
       result
     end
   end
@@ -383,14 +386,16 @@ class NgspiceControl < LTspiceControl
       if elements[name] && elements[name].class == Hash
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
-        if line =~ /^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=(\S+)}/ || # for xschem
-           line =~ /F 1 \"([^\"]*)\"/ || # for eeschema
-           line =~ /^ *[Mm]\S* +\([^\)]*\) +\S+ +(.*) */ || # for netlist
-           line =~ /^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +(.*) */ ||
-           line =~ /^ *[VvIiCcRr]\S* +\S+ +\S+ +(.*) */
-          substr = $1
-          line.sub! substr, value
+        if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)}/ || # for xschem
+           line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
+           line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
+           line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
+           line =~ /(^ *[VvIiCcRr]\S* +\S+ +\S+ +)(.*)( *)/
+          substr = $2
+          puts "***before:'#{lines[lineno-1]}'"          
+          line.sub! $0, "#{$1}#{value}#{$3}"
           elements[name][:value].sub!(substr, value)
+          puts "***after:'#{lines[lineno-1]}'"
         elsif line =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) +(.*)}/ # for xschem
           substr = $3
           value  
@@ -709,7 +714,7 @@ class NgspiceControl < LTspiceControl
       Ngspice.command 'setscale'
     } =~ /stdout *(\S+)/
     scale_var = $1
-    puts "scale_var = '#{scale_var}'"
+    puts "scale_var = '#{scale_var}' @info before calling Ngspice.info"
     with_stringio(){
       Ngspice.info
     }.each_line{|l|
@@ -990,8 +995,10 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
   file = 'c:/tmp/VTH_VBG1.sch'
 
-  ckt = NgspiceControl.new file, true, true # test recursive
+  #ckt = NgspiceControl.new file, true, true # test recursive
+  ckt = NgspiceControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
+  ckt.set({:VD=>"0.05"})
   puts ckt.models.inspect
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
