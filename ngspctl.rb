@@ -362,9 +362,6 @@ class NgspiceControl < LTspiceControl
       end
       lines, result = set0 pairs, file, @elements, @mtime
       update(file, lines) 
-      puts '**** after update ****'
-      puts lines
-      puts '----------------------'
       result
     end
   end
@@ -386,25 +383,24 @@ class NgspiceControl < LTspiceControl
       if elements[name] && elements[name].class == Hash
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
-        if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)}/ || # for xschem
+        if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
            line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
            line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
            line =~ /(^ *[VvIiCcRr]\S* +\S+ +\S+ +)(.*)( *)/
           substr = $2
-          puts "***before:'#{lines[lineno-1]}'"          
-          line.sub! $0, "#{$1}#{value}#{$3}"
+          //puts "***before:'#{lines[lineno-1]}'"          
+          line.sub! line, "#{$1}#{value}#{$3}"
           elements[name][:value].sub!(substr, value)
-          puts "***after:'#{lines[lineno-1]}'"
-        elsif line =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) +(.*)}/ # for xschem
-          substr = $3
-          value  
+          //puts "***after:'#{lines[lineno-1]}'"
+        elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ +)(.*)(})/ # for xschem
+          substr = $2
           if value[0] == '-'
             value = sub substr, value[1..-1]
           elsif value[0] == '+'
             value = add substr, value[1..-1]
           end
-          line.sub! substr, value
+          line.sub! line, "#{$1}#{value}#{$3}"
           elements[name][:value].sub!(substr, value)
         end
         true
@@ -415,10 +411,10 @@ class NgspiceControl < LTspiceControl
         if elm && lineno = elm[:lineno]
           line = lines[lineno-1]
           # puts line
-          if line =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/ || # for xschem
-             line =~ /^ *([\.;]#{name}.*)$/ # for eeschema and netlist 
-            substr = $1
-            line.sub! substr, value
+          if line =~ /(^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.)(\S+)() .*)\")/ || # for xschem
+             line =~ /(^ *)([\.;]#{name}.*)$/ # for eeschema and netlist 
+            substr = $2
+            line.sub! line, "#{$1}#{value}#{$3}"
             elm[:control] = value
             true
           else
