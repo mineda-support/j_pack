@@ -389,10 +389,10 @@ class NgspiceControl < LTspiceControl
            line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
            line =~ /(^ *[VvIiCcRr]\S* +\S+ +\S+ +)(.*)( *)/
           substr = $2
-          //puts "***before:'#{lines[lineno-1]}'"          
+          #puts "***before:'#{lines[lineno-1]}'"          
           line.sub! line, "#{$1}#{value}#{$3}"
           elements[name][:value].sub!(substr, value)
-          //puts "***after:'#{lines[lineno-1]}'"
+          #puts "***after:'#{lines[lineno-1]}'"
         elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ +)(.*)(})/ # for xschem
           substr = $2
           if value[0] == '-'
@@ -411,7 +411,7 @@ class NgspiceControl < LTspiceControl
         if elm && lineno = elm[:lineno]
           line = lines[lineno-1]
           # puts line
-          if line =~ /(^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.)(\S+)() .*)\")/ || # for xschem
+          if line =~ /(^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.)(\S+)( .*)\")/ || # for xschem
              line =~ /(^ *)([\.;]#{name}.*)$/ # for eeschema and netlist 
             substr = $2
             line.sub! line, "#{$1}#{value}#{$3}"
@@ -606,7 +606,10 @@ class NgspiceControl < LTspiceControl
     $stderr.puts "analysis directives in netlist: #{analysis.inspect}" # unless analysis.empty?
     Dir.chdir(File.dirname @file){
       $stderr.puts "variables = #{variables.inspect}"
-      Ngspice.init
+      if !@ngspice_alive
+        Ngspice.init
+        @ngspice_alive = true
+      end
       Ngspice.circ(netlist)
       variables.each{|v|
         if v.class == Hash
@@ -903,6 +906,7 @@ class NgspiceControl < LTspiceControl
   end
 
   def sch_type file # either 'xschem' or 'eeschema'
+    puts "file=#{file} @Dir.pwd = #{Dir.pwd}"
     File.open(file){|f|
       line = f.gets 
       return 'xschem' if line =~ /xschem/
