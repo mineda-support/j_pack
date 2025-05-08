@@ -190,17 +190,18 @@ EOF
     else
       lines = lines.split("\n")
     end
+    elements = @elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
     result =pairs.map{|sym, val|
       value = val.to_s
       name = sym.to_s
       # puts "set #{name}: #{value}"
-      if @elements[name] && @elements[name].class == Hash
-        lineno = @elements[name][:lineno]
+      if elements[name] && elements[name].class == Hash
+        lineno = elements[name][:lineno]
         line = lines[lineno-1]
         if line =~ /SYMATTR Value (.*)$/
           substr = $1
           line.sub! substr, value
-          @elements[name][:value].sub!(substr, value)
+          elements[name][:value].sub!(substr, value)
         elsif line =~ /SYMATTR Value2 (.*)$/
           substr = $1
           if value[0] == '-'
@@ -209,7 +210,7 @@ EOF
             value = add substr, value[1..-1]
           end
           line.sub! substr, value
-          @elements[name][:value].sub!(substr, value)
+          elements[name][:value].sub!(substr, value)
         end
         true
       else
@@ -221,8 +222,8 @@ EOF
         else
           nth = 0
         end
-        # puts "elm=#{elm.inspect} for @elements[#{name}][#{nth}]"
-        if @elements[name] && (elm=@elements[name][nth]) && (lineno = elm[:lineno])
+        # puts "elm=#{elm.inspect} for elements[#{name}][#{nth}]"
+        if elements[name] && (elm=elements[name][nth]) && (lineno = elm[:lineno])
           line = lines[lineno-1]
           puts "line='#{line}'"
           if line =~ /^TEXT .*([!;][\*\.;]\S+ .*)$/
@@ -260,10 +261,10 @@ EOF
             end
           }
           lines << "TEXT #{xpos} #{ypos + 50} Left 2 !#{value}"
-          @elements[name] = []
-          @elements[name][nth] = {}
-          @elements[name][nth][:control] = value
-          @elements[name][nth][:lineno] = lines.size
+          elements[name] = []
+          elements[name][nth] = {}
+          elements[name][nth][:control] = value
+          elements[name][nth][:lineno] = lines.size
         end
       end
     }

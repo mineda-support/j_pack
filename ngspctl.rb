@@ -360,7 +360,8 @@ class NgspiceControl < LTspiceControl
       else
         file = @file
       end
-      lines, result = set0 pairs, file, @elements, @mtime
+      e = @elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
+      lines, result = set0 pairs, file, e, @mtime
       update(file, lines) 
       result
     end
@@ -377,12 +378,13 @@ class NgspiceControl < LTspiceControl
     end
     result = pairs.map{|sym, val|
       name = sym.to_s
-      #debugger if name == 'C3'
+      # debugger if name == 'VD'
       value = val.to_s
       # puts "set #{name}: #{value}"
       if elements[name] && elements[name].class == Hash
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
+        puts "line: #{line}"
         if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
            line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
@@ -634,9 +636,8 @@ class NgspiceControl < LTspiceControl
       }
       @@step_results[@file] = [[], []]
       node_list = variables[0] ? variables[0][:probes] : nil
-      #debugger
       $stderr.puts "steps = #{steps.inspect}"
-      if steps[0] == nil || node_list == nil
+      if steps[0] == nil || node_list == nil || node_list == []
         simulate_core analysis
       else
         step_values = []
@@ -809,13 +810,14 @@ class NgspiceControl < LTspiceControl
     # node_list_to_get_result = Marshal.load(Marshal.dump node_list)
     # $stderr.puts "node_list='#{node_list}' @ get_active_traces"
     return [[], []] if node_list.size == 0
-    vars = info()[1..-1].map{|eq|
+    info_a = info()
+    vars = info_a[1..-1].map{|eq|
       if eq =~ /(.+)#branch/
         "i(#{$1})"
       else
         "v(#{eq})"
       end
-    }.unshift(info()[0])
+    }.unshift(info_a[0])
     $stderr.puts "vars=#{vars}"
     variables = node_list_to_variables(node_list).map{|a| a.downcase}
     $stderr.puts "variables=#{variables} @ get_active_traces"
@@ -825,7 +827,7 @@ class NgspiceControl < LTspiceControl
     # variables << variables[0] if variables[0] != vars[0]
     vars.each{|v|
       val = v.sub(/\(/, '\(').sub(/\)/, '\)')
-      if v == info()[0]
+      if v == info_a[0]
         equation.gsub! v, "values[0]"
       elsif equation =~ /[\*\+-\/\(]*#{val}[\*\+-\/\)]*/ 
         unless index = variables.find_index(v)
@@ -835,7 +837,6 @@ class NgspiceControl < LTspiceControl
         equation.gsub! v, "values[#{index + 1}]"
       end
     }
-    puts "equation = '#{equation}'"
     @result = Ngspice.get_result variables[1..-1]
     # $stderr.puts @result
     indices = []
