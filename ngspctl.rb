@@ -378,13 +378,12 @@ class NgspiceControl < LTspiceControl
     end
     result = pairs.map{|sym, val|
       name = sym.to_s
-      # debugger if name == 'VD'
+      #debugger if name == 'C3'
       value = val.to_s
       # puts "set #{name}: #{value}"
       if elements[name] && elements[name].class == Hash
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
-        puts "line: #{line}"
         if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
            line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
@@ -474,75 +473,6 @@ class NgspiceControl < LTspiceControl
     puts result
   end
 
-  def parse file, analysis, comment_step=nil
-    netlist = ''
-    steps = []
-    home = (ENV['HOMEPATH'] || ENV['HOME'])
-    $stderr.puts "file = #{file}"
-    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
-      l.chomp!
-      l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
-      $stderr.puts l
-      if l =~ /^ *\.*ac +(.*)/
-        analysis[:ac] = $1
-      elsif l =~ /^ *\.*tran +(.*)/
-        analysis[:tran] = $1
-      elsif l =~ /^ *\.*dc +(.*)/
-        analysis[:dc] = $1
-      elsif comment_step && l =~ /#{comment_step}/
-        steps = step2params(l)
-        netlist << '*' + l + "\n"
-        $stderr.puts "commented: #{l}"
-      else
-        netlist << l + "\n"
-      end
-    }
-    [netlist, steps]
-  end
-  private :parse
-
-  def step2params net
-    return nil if net.nil?
-    # .step oct param srhr4k  0.8 1.2 3
-    # steps['srhr4k'] = {'type' => 'param', 'step' => 'oct', 'values' => [0.8, 1.2, 3]}
-    # .step v1 1 3.4 0.5
-    # steps['v1'] = {'type' => nil||'src', 'step' => nil||'linear', 'values'..}
-    # .step NPN 2N2222(VAF)
-    # steps['2N2222_VAF'] = {'type'=>'model', 'step'=>nil, ...}
-    steps = []
-    net.each_line{|line|
-      next unless line =~ /^ *\.step +(.*)$/
-      args = $1.split
-      step = args.shift
-      unless step =~ /lin|oct|dec/
-        args.unshift step
-        step = 'lin'
-      end
-      name = args.shift
-      type = nil
-      if name == 'param'
-        type = 'param'
-        name = args.shift
-      else
-        model = args.shift
-        if model  =~ /\S+\((\S+)\)/
-          type = 'model'
-          name = name + '_' + $1+'_'+$2
-        else
-          args.unshift model
-          type = 'src'
-        end
-      end
-      values = args
-      if values[0] == 'list'
-        step = 'list'
-        values.shift # values = ["list", "0.3u", "1u", "3u", "10u"]
-      end
-      steps << {'name' =>name, 'type'=>type, 'step'=>step, 'values'=>values}
-    }
-    steps.reverse
-  end
-  
   def simulate0 variables
     # system "unix2dos #{@file}" if on_WSL?() # NgspiceXVII saves asc file in LF, but -netlist option needs CRLF!
     file = nil
@@ -576,7 +506,7 @@ class NgspiceControl < LTspiceControl
         if File.mtime(@file) > File.mtime(file)
           raise "Error: #{@file} is newer than #{file} -- please open #{@file}, create netlist and save in #{file}" 
         end
-        netlist, steps = super.parse(file, analysys)
+        netlist, steps = parse_analysis(file, analysys)
       elsif sch_type(@file) == 'xschem'
         Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
@@ -594,13 +524,13 @@ class NgspiceControl < LTspiceControl
             # -o: output directory
           wait_for File.basename(file), start, 'due to some error'
           sleep 1 # weird but file is not available w/o sleep 1
-          netlist, steps = parse(file, analysis, '^ *\.step')
+          netlist, steps = parse_analysis(file, analysis, '^ *\.step')
           #$stderr.puts "after parsing steps\n#{netlist}"
           $stderr.puts "after parsing, steps ='#{steps}'"
         }
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
-      netlist, steps = parse(@file, analysis, '^ *\.step')
+      netlist, steps = parse_analysis(@file, analysis, '^ *\.step')
     end
     $stderr.puts "netlist = #{netlist}"
     $stderr.puts "analysis = #{analysis}"
@@ -636,6 +566,7 @@ class NgspiceControl < LTspiceControl
       }
       @@step_results[@file] = [[], []]
       node_list = variables[0] ? variables[0][:probes] : nil
+      #debugger
       $stderr.puts "steps = #{steps.inspect}"
       if steps[0] == nil || node_list == nil || node_list == []
         simulate_core analysis
@@ -837,6 +768,7 @@ class NgspiceControl < LTspiceControl
         equation.gsub! v, "values[#{index + 1}]"
       end
     }
+    puts "equation = '#{equation}'"
     @result = Ngspice.get_result variables[1..-1]
     # $stderr.puts @result
     indices = []
