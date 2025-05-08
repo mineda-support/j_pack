@@ -308,7 +308,7 @@ EOF
   def wait_for file, start, error_message=nil
     count = 0
     puts "file=#{file}, start=#{start}"
-    until File.exist?(file) && (File.mtime(file) >= start) do
+    until !File.exist?(file) || (File.mtime(file) >= start) do
       $stderr.puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
       # puts "count=#{count}"
       if count == 20
@@ -380,6 +380,74 @@ EOF
     nil
   end
 
+  def parse_analysis file, analysis, comment_step=nil
+    netlist = ''
+    steps = []
+    home = (ENV['HOMEPATH'] || ENV['HOME'])
+    $stderr.puts "file = #{file}"
+    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
+      l.chomp!
+      l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
+      $stderr.puts l
+      if l =~ /^ *\.*ac +(.*)/
+        analysis[:ac] = $1
+      elsif l =~ /^ *\.*tran +(.*)/
+        analysis[:tran] = $1
+      elsif l =~ /^ *\.*dc +(.*)/
+        analysis[:dc] = $1
+      elsif comment_step && l =~ /#{comment_step}/
+        steps = step2params(l)
+        netlist << '*' + l + "\n"
+        $stderr.puts "commented: #{l}"
+      else
+        netlist << l + "\n"
+      end
+    }
+    [netlist, steps]
+  end
+
+  def step2params net
+    return nil if net.nil?
+    # .step oct param srhr4k  0.8 1.2 3
+    # steps['srhr4k'] = {'type' => 'param', 'step' => 'oct', 'values' => [0.8, 1.2, 3]}
+    # .step v1 1 3.4 0.5
+    # steps['v1'] = {'type' => nil||'src', 'step' => nil||'linear', 'values'..}
+    # .step NPN 2N2222(VAF)
+    # steps['2N2222_VAF'] = {'type'=>'model', 'step'=>nil, ...}
+    steps = []
+    net.each_line{|line|
+      next unless line =~ /^ *\.step +(.*)$/
+      args = $1.split
+      step = args.shift
+      unless step =~ /lin|oct|dec/
+        args.unshift step
+        step = 'lin'
+      end
+      name = args.shift
+      type = nil
+      if name == 'param'
+        type = 'param'
+        name = args.shift
+      else
+        model = args.shift
+        if model  =~ /\S+\((\S+)\)/
+          type = 'model'
+          name = name + '_' + $1+'_'+$2
+        else
+          args.unshift model
+          type = 'src'
+        end
+      end
+      values = args
+      if values[0] == 'list'
+        step = 'list'
+        values.shift # values = ["list", "0.3u", "1u", "3u", "10u"]
+      end
+      steps << {'name' =>name, 'type'=>type, 'step'=>step, 'values'=>values}
+    }
+    steps.reverse
+  end
+
   def simulate *variables
     simulate0 variables
   end
@@ -423,7 +491,7 @@ EOF
       run '-netlist', ascfile.sub('.asc', '.tmp') # creates #{file} = xxx.net
       wait_for(file, start, 'due to some error')
     }
-    # netlist, steps = parse(file, analysis)
+    netlist, steps = parse_analysis(file, analysis)
     # puts "steps in #{file}= #{steps}"
     puts "analysis directives in netlist: #{analysis.inspect}" unless analysis.empty?
     extra_commands = ''
