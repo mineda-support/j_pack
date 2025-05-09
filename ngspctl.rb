@@ -801,13 +801,13 @@ class NgspiceControl < LTspiceControl
       elsif old_value.nil? || (trend > 0 && values[0] < old_value) || (trend < 0 && values[0] > old_value)
           count = traces.size
         (variables.size-1).times{|i|
-          traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
+          traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1] ? vars[i+1].gsub('"', '') : 'null'}
         }
         trend = 0
         old_value = nil
       end
       indices[1..node_list.length-1].each_with_index{|j, i|
-        if variables[0] == 'frequency' 
+        if node_list[0] == 'frequency' 
           if i % 2 == 0
             if index == 0
               traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
@@ -926,20 +926,25 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'KLayout/salt/IP62/Samples/test_devices/Xschem/pmos.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
-  file = 'c:/tmp/VTH_VBG1.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  #file = 'c:/tmp/VTH_VBG1.sch'
 
   #ckt = NgspiceControl.new file, true, true # test recursive
   ckt = NgspiceControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
-  ckt.set({:VD=>"0.05"})
+  ##ckt.set({:VD=>"0.05"})
   puts ckt.models.inspect
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
-  ckt.simulate probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)'] # probes are necessary for step anaysis
-  r = ckt.get_traces 'v-sweep', 'I(vmeas)'
-  r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
+    
+  #ckt.simulate probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)'] # probes are necessary for step anaysis
+  #r = ckt.get_traces 'v-sweep', 'I(vmeas)'
+  #r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
+  
+  ckt.simulate
+  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))')
   #ckt = NgspiceControl.new file, true, true # test recursive
 
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
