@@ -997,9 +997,13 @@ EOF
     end
     @traces = []
     trace_x = Array_with_interpolation.new 
-    x_data[0..x_data.length/num_cases-1].each{|x|
-      trace_x << x
-    }
+    if node_list[0] == 'frequency'
+        trace_x = x_data
+    else
+      x_data[0..x_data.length/num_cases-1].each{|x|
+        trace_x << x
+      }
+  end
     num_cases.times{|i|
       if node_list[0] == 'time' && i >= 1
         x_data = @ltspice.getTime(i)
@@ -1024,7 +1028,7 @@ EOF
           trace[:x] = trace_x
         else
           trace[:x] = Array_with_interpolation.new
-          x_data[0..x_data.length/num_cases-1].each_with_index{|v, j|
+          trace_x.each_with_index{|v, j|
             val = eval(equations[0]) # equations[k] = equation using 'values[i, j]'
             trace[:x] << val
           }
@@ -1247,14 +1251,16 @@ if $0 == __FILE__
   #file = File.join ENV['HOMEPATH'], 'Seafile/LSI開発/PTS06_2023_8/OpAmp8_18/op8_18_tb.asc'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Idvd_nch_pch.asc'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/LTspice/test_multiplicity.asc'
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/test_MPO_3.asc'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/test_MPO_3.asc'
   
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/SpiceModeling/高橋誓さん/test/VTH_VBG1.asc'
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/op8_18_tb_direct_ac.asc'
   ckt = LTspiceControl.new file, true # test recursive
   puts ckt.elements.inspect
   puts ckt.models.inspect
+  ckt.simulate
   #ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)']
   #r = ckt.get_traces  'VG', 'Id(M1)'
-  r = ckt.get_traces  '-v2', '-Id(m0:M1)'  
+  r = ckt.get_traces  'frequency', '(out)'  
   puts 'finished'
 end
