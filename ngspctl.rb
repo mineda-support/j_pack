@@ -378,12 +378,13 @@ class NgspiceControl < LTspiceControl
     end
     result = pairs.map{|sym, val|
       name = sym.to_s
-      #debugger if name == 'C3'
+      # debugger if name == 'VD'
       value = val.to_s
       # puts "set #{name}: #{value}"
       if elements[name] && elements[name].class == Hash
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
+        puts "line: #{line}"
         if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
            line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
@@ -473,6 +474,75 @@ class NgspiceControl < LTspiceControl
     puts result
   end
 
+  def parse file, analysis, comment_step=nil
+    netlist = ''
+    steps = []
+    home = (ENV['HOMEPATH'] || ENV['HOME'])
+    $stderr.puts "file = #{file}"
+    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
+      l.chomp!
+      l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
+      $stderr.puts l
+      if l =~ /^ *\.*ac +(.*)/
+        analysis[:ac] = $1
+      elsif l =~ /^ *\.*tran +(.*)/
+        analysis[:tran] = $1
+      elsif l =~ /^ *\.*dc +(.*)/
+        analysis[:dc] = $1
+      elsif comment_step && l =~ /#{comment_step}/
+        steps = step2params(l)
+        netlist << '*' + l + "\n"
+        $stderr.puts "commented: #{l}"
+      else
+        netlist << l + "\n"
+      end
+    }
+    [netlist, steps]
+  end
+  private :parse
+
+  def step2params net
+    return nil if net.nil?
+    # .step oct param srhr4k  0.8 1.2 3
+    # steps['srhr4k'] = {'type' => 'param', 'step' => 'oct', 'values' => [0.8, 1.2, 3]}
+    # .step v1 1 3.4 0.5
+    # steps['v1'] = {'type' => nil||'src', 'step' => nil||'linear', 'values'..}
+    # .step NPN 2N2222(VAF)
+    # steps['2N2222_VAF'] = {'type'=>'model', 'step'=>nil, ...}
+    steps = []
+    net.each_line{|line|
+      next unless line =~ /^ *\.step +(.*)$/
+      args = $1.split
+      step = args.shift
+      unless step =~ /lin|oct|dec/
+        args.unshift step
+        step = 'lin'
+      end
+      name = args.shift
+      type = nil
+      if name == 'param'
+        type = 'param'
+        name = args.shift
+      else
+        model = args.shift
+        if model  =~ /\S+\((\S+)\)/
+          type = 'model'
+          name = name + '_' + $1+'_'+$2
+        else
+          args.unshift model
+          type = 'src'
+        end
+      end
+      values = args
+      if values[0] == 'list'
+        step = 'list'
+        values.shift # values = ["list", "0.3u", "1u", "3u", "10u"]
+      end
+      steps << {'name' =>name, 'type'=>type, 'step'=>step, 'values'=>values}
+    }
+    steps.reverse
+  end
+  
   def simulate0 variables
     # system "unix2dos #{@file}" if on_WSL?() # NgspiceXVII saves asc file in LF, but -netlist option needs CRLF!
     file = nil
@@ -506,7 +576,7 @@ class NgspiceControl < LTspiceControl
         if File.mtime(@file) > File.mtime(file)
           raise "Error: #{@file} is newer than #{file} -- please open #{@file}, create netlist and save in #{file}" 
         end
-        netlist, steps = parse_analysis(file, analysys)
+        netlist, steps = super.parse(file, analysys)
       elsif sch_type(@file) == 'xschem'
         Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
@@ -524,13 +594,13 @@ class NgspiceControl < LTspiceControl
             # -o: output directory
           wait_for File.basename(file), start, 'due to some error'
           sleep 1 # weird but file is not available w/o sleep 1
-          netlist, steps = parse_analysis(file, analysis, '^ *\.step')
+          netlist, steps = parse(file, analysis, '^ *\.step')
           #$stderr.puts "after parsing steps\n#{netlist}"
           $stderr.puts "after parsing, steps ='#{steps}'"
         }
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
-      netlist, steps = parse_analysis(@file, analysis, '^ *\.step')
+      netlist, steps = parse(@file, analysis, '^ *\.step')
     end
     $stderr.puts "netlist = #{netlist}"
     $stderr.puts "analysis = #{analysis}"
@@ -566,7 +636,6 @@ class NgspiceControl < LTspiceControl
       }
       @@step_results[@file] = [[], []]
       node_list = variables[0] ? variables[0][:probes] : nil
-      #debugger
       $stderr.puts "steps = #{steps.inspect}"
       if steps[0] == nil || node_list == nil || node_list == []
         simulate_core analysis
@@ -704,9 +773,10 @@ class NgspiceControl < LTspiceControl
   end
   private :translate
   
-  def node_list_to_variables node_list
+  def node_list_to_variables node_list, get_active_traces
     variables = [node_list[0]]
     node_list[1..-1].each{|a|
+      a.strip!
       if a =~ /#{pattern='[vV]*\(([^\)\("]*)\)'}/
         a.gsub(/#{pattern}/){"\"#{translate $1}\""}
       elsif (a=~ /#{pattern='\("([^()]+)"\)'}/) || (a=~ /#{pattern='\(([^()]+)\)'}/)
@@ -718,7 +788,7 @@ class NgspiceControl < LTspiceControl
       else
         "\"#{translate a}\""
       end
-      if variables[0] == 'frequency'
+      if variables[0] == 'frequency' && get_active_traces
         variables << "real(#{a})"
         variables << "imag(#{a})"
       else
@@ -730,17 +800,66 @@ class NgspiceControl < LTspiceControl
   private :node_list_to_variables
 
   def get_traces *node_list
+    return [[], []] if node_list.size == 0
     if @@step_results[@file] && @@step_results[@file][0].size > 0
       @@step_results[@file]
     else
-      get_active_traces *node_list
+      if node_list[0] == 'frequency'
+        get_AC_traces *node_list
+      else
+        get_active_traces *node_list
+      end
     end
   end
 
+  def get_AC_traces *node_list
+    info_a = info()
+    vars = info_a[1..-1].map{|eq|
+      if eq =~ /(.+)#branch/
+        "i(#{$1})"
+      else
+        "v(#{eq})"
+      end
+    }.unshift(info_a[0])
+    $stderr.puts "vars=#{vars}"
+    equations = node_list_to_variables(node_list, false).map{|a| a.downcase}
+    $stderr.puts "equations=#{equations} @ get_AC_traces"  # ['frequency', 'v(out) /(v(net3)-V(net1))']
+    equations_joined = equations.join(',')
+    variables = vars.select{|v| equations_joined.include? v} # ['frequency', 'v(out)', 'v(net3)', 'v(net1)']
+    $stderr.puts "variables=#{variables}"
+    equations.each{|eq|
+      variables[1..-1].each_with_index{|v, i|
+        val = v.sub(/\(/, '\(').sub(/\)/, '\)')
+        if eq =~ /[\*\+-\/\(]*#{val}[\*\+-\/\)]*/ 
+          eq.gsub! v, "Complex(v_values[#{2*i+1}][j], v_values[#{2*i+2}][j])" 
+        end
+      } #['frequency', 'Complex(values[0], values[1]) /(Complex(values[2], values[3])-Complex(values[4], values[5]))']
+    }
+    $stderr.puts "eval equations=#{equations}"
+    # @result = Ngspice.get_result variables[1..-1].map{|a| ["real(#{a})", "imag(#{a})"]}.flatten
+    v_values = []
+    variables[1..-1].each{|a|
+      result = Ngspice.get_result ["real(#{a})", "imag(#{a})"] # suprisingly get_result works for only one complex signal
+      h_values = []
+      result.map{|h| h.values}.each{|values| # h is hash, so h.keys and h.values
+        h_values << values[1..-1].map{|v| v.to_f}
+      }
+      v_values.concat ((v_values == [])? h_values.transpose[0..2] : h_values.transpose[1..2])
+    }
+    traces = []
+    equations[1..-1].each_with_index{|eq, i|
+      traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, 
+                 name: eq}
+      traces[i][:x] = v_values[0]
+      traces[i][:y] = []
+      for j in 0..v_values[0].length-1
+        traces[i][:y][j] = eval(eq)
+      end
+    }
+    [variables, traces]
+  end
+
   def get_active_traces *node_list
-    # node_list_to_get_result = Marshal.load(Marshal.dump node_list)
-    # $stderr.puts "node_list='#{node_list}' @ get_active_traces"
-    return [[], []] if node_list.size == 0
     info_a = info()
     vars = info_a[1..-1].map{|eq|
       if eq =~ /(.+)#branch/
@@ -768,7 +887,6 @@ class NgspiceControl < LTspiceControl
         equation.gsub! v, "values[#{index + 1}]"
       end
     }
-    puts "equation = '#{equation}'"
     @result = Ngspice.get_result variables[1..-1]
     # $stderr.puts @result
     indices = []
@@ -801,13 +919,14 @@ class NgspiceControl < LTspiceControl
       elsif old_value.nil? || (trend > 0 && values[0] < old_value) || (trend < 0 && values[0] > old_value)
           count = traces.size
         (variables.size-1).times{|i|
-          traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1] ? vars[i+1].gsub('"', '') : 'null'}
+          traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, 
+                     name: vars[i+1]? vars[i+1].gsub('"', '') : "#{i+1}"}
         }
         trend = 0
         old_value = nil
       end
       indices[1..node_list.length-1].each_with_index{|j, i|
-        if node_list[0] == 'frequency' 
+        if variables[0] == 'frequency' 
           if i % 2 == 0
             if index == 0
               traces << {x: Array_with_interpolation.new, y: Array_with_interpolation.new, name: vars[i+1].gsub('"', '')}
@@ -917,7 +1036,7 @@ class NgspiceControl < LTspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
-  #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
@@ -926,28 +1045,23 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'KLayout/salt/IP62/Samples/test_devices/Xschem/pmos.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
   #file = 'c:/tmp/VTH_VBG1.sch'
 
   #ckt = NgspiceControl.new file, true, true # test recursive
   ckt = NgspiceControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
-  ##ckt.set({:VD=>"0.05"})
+  #ckt.set({:VD=>"0.05"})
   puts ckt.models.inspect
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
-    
-  #ckt.simulate probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)'] # probes are necessary for step anaysis
+  ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)'] # probes are necessary for step anaysis
   #r = ckt.get_traces 'v-sweep', 'I(vmeas)'
   #r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
-  
-  ckt.simulate
-  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))')
   #ckt = NgspiceControl.new file, true, true # test recursive
-
-  #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
+  r = ckt.get_traces('frequency', 'V(out)') 
+  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-sweep', 'i(Vds)')
   #r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
   puts 'sim end'
