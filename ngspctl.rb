@@ -647,6 +647,7 @@ class NgspiceControl < LTspiceControl
           start.step(by: step, to: stop){|v|
             step_values << v
           }
+          step_values << stop unless step_values[-1]==stop
         when 'list'
           step_values = steps[0]['values'].map{|v| eng2number(v)}
         end
@@ -665,7 +666,11 @@ class NgspiceControl < LTspiceControl
               Ngspice.command 'listing param'
             end
             simulate_core analysis
-            r = get_active_traces *node_list
+            if node_list[0] == 'frequency'
+              r = get_AC_traces *node_list
+            else
+              r = get_active_traces *node_list
+            end
             $stderr.puts "node_list = #{node_list}"
             # $stderr.puts "r=#{r.inspect}"
             r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
@@ -773,7 +778,7 @@ class NgspiceControl < LTspiceControl
   end
   private :translate
   
-  def node_list_to_variables node_list, get_active_traces
+  def node_list_to_variables node_list, get_active_traces=true
     variables = [node_list[0]]
     node_list[1..-1].each{|a|
       a.strip!
@@ -1056,7 +1061,7 @@ if $0 == __FILE__
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
-  ckt.simulate # probes: ['v-sweep', 'i(vmeas)', 'i(vmeas1)'] # probes are necessary for step anaysis
+  ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))'] # probes are necessary for step anaysis
   #r = ckt.get_traces 'v-sweep', 'I(vmeas)'
   #r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
   #ckt = NgspiceControl.new file, true, true # test recursive
