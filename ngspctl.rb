@@ -385,7 +385,7 @@ class NgspiceControl < LTspiceControl
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
         puts "line: #{line}"
-        if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
+      if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(.+)(})/ || # for xschem
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
            line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
            line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
@@ -413,10 +413,12 @@ class NgspiceControl < LTspiceControl
         if elm && lineno = elm[:lineno]
           line = lines[lineno-1]
           # puts line
-          if line =~ /(^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.)(\S+)( .*)\")/ || # for xschem
-             line =~ /(^ *)([\.;]#{name}.*)$/ # for eeschema and netlist 
-            substr = $2
+          if line =~ /(^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ .*)(\")/  # for xschem
             line.sub! line, "#{$1}#{value}#{$3}"
+            elm[:control] = value
+            true
+          elsif line =~ /(^ *)([\.;]#{name}.*)$/ # for eeschema and netlist 
+            line.sub! line, value
             elm[:control] = value
             true
           else
@@ -1051,12 +1053,14 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
   #file = 'c:/tmp/VTH_VBG1.sch'
+  file = 'C:/Users/mined/Seafile/ICPS2025_1/Nishikawa/slewrate.sch'
 
   #ckt = NgspiceControl.new file, true, true # test recursive
   ckt = NgspiceControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
   #ckt.set({:VD=>"0.05"})
-  puts ckt.models.inspect
+  #puts ckt.models.inspect
+  ckt.set :s1=>"value=\".step param ccap 10p 13p 1p\""
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
