@@ -131,21 +131,28 @@ class Edif_out
 Version 4
 SymbolType CELL
 EOF
-              c.view.interface.symbol.figures.each{|edif_figure|
-                edif_figure.figures.each{|fig|
-                  case fig[0]
-                  when :path, :polygon
-                    #f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
-                    fig[1..-2].each_index{|i|
-                      f.puts "LINE Normal #{q2c(fig[i+1][0])} #{q2c(fig[i+1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}"
-                      f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}" if fig[0] == :polygon
-                    }
-                  when :circle
-                    f.puts "CIRCLE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
-                  when :arc  ### arc implementation needs to be corrected!!!
-                    f.puts "ARC Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])} #{q2c(fig[3][0])} #{q2c(fig[3][1])} #{q2c(fig[3][0])} #{q2c(fig[3][1])}"
-                  end
-                }
+              c.view.interface.symbol.figures.each{|fig|
+                next if fig.nil?
+                case fig[0]
+                when :path, :polygon
+                  #f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
+                  fig[1..-2].each_index{|i|
+                    f.puts "LINE Normal #{q2c(fig[i+1][0])} #{q2c(fig[i+1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}"
+                    f.puts "LINE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[i+2][0])} #{q2c(fig[i+2][1])}" if fig[0] == :polygon
+                  }
+                when :rectangle
+                  f.puts "RECTANGLE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
+                when :circle
+                  f.puts "CIRCLE Normal #{q2c(fig[1][0])} #{q2c(fig[1][1])} #{q2c(fig[2][0])} #{q2c(fig[2][1])}"
+                when :arc
+                  left_x = fig[1][0]
+                  left_y = fig[1][1]
+                  center_x = fig[2][0]
+                  center_y = fig[2][1]
+                  right_x = left_x + (center_x - left_x)*2
+                  right_y = left_y + (center_y - left_y)*2
+                  f.puts "ARC Normal #{q2c(left_x)} #{q2c(left_y)} #{q2c(right_x)} #{q2c(right_y)} #{q2c(fig[3][0])} #{q2c(fig[3][1])} #{q2c(fig[3][0])} #{q2c(fig[3][1])}"
+                end
               }
               c.view.interface.properties.each{|prop|
                 if prop[0] == :instNamePrefix
@@ -362,11 +369,33 @@ class EdifSymbol
     @pins = []
     @properties = {}
     s.edif_get_all(:figure).each{|c|
-      @figures << EdifFigure.new(c)
+      @figures << add_edif_figure(c[2])
     }
     s.edif_get_all(:portImplementation).each{|c|
       @pins << EdifPin.new(c)
+      @figures << add_edif_figure(c.edif_get(:figure)[2])
     }
+  end
+
+  def add_edif_figure f
+    case f[0]
+    when :circle
+      [:circle, pt(f[1]), pt(f[2])]
+    when :rectangle
+      [:rectangle, pt(f[1]), pt(f[2])]
+    when :path, :polygon
+      if f[1][0] == :pointList
+        [f[0], *f[1][1..-1].map{|a| pt a}]
+      end
+    when :shape, :openshape
+      if f[1][1][0] == :arc
+        g = f[1][1]
+        [:arc, pt(g[1]), pt(g[2]), pt(g[3])]
+      end
+    end
+  end
+  def pt s
+    [s[1], -s[2]]
   end
 end
 class EdifPin
@@ -395,30 +424,6 @@ class EdifPin
   def initialize s # s:(portImplementation D (connectLocaion ...))
     @name = s.edif_property(:pin_name) || s[1]
     @xy = pt(s.edif_value(:dot))
-  end
-  def pt s
-    [s[1], -s[2]]
-  end
-end
-class EdifFigure
-  attr_accessor :figures
-  def initialize s
-    @figures = []
-    s[2..-1].each{|f|
-      case f[0]
-      when :circle
-        @figures << [:circle, pt(f[1]), pt(f[2])]
-      when :path, :polygon
-        if f[1][0] == :pointList
-          @figures << [f[0], *f[1][1..-1].map{|a| pt a}]
-        end
-      when :shape
-        if f[1][1][0] == :arc
-          g = f[1][1]
-          @figures << [:arc, pt(g[1]), pt(g[2]), pt(g[3])]
-        end
-      end
-    }
   end
   def pt s
     [s[1], -s[2]]
@@ -616,7 +621,8 @@ puts Dir.pwd
 if $0 == __FILE__
   #file = './j_pack/AMP_01_00_edif.out'
   #file = "./j_pack/a_462_G_Anagix.edif"
-  file = "C:/Users/seiji/Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/edif_MNO.edif"
+  #file = "C:/Users/seiji/Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/edif_MNO.edif"
+  file = 'c:/Users/mined/work/Huawei/huawei.edif'
   require 'sxp'
   require 'debug'
   desc = SXP.read(File.read(file).encode('UTF-8'))
