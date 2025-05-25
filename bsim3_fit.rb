@@ -1,4 +1,4 @@
-['alta2', 'j_pack','j_pack/ade_express'].each{|f| a_path = File.join(ENV['HOMEPATH'], f)
+['alta2', 'j_pack','j_pack/ade_express'].each{|f| a_path = File.join(ENV['HOMEPATH']||ENV['HOME'], f)
   $:.unshift a_path if File.exist?(a_path) && !$:.include?(a_path)
 }
 $:.unshift '.' if File.exist?(".") && !$:.include?('.')

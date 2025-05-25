@@ -22,8 +22,9 @@ module Invoker
     dlls = [ENV['NGSPICE_DLL'], "c:/Program Files/KiCad/7.0/bin/ngspice.dll", 
     "c:/Program Files/KiCad/8.0/bin/ngspice.dll", "c:/Program Files/KiCad/9.0/bin/ngspice.dll"]
   else
-    dlls = [ENV['NGSPICE_DLL'], '/home/anagix/ngspice/lib/libngspice.so']
+    dlls = [ENV['NGSPICE_DLL'], '/home/anagix/ngspice/lib/libngspice.so', '/usr/local/lib/libngspice.so']
   end
+  #puts "dlls: #{dlls.inspect}"
   dll_loaded = false
   dlls.each{|d|
     if d && File.exist?(d) 
