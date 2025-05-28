@@ -296,11 +296,11 @@ class EdifView
   attr_accessor :name, :viewType, :interface, :contents
   def initialize s
     @name, @viewType, interface, contents = s[1..-1]
-    #    puts "View name = #{@name}"
-    if @name == :symbol
+    #    puts "View n @name == :symbolame = #{@name}"
+    if @name.to_s =~ /symbol/
       @interface = EdifSymbolInterface.new interface
       @contents = EdifContents.new contents if contents
-    elsif @name == :schematic
+    elsif @name.to_s =~ /schematic/
       @interface = EdifSchematicInterface.new interface
       @contents = EdifContents.new contents if contents
     end
@@ -357,9 +357,10 @@ class EdifSymbol
   attr_accessor :boundingBox, :commentGraphics, :figures, :properties
   attr_accessor :pins
   def initialize s
-    bb =  EdifBoundingBox.new s.edif_get(:boundingBox)
+    if s.edif_get(:boundingBox) && bb = EdifBoundingBox.new(s.edif_get(:boundingBox))
     # puts "bb=#{bb} for s.edif_get(:boundingBox) = #{s.edif_get(:boundingBox)}"
-    @boundingBox = bb.rectangle
+      @boundingBox = bb.rectangle
+    end
     @commentGraphics = []
     s.edif_get_all(:commentGraphics).each{|cg|
       @commentGraphics << EdifCommentGraphics.new(cg)
@@ -373,7 +374,9 @@ class EdifSymbol
     }
     s.edif_get_all(:portImplementation).each{|c|
       @pins << EdifPin.new(c)
-      @figures << add_edif_figure(c.edif_get(:figure)[2])
+      if figure = c.edif_get(:figure)
+        @figures << add_edif_figure(figure[2])
+      end
     }
   end
 
