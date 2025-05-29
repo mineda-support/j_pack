@@ -60,7 +60,7 @@ class Array
     end
   end
 end
-class Edif_out
+class Edif_in
   attr_accessor :edifVersion, :edifLevel, :keywordMap, :status, :libraries , :comment
   def initialize s, resistor_with_bulk=false
     @resistor_with_bulk = resistor_with_bulk
@@ -220,6 +220,8 @@ EOF
               case i.orientation
               when :R90
                 orient = "R270"
+              when :R180
+                orient = "R180"
               when :R270
                 orient = "R90"
               when :MY
@@ -237,13 +239,13 @@ EOF
               f.puts "SYMBOL #{symbol_name} #{q2c(i.origin[0])} #{q2c(i.origin[1])} #{orient}" if i.origin
               f.puts "SYMATTR InstName #{ignore_figureGruopOverride i.name}"
               prefix=i.name.to_s[0].downcase
-              if prefix == 'm' || ($resistor_with_bulk && prefix == 'r')
+              if prefix == 'm' || ($resistor_with_bulk && prefix == 'r') || prefix == 'v'
                 f.print "SYMATTR Value2"
                 i.properties.each_pair{|k, v|
                   f.print " #{k}=#{v}"
                 }
                 f.puts
-              elsif prefix == 'c' || prefix == 'r'
+              elsif prefix == 'c' || prefix == 'r' || prefix == 'v'
                 i.properties.each_pair{|k, v|
                   if k.to_s.downcase == prefix
                     f.puts "SYMATTR Value #{v}"
@@ -625,11 +627,11 @@ if $0 == __FILE__
   #file = './j_pack/AMP_01_00_edif.out'
   #file = "./j_pack/a_462_G_Anagix.edif"
   #file = "C:/Users/seiji/Seafile/PDK開発/東海理化/work/斎藤さんのNGspice検証/edif_MNO.edif"
-  file = 'c:/Users/mined/work/Huawei/huawei.edif'
+  file = 'c:/Users/seiji/Seafile/LSI_devel/Huawei/sim_PLLFBCFIR_TOP.edif'
   require 'sxp'
   require 'debug'
   desc = SXP.read(File.read(file).encode('UTF-8'))
   $resistor_with_bulk = true
-  e = Edif_out.new desc
+  e = Edif_in.new desc
   e.edif2cdraw
 end
