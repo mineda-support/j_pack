@@ -1512,6 +1512,7 @@ EOS
         if text =~ /^!\./
           attributes="name=s#{index} value=\"#{text[1..-1]}\""
           attributes.sub! '.lib', '.include' # .lib is not supported in ngspice
+          attributes.sub! '%HOMEPATH%', "$HOMEPATH\\"
           f.puts "C {netlist.sym} #{x} #{y} 0 0 {#{attributes}}\n"
         else
           f.puts "Text {#{text}} #{q2x(x)} #{q2x(y)} 0 0 0.4 0.4 {}"
@@ -1526,7 +1527,7 @@ EOS
         if c[:name].start_with? '.'
           case c[:name]
           when '.include', '.lib'
-            attributes << "only_toplevel=false value=\".include #{c[:path]}\"\n"
+            attributes << "only_toplevel=false value=\".include #{c[:path].sub '%HOMEPATH%', "$HOMEPATH\\"}\"\n"
           when '.tran'
             tstep = c[:tstep] || eng2number(c[:tstop])/100.0
             attributes << "only_toplevel=false value=\".tran #{tstep} #{c[:tstop]}\"\n"
@@ -1537,9 +1538,12 @@ EOS
         elsif c[:name] == 'voltage'
           # attributes << " lab=#{c[:name]}"
           if value = c[:symattr]['Value'] || c[:symattr]['Value2']
-            if value.include? 'type=sine'
-              attributes << " value=\"#{get_sine(value)}\""
+            if value.include?('type=sine') || value.include?('type=pulse') || value.include?('type=pwl')  
+              attributes << " value=\"#{get_sine(value)} #{c[:symattr]['Value2']}\""     
+            elsif value.downcase.include?('sine') || value.downcase.include?('pulse') || value.downcase.include?('pwl')            
+              attributes << " value=\"#{value} #{c[:symattr]['Value2']}\""
             else
+
               attributes << " value=#{wrap_with_quote(value)}"
             end
           end
@@ -2254,10 +2258,12 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
   }
 end
 if $0 == __FILE__
+  puts Dir.pwd
+  load '../j_pack/j_pack.rb'
+=begin
   require '/home/anagix/work/alb2/lib/xschem'
   require '/home/anagix/work/alb2/lib/eeschema'
   require '/home/anagix/work/alb2/lib/lib_util'
-=begin
   cdraw2target 'eeschema', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/cdraw', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema'
   cdraw2target 'xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/cdraw', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem'
   ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/qucs'
@@ -2265,7 +2271,13 @@ if $0 == __FILE__
 
   cdraw2target 'xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/cdraw', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem'
 =end
-  cdraw2target 'xschem', '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw', '/tmp/xschem'
-  cdraw2target 'eeschema', '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw', '/tmp/eeschema'
-  cdraw2target 'qucs', '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw', '/tmp/qucs'
+  #asc_dir = '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw'
+  asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
+  Dir.chdir(asc_dir){
+    create_cdraw()
+  }
+  asc_dir = File.join(asc_dir, 'cdraw')
+  cdraw2target 'xschem', asc_dir, '/tmp/xschem'
+  cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
+  cdraw2target 'qucs', asc_dir, '/tmp/qucs'
 end
