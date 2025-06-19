@@ -234,7 +234,8 @@ class NgspiceControl < LTspiceControl
         name = $2
         elements[name] ||= []
         elements[name] <<  {control: $1, lineno: lineno}
-      elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=(\S+)}/
+      elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=(\S+)}/ ||
+           l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=\"([^"]*)/
         type = $1
         name = $2
         value = $3
@@ -369,7 +370,7 @@ class NgspiceControl < LTspiceControl
 
   def set0 pairs, file, elements, mtime
     read file if File.mtime(file) > mtime
-    # puts "set0 '#{pairs}' in '#{file}' with elements:#{elements}"  
+    puts "set0 '#{pairs}' in '#{file}' with elements:#{elements}"  
     lines = File.read(file)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
@@ -385,7 +386,7 @@ class NgspiceControl < LTspiceControl
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
         puts "line: #{line}"
-      if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(.+)(})/ || # for xschem
+      if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=\")(.+)(\"})/ || # for xschem
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
            line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
            line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
@@ -690,11 +691,24 @@ class NgspiceControl < LTspiceControl
 
   def simulate_core analysis
     if analysis.empty?
-      Ngspice.command('run')
+      error_messages = ''
+      with_stringio(){
+        Ngspice.command('run')
+      }.each_line{|l|
+        $stderr.puts "l: #{l}"
+        error_messages << l if l =~ /Error/
+      }
+      raise error_messages if error_messages.length > 0
     else
       $stderr.puts "analysis = #{analysis.inspect}"
       analysis.each{|k, v|
-        Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
+        error_messages = ''
+        with_stringio(){
+          Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
+        }.each_line{|l|
+          error_messages << l if l =~ /Error/
+        }
+        raise error_messages if error_messages.length > 0
       }
     end  
     sleep 1
