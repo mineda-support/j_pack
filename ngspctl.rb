@@ -235,7 +235,7 @@ class NgspiceControl < LTspiceControl
         elements[name] ||= []
         elements[name] <<  {control: $1, lineno: lineno}
       elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=(\S+)}/ ||
-           l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=\"([^"]*)/
+            l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=\"(.*)\"}/
         type = $1
         name = $2
         value = $3
@@ -386,7 +386,8 @@ class NgspiceControl < LTspiceControl
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
         puts "line: #{line}"
-      if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=\")(.+)(\"})/ || # for xschem
+        if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
+           line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=\")(.*)(\"})/ ||
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
            line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
            line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
@@ -693,7 +694,7 @@ class NgspiceControl < LTspiceControl
     if analysis.empty?
       error_messages = ''
       with_stringio(){
-        Ngspice.command('run')
+      Ngspice.command('run')
       }.each_line{|l|
         $stderr.puts "l: #{l}"
         error_messages << l if l =~ /Error/
@@ -704,7 +705,7 @@ class NgspiceControl < LTspiceControl
       analysis.each{|k, v|
         error_messages = ''
         with_stringio(){
-          Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
+        Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
         }.each_line{|l|
           error_messages << l if l =~ /Error/
         }
@@ -730,11 +731,13 @@ class NgspiceControl < LTspiceControl
   end
 
   def info
+    puts '*** info entered ***'
     result = nil
-    with_stringio(){
-      Ngspice.command 'setscale'
-    } =~ /stdout *(\S+)/
-    scale_var = $1
+    #with_stringio(){
+    #  Ngspice.command 'setscale'
+    #} =~ /stdout *(\S+)/
+    #scale_var = $1
+    scale_var = 'frequency'
     puts "scale_var = '#{scale_var}' @info before calling Ngspice.info"
     with_stringio(){
       Ngspice.info
@@ -1067,14 +1070,12 @@ if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/TAMAGAWA/test/Idvd_MNO_MPO.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], '/Seafile/斎藤さんのNGspice検証/Xschem/test_MPO_3.sch'
   #file = 'c:/tmp/VTH_VBG1.sch'
-  file = 'C:/Users/mined/Seafile/ICPS2025_1/Nishikawa/slewrate.sch'
 
   #ckt = NgspiceControl.new file, true, true # test recursive
   ckt = NgspiceControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
   #ckt.set({:VD=>"0.05"})
-  #puts ckt.models.inspect
-  ckt.set :s1=>"value=\".step param ccap 10p 13p 1p\""
+  puts ckt.models.inspect
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
