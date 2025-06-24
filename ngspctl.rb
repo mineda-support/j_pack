@@ -77,6 +77,7 @@ class NgspiceControl < LTspiceControl
       when '.net', '.spice'
       when ''
       end
+      puts "command = #{command}"
       if /mswin32|mingw/ =~ RUBY_PLATFORM
         system 'start "dummy" ' + command # need a dummy title
       else
@@ -1023,7 +1024,7 @@ class NgspiceControl < LTspiceControl
       command = "\"" + xschem_path() + "\""
     elsif File.directory? '/mnt/c/Windows/SysWOW64/'
       command = xschem_path_WSL()
-    elsec
+    else
       command = "/usr/local/bin/xschem"
     end
     command
