@@ -946,7 +946,7 @@ EOF
     # x_data = PyCall.eval "l.getData('#{node_list[0]}')"
     
     # puts "var0='#{var0}'"
-    node_list[0].downcase!  # change node_list[0] downcase because variables[0] is forced downcase
+    ###node_list[0].downcase!  # change node_list[0] downcase because variables[0] is forced downcase ???
     if node_list[0] == 'frequency' 
       if ENV['USE_PYCALL']
         x_data = PyCall.eval("list(l.getFrequency())").to_a
@@ -1028,10 +1028,14 @@ EOF
           trace[:x] = trace_x
         else
           trace[:x] = Array_with_interpolation.new
-          trace_x.each_with_index{|v, j|
-            val = eval(equations[0]) # equations[k] = equation using 'values[i, j]'
-            trace[:x] << val
-          }
+          begin
+            trace_x.each_with_index{|v, j|
+              val = eval(equations[0]) # equations[k] = equation using 'values[i, j]'
+              trace[:x] << val
+            }
+          rescue => error
+            raise "#{error} at get_traces0"
+          end
         end
         puts "equations[#{k+1}] = '#{equations[k+1]}'"
 
