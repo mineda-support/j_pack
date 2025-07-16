@@ -313,7 +313,7 @@ EOF
       # puts "count=#{count}"
       if count == 20
         $stderr.puts "#{file} is not created #{error_message}" 
-        yield
+        yield file
         return
       end
       $stderr.puts "count: #{count} while waiting for '#{file}'"
@@ -519,9 +519,10 @@ EOF
       file2 = create_unused file 
       start = Time.now
       run '-b -Run', file2 # file is xxx.net
-      wait_for(raw_file, start, 'due to simulation error below'){
+      wait_for(raw_file, start, 'due to simulation error below'){ |file| 
         wait_for raw_file.sub('raw', 'log'), start
         puts sim_log(ascfile)
+        raise "#{file} is not created due to simulation error"
       }
       puts 'execute sim_log() to show simulation log'
     }
