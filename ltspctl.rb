@@ -460,9 +460,14 @@ EOF
     FileUtils.touch file unless File.exist? file
     models_update = nil
     variations = {}
+    home = (ENV['HOMEPATH'] || ENV['HOME'])
     Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
       ascfile = File.basename @file
       lines = File.open(ascfile, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace).split("\n")
+      lines.each{|l|
+        next unless l =~ /\.inc/
+        l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
+      }
       puts "variables=#{variables.inspect}"
       variables.each{|v|
         puts "v=#{v.inspect}"
