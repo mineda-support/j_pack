@@ -536,6 +536,7 @@ class NgspiceControl < LTspiceControl
         else
           args.unshift model
           type = 'src'
+          args.shift
         end
       end
       values = args
@@ -660,7 +661,7 @@ class NgspiceControl < LTspiceControl
         $stderr.puts "start step analysis with #{step_values.inspect}"
         logs = with_stringio(){
           step_values.each{|v|
-            if steps[0]['name'].start_with? '@'
+            if steps[0]['name'].start_with?('@') || steps[0]['type'] == 'src'
               $stderr.puts "**** alter #{steps[0]['name']}=#{v}"
               Ngspice.command "alter #{steps[0]['name']}=#{v}"
               # Ngspice.command 'reset'
