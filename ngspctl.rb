@@ -679,10 +679,11 @@ class NgspiceControl < LTspiceControl
             end
             $stderr.puts "node_list = #{node_list}"
             # $stderr.puts "r=#{r.inspect}"
-            r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
+            # r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
             @@step_results[@file][0] = r[0]
-            r[1].each{|s|
-              @@step_results[@file][1] << r[1][0]
+            r[1].each_with_index{|s, i|
+              @@step_results[@file][1] << s # r[1][0]
+              r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
             }
           }
         }
@@ -727,6 +728,7 @@ class NgspiceControl < LTspiceControl
     stdout_keep = $stdout
     $stdout = StringIO.new
     yield
+    # $stdout.flush ### flush does not seem to work
     result = $stdout.string
     $stdout = stdout_keep
     result.dup
