@@ -83,7 +83,16 @@ class Array_with_interpolation < Array
     where2 y, v, {ignore: ignore, return_value: return_value, rising: false, falling: true}, &block
   end
 
-  def where2 y, v, options, &block
+  def where2 y, hash, options, &block
+    puts "hash = #{hash.inspect}"
+    if hash.is_a?(Hash)
+      v = hash[:y] || hash[:v] || hash[:val] || hash[:value] 
+      rise = hash[:rise]
+      fall = hash[:fall]
+    else
+      v = hash
+    end
+    
     # find nearest index i where y[i] =~ v
     for i in 0..y.size-2
       if block_given?
