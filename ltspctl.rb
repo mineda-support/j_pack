@@ -8,11 +8,11 @@ if $0 == __FILE__
   $:.unshift File.dirname(__FILE__)
   $:.unshift File.join(File.dirname(__FILE__), './ade_express')
 end
-load 'alb_lib.rb'
-load 'spice_parser.rb'
-load 'ltspice.rb'
-load 'postprocess.rb'
-load 'compact_model.rb'
+require 'alb_lib'
+require 'spice_parser'
+require 'ltspice'
+require 'postprocess'
+require 'compact_model'
 #require 'byebug'
 require 'fileutils'
 
