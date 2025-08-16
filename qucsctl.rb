@@ -1,11 +1,11 @@
 # qucsctl v0.1 Copyright(C) Anagix Corporation
 $:.unshift '/home/anagix/work/alb2/lib'
 $:.unshift '/home/anagix/work/alb2/ade_express'
-load 'alb_lib.rb'
-load 'spice_parser.rb'
-load 'xyce.rb'
-load 'postprocess.rb'
-load 'compact_model.rb'
+require 'alb_lib'
+require 'spice_parser'
+require 'xyce'
+require 'postprocess'
+require 'compact_model'
 #require 'byebug'
 require 'fileutils'
 
