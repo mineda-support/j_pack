@@ -87,20 +87,35 @@ class Array_with_interpolation < Array
     puts "hash = #{hash.inspect}"
     if hash.is_a?(Hash)
       v = hash[:y] || hash[:v] || hash[:val] || hash[:value] 
-      rise = hash[:rise]
-      fall = hash[:fall]
     else
       v = hash
+      hash = {}
     end
-    
+    rise = hash[:rise]
+    fall = hash[:fall]
+    puts "rise = #{rise} fall = #{fall}"
+
     # find nearest index i where y[i] =~ v
     for i in 0..y.size-2
       if block_given?
         next unless yield self[i], y[i], self[i+1], y[i+1] 
       end
       if (y[i]-v)*(y[i+1]-v) <= 0
-        if (options[:rising] && y[i+1]-y[i] > 0) or (options[:falling] && y[i+1]-y[i] < 0)
-          return self[i] + ((self[i+1]-self[i])/(y[i+1]-y[i]))*(v-y[i])
+        result = self[i] + ((self[i+1]-self[i])/(y[i+1]-y[i]))*(v-y[i])
+        if rise 
+          if y[i+1] > y[i]
+            $stderr.puts "rise=#{rise}, x = #{self[i]}, y[i]=#{y[i]}"
+            rise = rise - 1
+            return result if rise == 0
+          end
+        elsif fall 
+          if y[i+1] < y[i]
+            $stderr.puts "fall=#{fall}, x = #{self[i]}, y[i]=#{y[i]}"
+            fall = fall - 1
+            return result if fall == 0
+          end
+        elsif (options[:rising] && y[i+1] > y[i]) or (options[:falling] && y[i+1] < y[i])
+          return result
         end
       end
     end
