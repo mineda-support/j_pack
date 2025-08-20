@@ -476,7 +476,7 @@ class NgspiceControl < LTspiceControl
     result = with_stringio{
       simulate0 variables
     }
-    puts result
+    puts 'simulate result:', result, '------'
   end
 
   def parse file, analysis, comment_step=nil
@@ -484,10 +484,11 @@ class NgspiceControl < LTspiceControl
     steps = []
     home = (ENV['HOMEPATH'] || ENV['HOME'])
     $stderr.puts "file = #{file}"
+    control = cont_return = nil
     File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
       l.chomp!
       l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
-      $stderr.puts l
+      $stderr.puts "l:#{l}"
       if l =~ /^ *\.*ac +(.*)/
         analysis[:ac] = $1
       elsif l =~ /^ *\.*tran +(.*)/
@@ -498,11 +499,20 @@ class NgspiceControl < LTspiceControl
         steps = step2params(l)
         netlist << '*' + l + "\n"
         $stderr.puts "commented: #{l}"
+      elsif l =~ /^ *\.endc/
+        cont_return = control.dup
+        control = nil
+      elsif control
+        if l.length > 0 && l =~ /meas|let|write/
+          control << l + "\n"
+        end
+      elsif l =~ /^ *\.control/
+        control = ''
       else
         netlist << l + "\n"
       end
     }
-    [netlist, steps]
+    [netlist, steps, cont_return]
   end
   private :parse
 
@@ -554,6 +564,7 @@ class NgspiceControl < LTspiceControl
     file = nil
     netlist = ''
     analysis = {}
+    control = nil
     steps = []
     $stderr.puts "@file = #{@file}"
     if @file =~ /\.asc/
@@ -600,13 +611,13 @@ class NgspiceControl < LTspiceControl
             # -o: output directory
           wait_for File.basename(file), start, 'due to some error'
           sleep 1 # weird but file is not available w/o sleep 1
-          netlist, steps = parse(file, analysis, '^ *\.step')
+          netlist, steps, control = parse(file, analysis, '^ *\.step')
           #$stderr.puts "after parsing steps\n#{netlist}"
-          $stderr.puts "after parsing, steps ='#{steps}'"
+          $stderr.puts "after parsing, steps ='#{steps}', control =", control, '---'
         }
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
-      netlist, steps = parse(@file, analysis, '^ *\.step')
+      netlist, steps, control = parse(@file, analysis, '^ *\.step')
     end
     $stderr.puts "netlist = #{netlist}"
     $stderr.puts "analysis = #{analysis}"
@@ -640,11 +651,11 @@ class NgspiceControl < LTspiceControl
           Ngspice.command "save #{v}"
         end
       }
-      @@step_results[@file] = [[], []]
+      @@step_results[@file] = [[], [], []]
       node_list = variables[0] ? variables[0][:probes] : nil
       $stderr.puts "steps = #{steps.inspect}"
       if steps[0] == nil || node_list == nil || node_list == []
-        simulate_core analysis
+        meas_result = simulate_core analysis, control
       else
         step_values = []
         case steps[0]['step']
@@ -671,7 +682,7 @@ class NgspiceControl < LTspiceControl
               Ngspice.command 'reset'              
               Ngspice.command 'listing param'
             end
-            simulate_core analysis
+            meas_result = simulate_core analysis, control
             if node_list[0] == 'frequency'
               r = get_AC_traces *node_list
             else
@@ -685,6 +696,7 @@ class NgspiceControl < LTspiceControl
               @@step_results[@file][1] << s # r[1][0]
               r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
             }
+            @@step_results[@file][2] = meas_result
           }
         }
         $stderr.puts logs
@@ -693,7 +705,8 @@ class NgspiceControl < LTspiceControl
     # @result = Ngspice.get_result
   end
 
-  def simulate_core analysis
+  def simulate_core analysis, control = ''
+    puts "control in simulate_core: #{control}", '---'
     if analysis.empty?
       error_messages = ''
       with_stringio(){
@@ -705,18 +718,46 @@ class NgspiceControl < LTspiceControl
       raise error_messages if error_messages.length > 0
     else
       $stderr.puts "analysis = #{analysis.inspect}"
+      meas_result = nil
       analysis.each{|k, v|
         error_messages = ''
         with_stringio(){
-        Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
+          Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
         }.each_line{|l|
+          # puts "l=>#{l}"
           error_messages << l if l =~ /Error/
+          if meas_result
+            if l =~ /^stdout +(\S+) += +(\S+) /
+              meas_result[$1] = $2 if $1
+            end
+          elsif l =~ /^stdout Measurements for Transient Analysis/
+            meas_result = {}
+          end
         }
+        puts "meas_result: #{meas_result.inspect}"
         raise error_messages if error_messages.length > 0
       }
     end  
     sleep 1
+    if control && control.length > 0
+      meas_result = {}
+      with_stringio(){
+        control.each_line{|c|
+          Ngspice.command c
+          if c =~ /let +(\S+)/
+            Ngspice.command "print #{$1}"
+          end
+        }
+      }.each_line{|l|
+        puts "l=>#{l}"
+        if l =~ /^stdout +(\S+) += +(\S+)/
+          meas_result[$1] = $2
+        end
+      }
+    end
     #Ngspice.command 'set nomoremode'
+    puts "meas_result: #{meas_result.inspect}"
+    meas_result
   end
 
   def sim_log ckt=@file # should be revised!
@@ -728,12 +769,11 @@ class NgspiceControl < LTspiceControl
     stdout_keep = $stdout
     $stdout = StringIO.new
     yield
-    # $stdout.flush ### flush does not seem to work
+    $stdout.flush ### flush does not seem to work
     result = $stdout.string
     $stdout = stdout_keep
     result.dup
   end
-
   def info
     puts '*** info entered ***'
     result = nil
