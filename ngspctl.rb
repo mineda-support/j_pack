@@ -19,11 +19,11 @@ load './customize.rb' if File.exist? './customize.rb'
 require 'fileutils'
 
 class NgspiceControl < LTspiceControl
-  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist
-  @@step_results = {}
+  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist, :step_results
 
   def initialize ckt=nil, ignore_cir=true, recursive=false
     return unless ckt
+    @step_results = []
     @ckts = {}
     read ckt, ignore_cir, recursive
     get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
@@ -473,10 +473,12 @@ class NgspiceControl < LTspiceControl
 =end
 
   def simulate *variables
+    keys = values = nil
     result = with_stringio{
-      simulate0 variables
+      keys, values = simulate0 variables
     }
-    puts 'simulate result:', result, '------'
+    $stderr.puts 'simulate result:', result, '------'
+    [keys, values]
   end
 
   def parse file, analysis, comment_step=nil
@@ -651,11 +653,15 @@ class NgspiceControl < LTspiceControl
           Ngspice.command "save #{v}"
         end
       }
-      @@step_results[@file] = [[], [], []]
+      @step_results = [[], [], [], nil]
       node_list = variables[0] ? variables[0][:probes] : nil
       $stderr.puts "steps = #{steps.inspect}"
       if steps[0] == nil || node_list == nil || node_list == []
-        meas_result = simulate_core analysis, control
+        meas_result, r = simulate_core analysis, node_list, control
+        @step_results[0] = r[0] if r
+        @step_results[1] = r[1] if r
+        @step_results[2] = [meas_result.values]
+        @step_results[3] = meas_result.keys
       else
         step_values = []
         case steps[0]['step']
@@ -682,30 +688,28 @@ class NgspiceControl < LTspiceControl
               Ngspice.command 'reset'              
               Ngspice.command 'listing param'
             end
-            meas_result = simulate_core analysis, control
-            if node_list[0] == 'frequency'
-              r = get_AC_traces *node_list
-            else
-              r = get_active_traces *node_list
-            end
+            meas_result, r = simulate_core analysis, node_list, control
             $stderr.puts "node_list = #{node_list}"
             # $stderr.puts "r=#{r.inspect}"
             # r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
-            @@step_results[@file][0] = r[0]
+            @step_results[0] = r[0]
             r[1].each_with_index{|s, i|
-              @@step_results[@file][1] << s # r[1][0]
+              @step_results[1] << s # r[1][0]
               r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
             }
-            @@step_results[@file][2] = meas_result
+            @step_results[2] ||= []
+            @step_results[2] << meas_result.values
+            @step_results[3] ||= meas_result.keys
           }
         }
         $stderr.puts logs
       end
     }
     # @result = Ngspice.get_result
+    [@step_results[3], @step_results[2]]
   end
 
-  def simulate_core analysis, control = ''
+  def simulate_core analysis, node_list, control = ''
     puts "control in simulate_core: #{control}", '---'
     if analysis.empty?
       error_messages = ''
@@ -738,7 +742,15 @@ class NgspiceControl < LTspiceControl
         raise error_messages if error_messages.length > 0
       }
     end  
-    sleep 1
+    #sleep 1
+    r = nil
+    if node_list.length > 1
+      if node_list[0] == 'frequency'
+        r = get_AC_traces *node_list
+      else
+        r = get_active_traces *node_list
+      end
+    end
     if control && control.length > 0
       meas_result = {}
       with_stringio(){
@@ -757,7 +769,7 @@ class NgspiceControl < LTspiceControl
     end
     #Ngspice.command 'set nomoremode'
     puts "meas_result: #{meas_result.inspect}"
-    meas_result
+    [meas_result, r]
   end
 
   def sim_log ckt=@file # should be revised!
@@ -869,9 +881,10 @@ class NgspiceControl < LTspiceControl
   private :node_list_to_variables
 
   def get_traces *node_list
-    return [[], []] if node_list.size == 0
-    if @@step_results[@file] && @@step_results[@file][0].size > 0
-      @@step_results[@file]
+    # require 'debug'; debugger
+    return [[], []] if node_list.size <= 1
+    if @step_results && @step_results[0].size > 0
+      [@step_results[0],  @step_results[1]] # should return [vals, r]
     else
       if node_list[0] == 'frequency'
         get_AC_traces *node_list
@@ -938,7 +951,7 @@ class NgspiceControl < LTspiceControl
       end
     }.unshift(info_a[0])
     $stderr.puts "vars=#{vars}"
-    variables = node_list_to_variables(node_list).map{|a| a.downcase}
+     variables = node_list_to_variables(node_list).map{|a| a.downcase}
     $stderr.puts "variables=#{variables} @ get_active_traces"
     equations_joined = variables.join(',')
     vars = vars.select{|v| equations_joined.include? v} # variables used in equations
