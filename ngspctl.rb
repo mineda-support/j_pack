@@ -490,7 +490,7 @@ class NgspiceControl < LTspiceControl
     File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
       l.chomp!
       l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
-      $stderr.puts "l:#{l}"
+      # $stderr.puts "l:#{l}"
       if l =~ /^ *\.*ac +(.*)/
         analysis[:ac] = $1
       elsif l =~ /^ *\.*tran +(.*)/
@@ -716,7 +716,7 @@ class NgspiceControl < LTspiceControl
       with_stringio(){
       Ngspice.command('run')
       }.each_line{|l|
-        $stderr.puts "l: #{l}"
+        # $stderr.puts "l: #{l}"
         error_messages << l if l =~ /Error/
       }
       raise error_messages if error_messages.length > 0
@@ -768,7 +768,6 @@ class NgspiceControl < LTspiceControl
       }
     end
     #Ngspice.command 'set nomoremode'
-    puts "meas_result: #{meas_result.inspect}"
     [meas_result, r]
   end
 
@@ -1040,7 +1039,7 @@ class NgspiceControl < LTspiceControl
   end
 
   def sch_type file # either 'xschem' or 'eeschema'
-    puts "file=#{file} @Dir.pwd = #{Dir.pwd}"
+    # puts "file=#{file} @Dir.pwd = #{Dir.pwd}"
     File.open(file){|f|
       line = f.gets 
       return 'xschem' if line =~ /xschem/
