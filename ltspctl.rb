@@ -64,12 +64,18 @@ EOF
     @file = ckt
     case File.extname ckt 
     when '.asc'
-        @elements = read_asc ckt, recursive
+        @elements = read_asc ckt, recursive, ''
+        if @elements.nil?
+          @elements = read_asc ckt, recursive, '', 'rb:UTF-16LE'
+        end
     when '.net'
         @elements = read_net ckt, recursive
     when ''
       if File.exist? ckt+'.asc'
         @elements = read_asc ckt+'.asc', recursive
+        if @elements.nil?
+          @elements = read_asc ckt, recursive, '', 'rb:UTF-16LE'
+        end
       elsif File.exist? ckt+'.net'
         @elements = read_net ckt+'.net', recursive
       else
@@ -77,23 +83,23 @@ EOF
     end
     @mtime = Time.now
     puts "elements updated from #{@file}!"
-    @elements = @ckts if recursive
+    @elements = @ckts if recursive && @elements.nil?
     @elements
   end
 
-  def save ckt=@file
-    lines = File.open(@file, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace)
+  def save ckt=@file, rcoding='r:Windows-1252'
+    lines = File.open(@file, rcoding).read.encode('UTF-8', invalid: :replace)
     @file = ckt
     update(@file, lines)
   end
 
-  def read_asc file, recursive=false, caller='' 
+  def read_asc file, recursive=false, caller='', rcoding='r:Windows-1252' 
     elements = {}
     @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
     #    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
-    File.open(file, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace).each_line{|l|
+    File.open(file, rcoding).read.encode('UTF-8', invalid: :replace).each_line{|l|
       l.chomp!
       lineno = lineno + 1 
       if l =~ /SYMATTR InstName (.*)$/
@@ -131,7 +137,7 @@ EOF
       end
     }
     read_asc_sub elements, name, type, value, value2, line1, line2 if name
-    elements
+    elements == {} ? nil : elements
   end
   private :read_asc
   
@@ -308,7 +314,7 @@ EOF
   def wait_for file, start, error_message=nil
     count = 0
     $stderr.puts "wait for file:'#{file}', start at #{start}"
-    until !File.exist?(file) || (File.mtime(file) >= start) do
+    until File.exist?(file) || (File.mtime(file) >= start) do
       $stderr.puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
       # puts "count=#{count}"
       if count == 20
@@ -631,11 +637,15 @@ EOF
     }
     # puts "include_files=#{include_files.inspect}"
     model_files(include_files).each{|f|
-      m = CompactModel.new f
-      # puts m.models
-      # puts "@models=#{@models.inspect}"
-      @models.merge! m.models
-      #puts "m.models=#{m.models.inspect}"
+      if File.exist? f
+        m = CompactModel.new f
+        # puts m.models
+        # puts "@models=#{@models.inspect}"
+        @models.merge! m.models
+        #puts "m.models=#{m.models.inspect}"
+      else
+        @models.merge! {f => nil}
+      end
     }
     @models
     #puts "=> @models=#{@models.inspect}"
