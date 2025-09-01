@@ -27,7 +27,7 @@ class LTspiceControl
 
     @default = [0, 0]
     @ckts = {}
-    read ckt, recursive if ckt
+    @elements = read ckt, recursive if ckt
     return unless recursive
     get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')]
   end
@@ -64,27 +64,27 @@ EOF
     @file = ckt
     case File.extname ckt 
     when '.asc'
-        @elements = read_asc ckt, recursive, ''
-        if @elements.nil?
-          @elements = read_asc ckt, recursive, '', 'rb:UTF-16LE'
+        elements = read_asc ckt, recursive, ''
+        if elements.nil?
+          elements = read_asc ckt, recursive, '', 'rb:UTF-16LE'
         end
     when '.net'
-        @elements = read_net ckt, recursive
+        elements = read_net ckt, recursive
     when ''
       if File.exist? ckt+'.asc'
-        @elements = read_asc ckt+'.asc', recursive
-        if @elements.nil?
-          @elements = read_asc ckt, recursive, '', 'rb:UTF-16LE'
+       elements = read_asc ckt+'.asc', recursive
+        if elements.nil?
+          elements = read_asc ckt, recursive, '', 'rb:UTF-16LE'
         end
       elsif File.exist? ckt+'.net'
-        @elements = read_net ckt+'.net', recursive
+        elements = read_net ckt+'.net', recursive
       else
       end
     end
     @mtime = Time.now
     puts "elements updated from #{@file}!"
-    @elements = @ckts if recursive && @elements.nil?
-    @elements
+    elements = @ckts if recursive #&& elements.nil?
+    elements
   end
 
   def save ckt=@file, rcoding='r:Windows-1252'
@@ -94,8 +94,10 @@ EOF
   end
 
   def read_asc file, recursive=false, caller='', rcoding='r:Windows-1252' 
+    puts "rcoding=#{rcoding}"
+    @rcoding = rcoding
     elements = {}
-    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
+    #@ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
     #    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
@@ -137,6 +139,9 @@ EOF
       end
     }
     read_asc_sub elements, name, type, value, value2, line1, line2 if name
+    #require 'debug'
+    #debugger
+    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements
     elements == {} ? nil : elements
   end
   private :read_asc
@@ -190,7 +195,7 @@ EOF
   
   def set pairs
     read @file if File.mtime(@file) > @mtime
-    lines = File.open(@file, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace)
+    lines = File.open(@file, @rcoding).read.encode('UTF-8', invalid: :replace)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
     else
@@ -306,7 +311,7 @@ EOF
   private :add
 
   def update file, lines
-    File.open(@file, 'w:Windows-1252'){|f| f.puts lines}
+    File.open(@file, @rcoding.sub('rb:', 'wb:').sub('r:', 'w:')){|f| f.puts lines}
     @mtime = File.mtime(@file)          
   end
   private :update
@@ -469,7 +474,7 @@ EOF
     home = (ENV['HOMEPATH'] || ENV['HOME'])
     Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
       ascfile = File.basename @file
-      lines = File.open(ascfile, 'r:Windows-1252').read.encode('UTF-8', invalid: :replace).split("\n")
+      lines = File.open(ascfile, @rcoding).read.encode('UTF-8', invalid: :replace).split("\n")
       lines.each{|l|
         next unless l =~ /\.inc/
         l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
@@ -496,7 +501,7 @@ EOF
           @models[model_name.to_s][1][key.to_s] = value
         } 
       }
-      File.open(ascfile.sub('.asc', '.tmp'), 'w:windows-1252'){|f| f.puts lines}
+      File.open(ascfile.sub('.asc', '.tmp'), @rcoding.sub('rb:', 'wb:').sub('r:', 'w:')){|f| f.puts lines}
       start = Time.now
       puts "ascfile = '#{ascfile.inspect}'"
       run '-netlist', ascfile.sub('.asc', '.tmp') # creates #{file} = xxx.net
@@ -532,6 +537,17 @@ EOF
       }
       puts 'execute sim_log() to show simulation log'
     }
+    get_meas_results sim_log()
+  end
+
+  def get_meas_results log
+    meas_result = {}
+    log && log.each_line{|l|
+      if l =~ /(\S+): .*=(\S+) FROM/ || l =~ /(\S+)=(\S+) FROM/ 
+        meas_result[$1] = $2
+      end
+    }
+    [meas_result.keys, meas_result.values]
   end
   
   def create_unused file
@@ -563,7 +579,7 @@ EOF
   end
   
   def sim_log ckt=@file
-    File.open(ckt.sub('.asc', '.log'), 'rb:UTF-16LE').read.encode('UTF-8', invalid: :replace)
+    File.open(ckt.sub('.asc', '.log'), 'r:UTF-8').read.encode('UTF-8', invalid: :replace)
   end
   
   def raw2tmp *node_list
