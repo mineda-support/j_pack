@@ -88,9 +88,11 @@ EOF
   end
 
   def save ckt=@file, rcoding='r:Windows-1252'
-    lines = File.open(@file, rcoding).read.encode('UTF-8', invalid: :replace)
-    @file = ckt
-    update(@file, lines)
+    File.open(@file, rcoding){|f|
+      lines = f.read.encode('UTF-8', invalid: :replace)
+      @file = ckt
+      update(@file, lines)
+    }
   end
 
   def read_asc file, recursive=false, caller='', rcoding='r:Windows-1252' 
@@ -101,42 +103,44 @@ EOF
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
     #    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
-    File.open(file, rcoding).read.encode('UTF-8', invalid: :replace).each_line{|l|
-      l.chomp!
-      lineno = lineno + 1 
-      if l =~ /SYMATTR InstName (.*)$/
-        name = $1 # is like X1
-      if recursive && name[0].downcase == 'x' && File.exist?(File.join(File.dirname(file), type+'.asc'))
-          caller << '.' + name
-          @ckts[type] ||= read_asc(File.join(File.dirname(file), type+'.asc'), true, caller)
-          @ckts[caller] = type
+    File.open(file, rcoding){|f|
+      f.read.encode('UTF-8', invalid: :replace).each_line{|l|
+        l.chomp!
+        lineno = lineno + 1 
+        if l =~ /SYMATTR InstName (.*)$/
+          name = $1 # is like X1
+        if recursive && name[0].downcase == 'x' && File.exist?(File.join(File.dirname(file), type+'.asc'))
+            caller << '.' + name
+            @ckts[type] ||= read_asc(File.join(File.dirname(file), type+'.asc'), true, caller)
+            @ckts[caller] = type
+          end
+        elsif l =~ /SYMBOL (\S+)/
+          new_type = $1
+          read_asc_sub elements, name, type, value, value2, line1, line2 if name
+          type = new_type
+          name = value = value2 = nil
+        elsif l =~ /SYMATTR Value (.*)$/
+          value = $1; line1 = lineno
+        elsif l =~ /SYMATTR Value2 (.*)$/
+          value2 = $1; line2 = lineno
+        elsif l =~ /^TEXT .* +([!;](\S+) .*$)/
+          # puts "l=#{l}"
+          control = $1
+          keep = $2
+          # puts "contro: #{control}"
+          # puts "keep: #{keep}"        
+          read_asc_sub elements, name, type, value, value2, line1, line2 if name
+          name = keep.gsub! /([\.\*])/, '' 
+          elements[name] = []
+          # puts "elements[name] = #{elements[name]}"
+          if control[0] == '!'
+            elements[name] <<  {control: control[1..-1], lineno: lineno}
+          else
+            elements[name] <<  {comment: control[1..-1], lineno: lineno}
+          end
+          name = nil
         end
-      elsif l =~ /SYMBOL (\S+)/
-        new_type = $1
-        read_asc_sub elements, name, type, value, value2, line1, line2 if name
-        type = new_type
-        name = value = value2 = nil
-      elsif l =~ /SYMATTR Value (.*)$/
-        value = $1; line1 = lineno
-      elsif l =~ /SYMATTR Value2 (.*)$/
-        value2 = $1; line2 = lineno
-      elsif l =~ /^TEXT .* +([!;](\S+) .*$)/
-        # puts "l=#{l}"
-        control = $1
-        keep = $2
-        # puts "contro: #{control}"
-        # puts "keep: #{keep}"        
-        read_asc_sub elements, name, type, value, value2, line1, line2 if name
-        name = keep.gsub! /([\.\*])/, '' 
-        elements[name] = []
-        # puts "elements[name] = #{elements[name]}"
-        if control[0] == '!'
-          elements[name] <<  {control: control[1..-1], lineno: lineno}
-        else
-          elements[name] <<  {comment: control[1..-1], lineno: lineno}
-        end
-        name = nil
-      end
+      }
     }
     read_asc_sub elements, name, type, value, value2, line1, line2 if name
     #require 'debug'
@@ -195,7 +199,10 @@ EOF
   
   def set pairs
     read @file if File.mtime(@file) > @mtime
-    lines = File.open(@file, @rcoding).read.encode('UTF-8', invalid: :replace)
+    lines = nil
+    File.open(@file, @rcoding){|f|
+      lines = f.read.encode('UTF-8', invalid: :replace)
+    }
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
     else
@@ -336,7 +343,10 @@ EOF
   
   def fix_net file, analysis, extra_commands = '', models_update=nil, variations={}
     puts "variations passed to fix_net = #{variations}"
-    contents = File.open(file, 'r:Windows-1252').read.sub(/^\.lib .*standard.mos/, "*\\0")
+    contents = nil
+    File.open(file, 'r:Windows-1252'){|f|
+      contents = f.read.sub(/^\.lib .*standard.mos/, "*\\0")
+    }
     File.open(file, 'w'){|f|
         contents.each_line{|l|
         l.strip!
@@ -474,7 +484,10 @@ EOF
     home = (ENV['HOMEPATH'] || ENV['HOME'])
     Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
       ascfile = File.basename @file
-      lines = File.open(ascfile, @rcoding).read.encode('UTF-8', invalid: :replace).split("\n")
+      lines = nil
+      File.open(ascfile, @rcoding){|f|
+        lines = f.read.encode('UTF-8', invalid: :replace).split("\n")
+      }
       lines.each{|l|
         next unless l =~ /\.inc/
         l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
@@ -525,13 +538,18 @@ EOF
       puts "CWD: #{Dir.pwd}"
       ascfile = File.basename @file
       raw_file = ascfile.sub('.asc', '.raw')
+      log_file = ascfile.sub('.asc', '.log')
+      if File.exist? log_file
+        FileUtils.rm_f log_file 
+        puts "#{log_file} removed"
+      end
       # delete_file_with_retry raw_file
-      FileUtils.touch raw_file unless File.exist? raw_file
+      # FileUtils.touch raw_file unless File.exist? raw_file
       file2 = create_unused file 
       start = Time.now
       run '-b -Run', file2 # file is xxx.net
       wait_for(raw_file, start, 'due to simulation error below'){ |file| 
-        wait_for raw_file.sub('raw', 'log'), start
+        # wait_for raw_file.sub('raw', 'log'), start
         puts sim_log(ascfile)
         raise "#{file} is not created due to simulation error"
       }
@@ -590,7 +608,11 @@ EOF
   end
   
   def sim_log ckt=@file
-    File.open(ckt.sub('.asc', '.log'), 'r:UTF-8').read.encode('UTF-8', invalid: :replace)
+    log = ''
+    File.open(ckt.sub('.asc', '.log'), 'r:UTF-8'){|f|
+     log = f.read.encode('UTF-8', invalid: :replace)
+    }
+    log
   end
   
   def raw2tmp *node_list
@@ -610,17 +632,19 @@ EOF
     raw_file = @file.sub(/\..*/, '.raw')
     flag = false
     variables = []
-    File.open(raw_file, 'r:Windows-1252').read.each_line{|l|
-      l.chomp!
-      l.gsub!(0.chr,'')
-      if l =~ /^Binary:/
-        break 
-      elsif flag
-        l =~ /\s+\d+\s+(\S+)/
-        variables << $1
-      elsif l =~ /^Variables:/
-        flag = true
-      end
+    File.open(raw_file, 'r:Windows-1252'){|f|
+      f.read.each_line{|l|
+        l.chomp!
+        l.gsub!(0.chr,'')
+        if l =~ /^Binary:/
+          break 
+        elsif flag
+          l =~ /\s+\d+\s+(\S+)/
+          variables << $1
+        elsif l =~ /^Variables:/
+          flag = true
+        end
+      }
     } if File.exist? raw_file
     variables
   end
@@ -1205,7 +1229,7 @@ EOF
       puts command = "#{ltspiceexe} #{arg} '#{input}'" # '#{ltspiceexe}' does not work!
     end
     system command
-    # IO_popen command
+    #IO_popen command
   end
 
   def close
