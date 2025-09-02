@@ -319,7 +319,7 @@ EOF
   def wait_for file, start, error_message=nil
     count = 0
     $stderr.puts "wait for file:'#{file}', start at #{start}"
-    until File.exist?(file) || (File.mtime(file) >= start) do
+    until File.exist?(file) && (File.mtime(file) >= start) do
       $stderr.puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
       # puts "count=#{count}"
       if count == 20
@@ -542,9 +542,20 @@ EOF
 
   def get_meas_results log
     meas_result = {}
+    key = nil
     log && log.each_line{|l|
       if l =~ /(\S+): .*=(\S+) FROM/ || l =~ /(\S+)=(\S+) FROM/ 
         meas_result[$1] = $2
+      elsif l =~ /^Measurement: +(\S+)/
+        key = $1
+        meas_result[key] = []
+      elsif key
+        next if l =~ /^  step/
+        if l.chomp.length == 0
+          key = nil
+        elsif l =~ / +(\d)+\t *(\S+)/
+          meas_result[key] << $2
+        end
       end
     }
     [meas_result.keys, meas_result.values]
@@ -1028,14 +1039,18 @@ EOF
       num_cases = @ltspice.getCaseNumber()
     end
     @traces = []
-    trace_x = Array_with_interpolation.new 
+    # trace_x = Array_with_interpolation.new 
+    trace_x = x_data
+=begin
     if node_list[0] == 'frequency'
         trace_x = x_data
     else
-      x_data[0..x_data.length/num_cases-1].each{|x|
-        trace_x << x
-      }
-  end
+      #x_data[0..x_data.length/num_cases-1].each{|x|
+      #x_data[0..x_data.length-1].each{|x|
+      #  trace_x << x
+      #}
+    end
+=end
     num_cases.times{|i|
       if node_list[0] == 'time' && i >= 1
         x_data = @ltspice.getTime(i)

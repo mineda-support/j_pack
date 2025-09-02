@@ -92,12 +92,16 @@ def model_files include_files
   home = (ENV['HOMEPATH'] || ENV['HOME'])
   include_files.each{|f|
     f.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
-    File.read(f).each_line{|l|
-      l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
-      if l =~ /include \"\.\/(\S+)\"/
-        model_files << File.join(File.dirname(f), $1)
-      end
-    }
+    if File.exist?(f)
+      File.read(f).each_line{|l|
+        l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
+        if l =~ /include \"\.\/(\S+)\"/
+          model_files << File.join(File.dirname(f), $1)
+        end
+      }
+    else
+      model_files << "Error: include file '#{f}' does not exist!"
+    end
   }
   if model_files.size > 0
      model_files
