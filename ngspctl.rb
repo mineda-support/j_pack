@@ -731,7 +731,7 @@ class NgspiceControl < LTspiceControl
           # puts "l=>#{l}"
           error_messages << l if l =~ /Error/
           if meas_result
-            if l =~ /^stdout +(\S+) += +(\S+) /
+            if l =~ /^stdout +(\S+) += +(\S+)/
               meas_result[$1] = $2 if $1
             end
           elsif l =~ /^stdout Measurements for Transient Analysis/
