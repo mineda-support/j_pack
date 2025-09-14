@@ -104,7 +104,7 @@ EOF
     lineno = line1 = line2 = 0 
     #    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
     File.open(file, rcoding){|f|
-      f.read.encode('UTF-8', invalid: :replace).each_line{|l|
+      f.read.encode('UTF-8', invalid: :replace, undef: :replace).each_line{|l|
         l.chomp!
         lineno = lineno + 1 
         if l =~ /SYMATTR InstName (.*)$/

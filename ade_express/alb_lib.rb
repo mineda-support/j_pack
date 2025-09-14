@@ -207,7 +207,7 @@ def alb_parse_streamout_log_file run_dir, log_file
   run_dir = nil; gds_file = nil; lib_name = nil; primary_cell = nil; view_name = nil
   compress = nil;
   if File.exist?(log_file) 
-    File.read(log_file).encode('UTF-8', invalid: :replace).each_line{|l|
+    File.read(log_file).encode('UTF-8', invalid: :replace, undef: :replace).each_line{|l|
       if l =~ /\'runDir\s*\"(\S+)\"/
         puts "run_dir=#{$1}"
         run_dir = $1
@@ -423,7 +423,7 @@ def rewrite conf_file='alb.conf', alta_server=nil
     File.open(conf_file, 'w'){|f| f.print ''}
     return 
   end
-  alb_conf = File.read(conf_file).encode('UTF-8', invalid: :replace)
+  alb_conf = File.read(conf_file).encode('UTF-8', invalid: :replace, undef: :replace)
   new_conf = ''
   flag = nil
   alb_conf.each_line{|l|

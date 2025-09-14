@@ -128,11 +128,15 @@ class LTspice < Spice
   def search_symbols cell
     symbols = []
     #  File.exist?(cell) && File.read(cell).each_line{|l|
-    File.exist?(cell+'.asc') && File.open(cell+'.asc', 'r:Windows-1252').read.encode('UTF-8', invalid: :replace).each_line{|l|
-      if l =~ /SYMBOL +(\S+) +/
-        symbols << $1
-      end
-    }
+    if File.exist?(cell+'.asc') 
+      File.open(cell+'.asc', 'r:Windows-1252'){|f|
+        f.read.encode('UTF-8', invalid: :replace, undef: :replace).each_line{|l|
+          if l =~ /SYMBOL +(\S+) +/
+            symbols << $1
+          end
+        }
+      }
+    end
     symbols.uniq
   end
 
@@ -1109,7 +1113,7 @@ class LTspice < Spice
       out.puts nodes.join(',') if out
     end
     data = []
-    File.read(tmp_file).encode('UTF-8', invalid: :replace).each_line{|line|
+    File.read(tmp_file).encode('UTF-8', invalid: :replace, undef: :replace).each_line{|line|
       next if /^#/ =~ line
       line.chomp!
       line.gsub!("'",'')
