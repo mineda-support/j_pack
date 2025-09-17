@@ -1314,7 +1314,7 @@ class LTspice < Spice
       nodes = ['freq', node_a, 'phase']
     end
     data = []
-    File.read(tmp_file).encode('UTF-8', invalid: :replace).each_line{|line|
+    File.read(tmp_file).encode('UTF-8', invalid: :replace, undef: :replace).each_line{|line|
       next if /^#/ =~ line
       line.chomp!.gsub!("'",'')
       line << ',1,0' unless node_b
@@ -1344,7 +1344,7 @@ class LTspice < Spice
 
     out = File.open file, 'w'
     out.puts 'freq, db, phase'
-    File.read(tmp_file).encode('UTF-8', invalid: :replace).each_line{|line|
+    File.read(tmp_file).encode('UTF-8', invalid: :replace, undef: :replace).each_line{|line|
       next if /^#/ =~ line
       line.chomp!.gsub!("'",'')
       freq, riv3, iiv3, riv4, iiv4, rvx, ivx, rvy, ivy = line.split(',')
@@ -1398,7 +1398,7 @@ class LTspice < Spice
 
   def check_log log_file
     raise "error: simulation log file '#{log_file}' is not available" unless File.exist? log_file
-    File.read(log_file).encode('UTF-8', invalid: :replace).each_line{|l|
+    File.read(log_file).encode('UTF-8', invalid: :replace, undef: :replace).each_line{|l|
       raise l + " --- please check simulation log" if l.include? 'Fatal Error'
     }
   end
