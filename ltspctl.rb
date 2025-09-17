@@ -89,7 +89,7 @@ EOF
 
   def save ckt=@file, rcoding='r:Windows-1252'
     File.open(@file, rcoding){|f|
-      lines = f.read.encode('UTF-8', invalid: :replace)
+      lines = f.read.encode('UTF-8', invalid: :replace, undef: :replace)
       @file = ckt
       update(@file, lines)
     }
@@ -201,7 +201,7 @@ EOF
     read @file if File.mtime(@file) > @mtime
     lines = nil
     File.open(@file, @rcoding){|f|
-      lines = f.read.encode('UTF-8', invalid: :replace)
+      lines = f.read.encode('UTF-8', invalid: :replace, undef: :replace)
     }
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
@@ -401,12 +401,12 @@ EOF
     nil
   end
 
-  def parse_analysis file, analysis, comment_step=nil
+  def parse_analysis file, analysis, comment_step='.step'
     netlist = ''
     steps = []
     home = (ENV['HOMEPATH'] || ENV['HOME'])
     $stderr.puts "file = #{file}"
-    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
+    File.read(file).encode('UTF-8', invalid: :replace, undef: :replace).each_line{|l|
       l.chomp!
       l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
       $stderr.puts l
@@ -418,8 +418,9 @@ EOF
         analysis[:dc] = $1
       elsif comment_step && l =~ /#{comment_step}/
         steps = step2params(l)
-        netlist << '*' + l + "\n"
-        $stderr.puts "commented: #{l}"
+        #netlist << '*' + l + "\n"
+        #$stderr.puts "commented: #{l}"
+        netlist << l + "\n"
       else
         netlist << l + "\n"
       end
@@ -466,6 +467,7 @@ EOF
       end
       steps << {'name' =>name, 'type'=>type, 'step'=>step, 'values'=>values}
     }
+    puts "steps in step2params = #{steps.inspect}"
     steps.reverse
   end
 
@@ -486,7 +488,7 @@ EOF
       ascfile = File.basename @file
       lines = nil
       File.open(ascfile, @rcoding){|f|
-        lines = f.read.encode('UTF-8', invalid: :replace).split("\n")
+        lines = f.read.encode('UTF-8', invalid: :replace, undef: :replace).split("\n")
       }
       lines.each{|l|
         next unless l =~ /\.inc/
@@ -610,7 +612,7 @@ EOF
   def sim_log ckt=@file
     log = ''
     File.open(ckt.sub('.asc', '.log'), 'r:UTF-8'){|f|
-     log = f.read.encode('UTF-8', invalid: :replace)
+     log = f.read.encode('UTF-8', invalid: :replace, undef: :replace)
     }
     log
   end
@@ -1077,8 +1079,9 @@ EOF
 =end
     num_cases.times{|i|
       if node_list[0] == 'time' && i >= 1
-        x_data = @ltspice.getTime(i)
+        x_data = @ltspice.getTime(i).to_a
         x_data = x_data.map{|a| a.to_f}
+        trace_x = x_data
       end
       @traces << node_list[1..-1].map.with_index{|y, k|
         values = []
