@@ -578,7 +578,7 @@ EOF
         end
       end
     }
-    [meas_result.keys, meas_result.values]
+    [meas_result.keys, meas_result.values.transpose] # return transposed array
   end
   
   def create_unused file

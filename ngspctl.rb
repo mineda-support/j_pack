@@ -706,7 +706,7 @@ class NgspiceControl < LTspiceControl
       end
     }
     # @result = Ngspice.get_result
-    [@step_results[3], @step_results[2]]
+    [@step_results[3], @step_results[2].transpose] # return transposed array
   end
 
   def simulate_core analysis, node_list, control = ''
