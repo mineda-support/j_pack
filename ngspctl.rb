@@ -1,4 +1,4 @@
-# ngspctl v0.2 Copyright(C) Anagix Corporation
+# ngspctl v0.3 Copyright(C) Anagix Corporation
 if $0 == __FILE__
   puts Dir.pwd
   Dir.chdir '../j_pack'
@@ -220,9 +220,9 @@ class NgspiceControl < LTspiceControl
     File.exist?(file) && File.read(file).each_line{|l|
       l.chomp!
       lineno = lineno + 1 
-      puts "#{lineno}: #{l}"
+      # puts "#{lineno}: #{l}"
       if control
-        if l =~ /\.endc/
+        if l =~ /\.endc/ || l =~ /"}/
           control = nil
           next
         end 
@@ -230,18 +230,25 @@ class NgspiceControl < LTspiceControl
           elements['include'] ||= []
           elements['include'] << {control: l, lineno: lineno}
         else
+          elements['control'] ||= []
           elements['control'] << {value: l, lineno: lineno}
         end
         next
-      elsif l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$/
-        elements['control'] = []
-        control = true
-      elsif l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
-        name = $2
+      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
+        name = $3
         elements[name] ||= []
-        elements[name] <<  {control: $1, lineno: lineno}
-      elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=(\S+)}/ ||
-            l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=\"(.*)\"}/
+        elements[name] <<  {control: $2, lineno: lineno}
+      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)/
+        name = $3
+        elements[name] ||= []
+        elements[name] <<  {control: $2, lineno: lineno}
+        control = true
+      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$/
+        elements['control'] ||= []
+        elements['control'] << {control: $2, lineno: lineno} 
+        control = true
+      elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=\"(.*)\"}/ ||
+            l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=(\S+)}/ 
         type = $1
         name = $2
         value = $3
@@ -262,7 +269,7 @@ class NgspiceControl < LTspiceControl
       elements['control' + i.to_s] = c
     }
     elements.delete 'control'
-    # puts "elements:", elements.inspect
+    puts "elements:", elements.inspect
     elements
   end
 
@@ -377,7 +384,7 @@ class NgspiceControl < LTspiceControl
 
   def set0 pairs, file, elements, mtime
     read file if File.mtime(file) > mtime
-    puts "set0 '#{pairs}' in '#{file}' with elements:#{elements.inspect}"  
+    # puts "set0 '#{pairs}' in '#{file}' with elements:#{elements.inspect}"  
     lines = File.read(file)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
@@ -392,7 +399,7 @@ class NgspiceControl < LTspiceControl
       if elements[name] && elements[name].class == Hash
         lineno = elements[name][:lineno]
         line = lines[lineno-1]
-        puts "line: #{line}"
+        puts "set0 '#{pairs}' on line: #{line}"
         if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
            line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=\")(.*)(\"})/ ||
            line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
@@ -425,8 +432,8 @@ class NgspiceControl < LTspiceControl
         if elm && lineno = elm[:lineno]
           line = lines[lineno-1]
           # puts line
-          if line =~ /(^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ .*)(\")/  # for xschem
-            line.sub! line, "#{$1}#{value}#{$3}"
+          if line =~ /(^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ .*)(\")/  # for xschem
+            line.sub! line, "#{$2}#{value}#{$4}"
             elm[:control] = value
             true
           elsif line =~ /(^ *)([\.;]#{name}.*)$/ # for eeschema and netlist 
