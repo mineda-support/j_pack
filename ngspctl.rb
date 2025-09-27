@@ -216,17 +216,22 @@ class NgspiceControl < LTspiceControl
     elements = {}
     @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = control = nil
-    lineno = line1 = line2 = 0 
+    lineno = line1 = line2 = 0
     File.exist?(file) && File.read(file).each_line{|l|
       l.chomp!
       lineno = lineno + 1 
+      puts "#{lineno}: #{l}"
       if control
         if l =~ /\.endc/
           control = nil
           next
         end 
-        # l =~ /(\S+) (.*$)/
-        elements['control'] << {value: l, lineno: lineno}
+        if l =~ /^ *\.\S+ +(\S+) *$/ 
+          elements['include'] ||= []
+          elements['include'] << {control: l, lineno: lineno}
+        else
+          elements['control'] << {value: l, lineno: lineno}
+        end
         next
       elsif l =~ /^C {code_shown.sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$/
         elements['control'] = []
@@ -257,6 +262,7 @@ class NgspiceControl < LTspiceControl
       elements['control' + i.to_s] = c
     }
     elements.delete 'control'
+    # puts "elements:", elements.inspect
     elements
   end
 
@@ -371,7 +377,7 @@ class NgspiceControl < LTspiceControl
 
   def set0 pairs, file, elements, mtime
     read file if File.mtime(file) > mtime
-    puts "set0 '#{pairs}' in '#{file}' with elements:#{elements}"  
+    puts "set0 '#{pairs}' in '#{file}' with elements:#{elements.inspect}"  
     lines = File.read(file)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
@@ -407,6 +413,9 @@ class NgspiceControl < LTspiceControl
           end
           line.sub! line, "#{$1}#{value}#{$3}"
           elements[name][:value].sub!(substr, value)
+        else
+          line.sub! line, value
+          elements[name][:value].sub!(line, value)
         end
         true
       else
@@ -660,8 +669,8 @@ class NgspiceControl < LTspiceControl
         meas_result, r = simulate_core analysis, node_list, control
         @step_results[0] = r[0] if r
         @step_results[1] = r[1] if r
-        @step_results[2] = [meas_result.values]
-        @step_results[3] = meas_result.keys
+        @step_results[2] = [meas_result.values] if meas_result
+        @step_results[3] = meas_result.keys if meas_result
       else
         step_values = []
         case steps[0]['step']
@@ -710,11 +719,11 @@ class NgspiceControl < LTspiceControl
   end
 
   def simulate_core analysis, node_list, control = ''
-    puts "control in simulate_core: #{control}", '---'
+    $stderr.puts "control in simulate_core: #{control}", '---'
     if analysis.empty?
       error_messages = ''
       with_stringio(){
-      Ngspice.command('run')
+        Ngspice.command('run')
       }.each_line{|l|
         # $stderr.puts "l: #{l}"
         error_messages << l if l =~ /Error/
@@ -728,18 +737,18 @@ class NgspiceControl < LTspiceControl
         with_stringio(){
           Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
         }.each_line{|l|
-          # puts "l=>#{l}"
+          puts "l=>#{l}"
           error_messages << l if l =~ /Error/
           if meas_result
             if l =~ /^stdout +(\S+) += +(\S+)/
               meas_result[$1] = $2 if $1
             end
-          elsif l =~ /^stdout Measurements for Transient Analysis/
+          elsif l =~ /^stdout *Measurements +for +Transient +Analysis/
             meas_result = {}
           end
         }
-        puts "meas_result: #{meas_result.inspect}"
-        raise error_messages if error_messages.length > 0
+        $stderr.puts "meas_result: #{meas_result.inspect}"
+        #raise error_messages if error_messages.length > 0
       }
     end  
     #sleep 1
