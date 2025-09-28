@@ -564,8 +564,11 @@ EOF
     meas_result = {}
     key = nil
     log && log.each_line{|l|
-      if l =~ /(\S+): .*=(\S+) FROM/ || l =~ /(\S+)=(\S+) FROM/ 
-        meas_result[$1] = $2
+      puts l
+      if l =~ /(\S+): .*=(\S+) FROM/ || l =~ /(\S+)=(\S+) FROM/ ||
+        l =~ /(\S+) *=(\S+) FROM/ || l =~ /(\S+)=(\S+) FROM/
+        meas_result[$1] ||= []
+        meas_result[$1] << $2        
       elsif l =~ /^Measurement: +(\S+)/
         key = $1
         meas_result[key] = []
