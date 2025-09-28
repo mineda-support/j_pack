@@ -676,7 +676,7 @@ class NgspiceControl < LTspiceControl
         meas_result, r = simulate_core analysis, node_list, control
         @step_results[0] = r[0] if r
         @step_results[1] = r[1] if r
-        @step_results[2] = [meas_result.values] if meas_result
+        @step_results[2] = [meas_result.values] if meas_result 
         @step_results[3] = meas_result.keys if meas_result
       else
         step_values = []
@@ -722,7 +722,7 @@ class NgspiceControl < LTspiceControl
       end
     }
     # @result = Ngspice.get_result
-    [@step_results[3], @step_results[2].transpose] # return transposed array
+    [@step_results[3], @step_results[2]] 
   end
 
   def simulate_core analysis, node_list, control = ''
