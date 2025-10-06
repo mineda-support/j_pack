@@ -714,8 +714,8 @@ class NgspiceControl < LTspiceControl
               r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
             }
             @step_results[2] ||= []
-            @step_results[2] << meas_result.values
-            @step_results[3] ||= meas_result.keys
+            @step_results[2] << meas_result.values if meas_result
+            @step_results[3] ||= meas_result.keys if meas_result
           }
         }
         $stderr.puts logs
