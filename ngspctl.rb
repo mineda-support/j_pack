@@ -217,35 +217,33 @@ class NgspiceControl < LTspiceControl
     @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = control = nil
     lineno = line1 = line2 = 0
+    controls = []
     File.exist?(file) && File.read(file).each_line{|l|
       l.chomp!
       lineno = lineno + 1 
       # puts "#{lineno}: #{l}"
       if control
-        if l =~ /\.endc/ || l =~ /"}/
+        if l =~ /\.endc/
           control = nil
           next
         end 
-        if l =~ /^ *\.\S+ +(\S+) *$/ 
-          elements['include'] ||= []
-          elements['include'] << {control: l, lineno: lineno}
-        else
-          elements['control'] ||= []
-          elements['control'] << {value: l, lineno: lineno}
+        if l =~ /^ *(\**\.)(\S+)(.*)(")/ || l =~ /^ *(\**\.)(\S+)(.*)/
+          name = $2
+          elements[name] ||= []
+          elements[name] << {control: $1+$2+$3, lineno: lineno}
         end
+        control = nil if l =~ /"}/
         next
-      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
-        name = $3
-        elements[name] ||= []
-        elements[name] <<  {control: $2, lineno: lineno}
       elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)/
         name = $3
         elements[name] ||= []
         elements[name] <<  {control: $2, lineno: lineno}
-        control = true
+        controls << name unless controls.include?(name)
+        control = true unless l =~ /"[ }]*$/
       elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$/
         elements['control'] ||= []
         elements['control'] << {control: $2, lineno: lineno} 
+        controls << name unless controls.include?(name)
         control = true
       elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=\"(.*)\"}/ ||
             l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=(\S+)}/ 
@@ -265,10 +263,6 @@ class NgspiceControl < LTspiceControl
         end
       end
     }
-    elements['control'] && elements['control'].each_with_index{|c, i|
-      elements['control' + i.to_s] = c
-    }
-    elements.delete 'control'
     puts "elements:", elements.inspect
     elements
   end
@@ -396,34 +390,10 @@ class NgspiceControl < LTspiceControl
       # debugger if name == 'VD'
       value = val.to_s
       # puts "set #{name}: #{value}"
-      if elements[name] && elements[name].class == Hash
-        lineno = elements[name][:lineno]
-        line = lines[lineno-1]
-        puts "set0 '#{pairs}' on line: #{line}"
-        if line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
-           line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=\")(.*)(\"})/ ||
-           line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
-           line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
-           line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
-           line =~ /(^ *[VvIiCcRr]\S* +\S+ +\S+ +)(.*)( *)/
-          substr = $2
-          #puts "***before:'#{lines[lineno-1]}'"          
-          line.sub! line, "#{$1}#{value}#{$3}"
-          elements[name][:value].sub!(substr, value)
-          #puts "***after:'#{lines[lineno-1]}'"
-        elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ +)(.*)(})/ # for xschem
-          substr = $2
-          if value[0] == '-'
-            value = sub substr, value[1..-1]
-          elsif value[0] == '+'
-            value = add substr, value[1..-1]
-          end
-          line.sub! line, "#{$1}#{value}#{$3}"
-          elements[name][:value].sub!(substr, value)
-        else
-          line.sub! line, value
-          elements[name][:value].sub!(line, value)
-        end
+      if elements[name] && elements[name].class == Array
+        elements[name].each{|elm|
+          set0_sub lines, elm, name, value
+        }
         true
       else
         # puts "name=#{name} for file:#{file}"
@@ -452,7 +422,44 @@ class NgspiceControl < LTspiceControl
     }
     [lines, result]
   end
-  
+
+  def set0_sub lines, element, name, value
+    lineno = element[:lineno]
+    line = lines[lineno-1]
+    puts "update '#{name}:#{value}' on #{lineno}:#{line}"
+    if line =~ /(^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ .*)(\"*)/  # for xschem
+       line.sub! $3, value
+       element[:control] = value
+    elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
+       line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=\")(.*)(\"})/ ||
+       line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
+       line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
+       line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
+       line =~ /(^ *[VvIiCcRr]\S* +\S+ +\S+ +)(.*)( *)/
+      substr = $2
+      #puts "***before:'#{lines[lineno-1]}'"          
+      line.sub! line, "#{$1}#{value}#{$3}"
+      (element[:value]||element[:control]).sub!(substr, value)
+      #puts "***after:'#{lines[lineno-1]}'"
+    elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ +)(.*)(})/
+      substr = $2
+      if value[0] == '-'
+        value = sub substr, value[1..-1]
+      elsif value[0] == '+'
+        value = add substr, value[1..-1]
+      end
+      line.sub! line, "#{$1}#{value}#{$3}"
+      (element[:value]||element[:control]).sub!(substr, value)
+    elsif line =~ /(^ *)(\**[\.;].*)"/ || line =~ /(^ *)(\**[\.;].*)/
+      substr = $2
+      line.sub! substr, value
+      element[:control] = value
+    else
+      line.sub! line, value
+      (element[:value]||element[:control]).sub!(line, value)
+    end
+  end
+
   def update file=@file, lines
     if file =~ /\.asc/
       super file, lines
