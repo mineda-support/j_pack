@@ -61,7 +61,12 @@ class NgspiceControl < LTspiceControl
   end
   
   def view file, options=nil
-    Dir.chdir(File.dirname file){
+    if file.class == Array
+      file, work_dir = file
+    else
+      work_dir = File.dirname(file)
+    end
+    Dir.chdir(work_dir){
       pwd = Dir.pwd
       case File.extname file
       when '.asc'
@@ -70,7 +75,7 @@ class NgspiceControl < LTspiceControl
         if sch_type(file) == 'eeschema'
           command = "#{eeschemaexe} #{options} #{File.basename(file)}"
         elsif sch_type(file) == 'xschem'
-          command = "#{xschemexe} #{options} #{File.join(pwd, File.basename(file))}" # necessary to pass pwd for xschem
+          command = "#{xschemexe} #{options} #{file}" # necessary to pass pwd for xschem
         else
           raise 'Error: unknown sch file format'
         end
@@ -89,6 +94,9 @@ class NgspiceControl < LTspiceControl
   end
 
   def read ckt=@file, ignore_cir=false, recursive=false
+    if ckt.class == Array
+      ckt, work_dir = ckt
+    end  
     read0 ckt, recursive # @elements is set
     @sheet = nil
     return unless sch_type(ckt) == 'eeschema'
