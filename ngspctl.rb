@@ -242,13 +242,13 @@ class NgspiceControl < LTspiceControl
         end
         control = nil if l =~ /"}/
         next
-      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)/
+      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"(\.(\S+) .*)\"/
         name = $3
         elements[name] ||= []
         elements[name] <<  {control: $2, lineno: lineno}
         controls << name unless controls.include?(name)
         control = true unless l =~ /"[ }]*$/
-      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$/
+      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$\"/
         elements['control'] ||= []
         elements['control'] << {control: $2, lineno: lineno} 
         controls << name unless controls.include?(name)
@@ -410,7 +410,7 @@ class NgspiceControl < LTspiceControl
         if elm && lineno = elm[:lineno]
           line = lines[lineno-1]
           # puts line
-          if line =~ /(^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ .*)(\")/  # for xschem
+          if line =~ /(^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ .*)(\".*$)/  # for xschem
             line.sub! line, "#{$2}#{value}#{$4}"
             elm[:control] = value
             true
@@ -435,7 +435,7 @@ class NgspiceControl < LTspiceControl
     lineno = element[:lineno]
     line = lines[lineno-1]
     puts "update '#{name}:#{value}' on #{lineno}:#{line}"
-    if line =~ /(^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ .*)(\"*)/  # for xschem
+    if line =~ /(^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\")(\.\S+ [^\"]*)(\"*.$)/
        line.sub! $3, value
        element[:control] = value
     elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
@@ -587,7 +587,7 @@ class NgspiceControl < LTspiceControl
         step = 'list'
         values.shift # values = ["list", "0.3u", "1u", "3u", "10u"]
       end
-      steps << {'name' =>name, 'type'=>type, 'step'=>step, 'values'=>values}
+      steps << {'name' =>name.downcase, 'type'=>type, 'step'=>step, 'values'=>values}
     }
     steps.reverse
   end
@@ -726,7 +726,8 @@ class NgspiceControl < LTspiceControl
             @step_results[0] = r[0]
             r[1].each_with_index{|s, i|
               @step_results[1] << s # r[1][0]
-              r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
+              # r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
+              r[1][i][:name] = "#{steps[0]['name']}=#{v}" 
             }
             @step_results[2] ||= []
             @step_results[2] << meas_result.values if meas_result
