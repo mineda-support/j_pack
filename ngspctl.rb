@@ -94,10 +94,10 @@ class NgspiceControl < LTspiceControl
   end
 
   def read ckt=@file, ignore_cir=false, recursive=false
+    read0 ckt, recursive # @elements is set
     if ckt.class == Array
       ckt, work_dir = ckt
     end  
-    read0 ckt, recursive # @elements is set
     @sheet = nil
     return unless sch_type(ckt) == 'eeschema'
     @sheet = {ckt => @elements}
@@ -115,24 +115,28 @@ class NgspiceControl < LTspiceControl
   end
 
   def read0 ckt, recursive
-    @file = ckt
-    case File.extname ckt 
+    if ckt.class == Array
+      @file, work_dir = ckt
+    else
+      @file = ckt
+    end  
+    case File.extname @file 
     when '.asc'
-        @elements = read_asc ckt, recursive
+        @elements = read_asc @file, recursive
     when '.sch'
-        @elements = read_sch ckt, recursive
+        @elements = read_sch @file, work_dir, recursive
     when '.net', '.spice', '.cir', '.spc'
-        @elements = read_net ckt
+        @elements = read_net @file
         @sheet && @sheet.each_key{|file|
-          @sheet[file] = read_eeschema_sch file, recursive
+          @sheet[file] = read_eeschema_sch file, work_dir, recursive
         }
     when ''
-      if File.exist? ckt+'.asc'
-        @elements = read_asc ckt+'.asc', recursive
-      elsif File.exist? ckt+'.sch'
-        @elements = read_sch ckt+'.sch', recursive
-      elsif File.exist? ckt+'.net'
-        @elements = read_net ckt+'.net', recursive
+      if File.exist? @file+'.asc'
+        @elements = read_asc @file+'.asc', recursive
+      elsif File.exist? @file+'.sch'
+        @elements = read_sch @file+'.sch', work_dir, recursive
+      elsif File.exist? @file+'.net'
+        @elements = read_net @file+'.net', recursive
       else
       end
     end
@@ -143,11 +147,11 @@ class NgspiceControl < LTspiceControl
   end
   private :read0 
 
-  def read_sch file, recursive=false, caller=''
+  def read_sch file, work_dir, recursive=false, caller=''
     if sch_type(file) == 'eeschema'
       read_eeschema_sch file, recursive, caller
     elsif sch_type(file) == 'xschem'
-      read_xschem_sch file, recursive, caller
+      read_xschem_sch file, work_dir, recursive, caller
     end
   end
       
@@ -220,7 +224,7 @@ class NgspiceControl < LTspiceControl
     elements
   end
 
-  def read_xschem_sch file, recursive=false, caller=''
+  def read_xschem_sch file, work_dir, recursive=false, caller=''
     elements = {}
     @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = control = nil
@@ -259,14 +263,14 @@ class NgspiceControl < LTspiceControl
         name = $2
         value = $3
         elements[name] = {value: value, type: type, lineno: lineno}
-      elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) +(.*)}/
+      elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) *(.*)}/
         type = $1
         name = $2
         value2 = $3
         elements[name] = {value: value2, type: type, lineno: lineno}
         if recursive && name[0].downcase == 'x'
           caller << '.' + name
-          @ckts[type] ||= read_xschem_sch(File.join(File.dirname(file), type+'.sch'), true, caller)
+          @ckts[type] ||= read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)
           @ckts[caller] = type
         end
       end
