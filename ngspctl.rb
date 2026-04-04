@@ -26,7 +26,8 @@ class NgspiceControl < LTspiceControl
     @step_results = []
     @ckts = {}
     read ckt, ignore_cir, recursive
-    get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
+    # get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
+    get_models e=@elements[@file.sub(/\.\S+/, '')] || @elements 
   end
   
   def read_subckt sheets
@@ -97,6 +98,7 @@ class NgspiceControl < LTspiceControl
     read0 ckt, recursive # @elements is set
     if ckt.class == Array
       ckt, work_dir = ckt
+      @work_dir = work_dir
     end  
     @sheet = nil
     return unless sch_type(ckt) == 'eeschema'
@@ -226,7 +228,8 @@ class NgspiceControl < LTspiceControl
 
   def read_xschem_sch file, work_dir, recursive=false, caller=''
     elements = {}
-    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
+    # @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
+    @ckts[file.sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = control = nil
     lineno = line1 = line2 = 0
     controls = []
@@ -270,7 +273,11 @@ class NgspiceControl < LTspiceControl
         elements[name] = {value: value2, type: type, lineno: lineno}
         if recursive && name[0].downcase == 'x'
           caller << '.' + name
-          @ckts[type] ||= read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)
+          if @work_dir == work_dir
+            @ckts[type] ||= read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)                        
+          else
+            @ckts[type] = read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)
+          end
           @ckts[caller] = type
         end
       end
@@ -381,7 +388,8 @@ class NgspiceControl < LTspiceControl
       else
         file = @file
       end
-      e = @elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
+      # e = @elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
+      e = @elements[@file.sub(/\.\S+/, '')] || @elements 
       lines, result = set0 pairs, file, e, @mtime
       update(file, lines) 
       result
@@ -522,7 +530,7 @@ class NgspiceControl < LTspiceControl
     home = (ENV['HOMEPATH'] || ENV['HOME'])
     $stderr.puts "file = #{file}"
     control = cont_return = nil
-    File.read(file).encode('UTF-8', invalid: :replace).each_line{|l|
+    File.read(File.basename(file)).encode('UTF-8', invalid: :replace).each_line{|l|
       l.chomp!
       l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
       # $stderr.puts "l:#{l}"
@@ -610,7 +618,8 @@ class NgspiceControl < LTspiceControl
       Dir.chdir(File.dirname @file){ # chdir or -netlist does not work 
         FileUtils.cp @file, @file.sub('.asc', '.tmp')
         run_ltspice '-netlist', File.basename(@file.sub('.asc', '.tmp'))
-        wait_for File.basename(file), Time.now, 'due to some error'
+        # wait_for File.basename(file), Time.now, 'due to some error'
+        wait_for file, Time.now, 'due to some error' 
       }
       File.open(file, 'r:Windows-1252').read.encode('UTF-8').gsub(181.chr(Encoding::UTF_8), 'u').each_line{|l|
         if l =~ /^\.tran +(\S+)/
@@ -632,13 +641,14 @@ class NgspiceControl < LTspiceControl
         end
         netlist, steps = super.parse(file, analysys)
       elsif sch_type(@file) == 'xschem'
-        Dir.chdir(File.dirname @file){
+        # Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
           file = @file.sub '.sch', '.spice'
           #File.delete file if file && File.exist?(file)
           FileUtils.rm(file, force: true) if file && File.exist?(file)
           start = Time.now
-          run "-s -n -x -q -o .", File.join(pwd, File.basename(@file)) # passing only @file causes load_schematic(): unable to open file
+          # run "-s -n -x -q -o .", File.join(pwd, File.basename(@file)) # passing only @file causes load_schematic(): unable to open file
+          run "-s -n -x -q -o .", @file # @file is now full path
             # xschem options:
             # -s: set netlist type to spice
             # -n: create netlist
@@ -651,7 +661,7 @@ class NgspiceControl < LTspiceControl
           netlist, steps, control = parse(file, analysis, '^ *\.step')
           #$stderr.puts "after parsing steps\n#{netlist}"
           $stderr.puts "after parsing, steps ='#{steps}', control =", control, '---'
-        }
+        # }
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
       netlist, steps, control = parse(@file, analysis, '^ *\.step')
