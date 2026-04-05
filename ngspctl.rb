@@ -246,6 +246,16 @@ class NgspiceControl < LTspiceControl
           name = $2
           elements[name] ||= []
           elements[name] << {control: $1+$2+$3, lineno: lineno}
+        elsif l =~ /TRAN|AC|DC/
+          elements['control'] ||= []
+          elements['control'] << {control: l, lineno: lineno}
+        elsif l =~ /MEAS|meas|WRITE|write/
+          elements['control'] ||= []
+          elements['control'] << {value: l, lineno: lineno}
+        elsif l =~ /^(V\S+) \S+ \S+ (.*$)/
+          name = $1
+          elements[name] 
+          elements[name] << {value: $2, lineno: lineno}
         end
         control = nil if l =~ /"}/
         next
@@ -255,10 +265,14 @@ class NgspiceControl < LTspiceControl
         elements[name] <<  {control: $2, lineno: lineno}
         controls << name unless controls.include?(name)
         control = true unless l =~ /"[ }]*$/
+        debugger
       elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$\"/
+        name = $3
         elements['control'] ||= []
         elements['control'] << {control: $2, lineno: lineno} 
         controls << name unless controls.include?(name)
+        control = true
+      elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\" *$/
         control = true
       elsif l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=\"(.*)\"}/ ||
             l =~ /^C {(\S+).sym} +\S+ +\S+ +\S+ +\S+ {name=(\S+) .*value=(\S+)}/ 
@@ -544,9 +558,6 @@ class NgspiceControl < LTspiceControl
         steps = step2params(l)
         netlist << '*' + l + "\n"
         $stderr.puts "commented: #{l}"
-      elsif l =~ /^ *\.endc/
-        cont_return = control.dup
-        control = nil
       elsif control
         if l.length > 0 && l =~ /meas|let|write/
           control << l + "\n"
