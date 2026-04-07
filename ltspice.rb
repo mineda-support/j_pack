@@ -95,7 +95,8 @@ def model_files include_files
     if File.exist?(f)
       File.read(f).each_line{|l|
         l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH|\$HOME/, home)
-        if l =~ /include \"\.\/(\S+)\"/
+        puts l
+        if l =~ /inc.* \"\.\/(\S+)\"/||l =~ /inc.* '(\S+)'/|| l =~ /inc.* (\S+)/
           model_files << File.join(File.dirname(f), $1)
         end
       }

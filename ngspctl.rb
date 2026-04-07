@@ -26,7 +26,6 @@ class NgspiceControl < LTspiceControl
     @step_results = []
     @ckts = {}
     read ckt, ignore_cir, recursive
-    # get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
     get_models e=@elements[@file.sub(/\.\S+/, '')] || @elements 
   end
   
@@ -254,7 +253,7 @@ class NgspiceControl < LTspiceControl
           elements['control'] << {value: l, lineno: lineno}
         elsif l =~ /^(V\S+) \S+ \S+ (.*$)/
           name = $1
-          elements[name] 
+          elements[name] ||= []
           elements[name] << {value: $2, lineno: lineno}
         end
         control = nil if l =~ /"}/
@@ -265,7 +264,6 @@ class NgspiceControl < LTspiceControl
         elements[name] <<  {control: $2, lineno: lineno}
         controls << name unless controls.include?(name)
         control = true unless l =~ /"[ }]*$/
-        debugger
       elsif l =~ /^C {\S*\/*(code_shown|code|netlist).sym} +\S+ +\S+ +\S+ +\S+ {.* value=\"([^"]*)$\"/
         name = $3
         elements['control'] ||= []
@@ -286,7 +284,7 @@ class NgspiceControl < LTspiceControl
         value2 = $3
         elements[name] = {value: value2, type: type, lineno: lineno}
         if recursive && name[0].downcase == 'x'
-          caller << '.' + name
+          caller = '.' + name
           if @work_dir == work_dir
             @ckts[type] ||= read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)                        
           else
@@ -558,6 +556,9 @@ class NgspiceControl < LTspiceControl
         steps = step2params(l)
         netlist << '*' + l + "\n"
         $stderr.puts "commented: #{l}"
+      elsif l =~ /^ *\.endc/
+        cont_return = control.dup
+        control = nil
       elsif control
         if l.length > 0 && l =~ /meas|let|write/
           control << l + "\n"
@@ -621,6 +622,9 @@ class NgspiceControl < LTspiceControl
     netlist = ''
     analysis = {}
     control = nil
+    models_update = nil
+    extra_commands = ''
+    variations = {}
     steps = []
     $stderr.puts "@file = #{@file}"
     if @file =~ /\.asc/
@@ -690,11 +694,10 @@ class NgspiceControl < LTspiceControl
       Ngspice.circ(netlist)
       variables.each{|v|
         if v.class == Hash
-=begin
           if v[:models_update]
             models_update = v[:models_update]
             model_lines = get_models @elements
-            model_lines.each{|lineno|
+            model_lines && model_lines.each{|lineno|
               lines[lineno-1].sub! '.include', ';include'
             } 
           end
@@ -704,11 +707,18 @@ class NgspiceControl < LTspiceControl
           else        
             analysis[v.first[0]] = v.first[1]
           end
-=end
         else
           Ngspice.command "save #{v}"
         end
       }
+      models_update && models_update.each_pair{|model_name, params|
+        params.each_pair{|key, value|
+          @models[model_name.to_s][1][key.to_s] = value
+        } 
+      }
+
+      fix_net File.basename(@file), analysis, extra_commands, models_update, variations
+
       @step_results = [[], [], [], nil]
       node_list = variables[0] ? variables[0][:probes] : nil
       $stderr.puts "steps = #{steps.inspect}"
@@ -1174,7 +1184,7 @@ class NgspiceControl < LTspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
-  file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'work\Op8_18\Xschem\simulation\op8_18_tb_direct_ac.spice'
   #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/MinimalFab/work/SpiceModeling/Xschem/Idvd_nch_pch.spice'
@@ -1186,6 +1196,8 @@ if $0 == __FILE__
   #file = 'c:/tmp/VTH_VBG1.sch'
 
   #ckt = NgspiceControl.new file, true, true # test recursive
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile\LSI_devel\LR_homework\LR-hasegawa\LR_hasegawa\LR_Work2\ring_oscillator.sch'
+  Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile\LSI_devel\LR_homework\LR-hasegawa\LR_hasegawa'){
   ckt = NgspiceControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
   #ckt.set({:VD=>"0.05"})
@@ -1194,13 +1206,16 @@ if $0 == __FILE__
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
   #puts r[1][0][:y] if r[1] && r[1][0]
-  ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))'] # probes are necessary for step anaysis
+  #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))'] # probes are necessary for step anaysis
   #r = ckt.get_traces 'v-sweep', 'I(vmeas)'
   #r = ckt.get_traces 'I(vmeas)', 'I(vmeas)'
   #ckt = NgspiceControl.new file, true, true # test recursive
-  r = ckt.get_traces('frequency', 'V(out)') 
-  r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
+  # r = ckt.get_traces('frequency', 'V(out)') 
+  # r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-sweep', 'i(Vds)')
   #r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
+  ckt.simulate probes: ['time', 'v(clk)']
+  r = ckt.get_traces 'time', 'v(clk)'
   puts 'sim end'
+}
 end

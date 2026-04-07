@@ -691,7 +691,8 @@ EOF
         model_lines << l[:lineno]
       end
     }
-    # puts "include_files=#{include_files.inspect}"
+    puts "include_files=#{include_files.inspect}"
+    puts "model_files=#{model_files(include_files).inspect}"
     model_files(include_files).each{|f|
       if File.exist? f
         m = CompactModel.new f
