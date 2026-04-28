@@ -9,7 +9,7 @@ require 'yaml'
 
 def c2q str
   i = str.to_i
-  i*10/16
+  (i*10/16)
 end
 
 def q2c str
@@ -20,18 +20,18 @@ end
 
 def q2e str
   i = str.to_i
-  i.to_f/8.0
+  (i.to_f/8.0).to_i
 end
 
 def e2q str
   #i = (str.to_f*8.0-0.5).to_i
-  i = (str.to_f/0.127).to_i
+  i = (str.to_f/0.127).to_i * 2 # 2026/4/24
 end
 
 def e2q_sym str
   #i = (str.to_f*800.0).to_i/100
   #i = (str.to_f*8.0-0.5)*100.0.to_i/100
-  i = (str.to_f/0.127).to_i
+  i = (str.to_f/0.127).to_i * 2 # 2026/4/24
 end
 
 def q2x str
@@ -1985,6 +1985,7 @@ EOS
 
   def get_components
     result = ''
+    # require 'debug'; debugger
     @components.each{|c|
       if c[:name] == '.tran'
         result << " <.TR TR1 1 #{c[:x]} #{c[:y]} 0 71 0 0 \"lin\" 1 \"0\" 1 \"10 ms\" 1 \"11\" 0 \"Trapezoidal\" 0 \"2\" 0 \"1 ns\" 0 \"1e-16\" 0 \"150\" 0 \"0.001\" 0 \"1 pA\" 0 \"1 uV\" 0 \"26.85\" 0 \"1e-3\" 0 \"1e-6\" 0 \"1\" 0 \"CroutLU\" 0 \"no\" 0 \"yes\" 0 \"0\" 0>\n"
@@ -2019,13 +2020,12 @@ EOS
         end
         result << " <Port #{c[:symattr]['InstName']} 1 #{c[:x]} #{c[:y]} 0 0 0 #{direction} \"#{number}\" 1 \"#{porttype}\" 0>\n"
         next
-      elsif @lib_info
-        if (lib = @lib_info[c[:name]]) && c[:symattr]
-          if (c[:lib_path] || @lib_path[c[:name]])
-            result << " <Lib #{c[:symattr]['InstName']}"
-          else
-            result << " <Sub #{c[:symattr]['InstName']}"
-          end
+      # elsif @lib_info && (lib = @lib_info[c[:name]]) && c[:symattr]
+      elsif @lib_path && (lib = @lib_path[c[:name]]) && c[:symattr]
+        if (c[:lib_path] || @lib_path[c[:name]])
+          result << " <Lib #{c[:symattr]['InstName']}"
+        else
+          result << " <Sub #{c[:symattr]['InstName']}"
         end
       elsif c[:symattr]
         type = c[:symattr]['Prefix']
@@ -2062,7 +2062,7 @@ EOS
         rotation = 1
       end
       result << " #{mirror} #{rotation}" 
-      if @lib_info && (lib = @lib_info[c[:name]])
+      if @lib_info # && (lib = @lib_info[c[:name]])
         if @lib_path[c[:name]]
           lib_path = @lib_path[c[:name]].sub('.lib', '')
           symbol = @symbols[c[:name]]
@@ -2095,7 +2095,7 @@ EOS
             result << " \"#{lib_path}\" 0 \"#{c[:name]}\" 0>\n"
           end
         else
-          result << " \"\#{ENV['QUCS_DIR']}/#{File.join @lib_info[c[:name]]+'_prj', c[:name]+'.kicad_sch'}\" 0>\n"
+          result << " \"\#{ENV['QUCS_DIR']}/#{File.join @lib_path[c[:name]]+'_prj', c[:name]+'.sch'}\" 0>\n" if @lib_path[c[:name]]
         end
       else
         result << ">\n"
@@ -2209,12 +2209,13 @@ EOS
       else
         desc[group][desc[group].size-1] << l
       end
-    }
+  }
     desc
   end
 end
 
 def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
+  target = target.downcase
   lib_path = {}
   Dir.chdir(pictures_dir){  
     libraries = Dir.glob('*').select{|lib| File.directory? lib}
@@ -2246,7 +2247,8 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
           if target == 'qucs'
             proj_dir = File.join(target_dir, "#{lib}_prj")
             FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
-            c.qucs_schema_out File.join(proj_dir, cell + '.kicad_sch')
+            # debugger
+            c.qucs_schema_out File.join(proj_dir, cell + '.sch')
           elsif target == 'eeschema'
             c.eeschema_schema_out File.join(target_dir, cell + '.kicad_sch')
           elsif target == 'xschem'
@@ -2272,12 +2274,15 @@ if $0 == __FILE__
   cdraw2target 'xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/cdraw', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem'
 =end
   #asc_dir = '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw'
-  asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
+  #asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
+  asc_dir = File.join(ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035')
+  # asc_dir = File.join(ENV['HOMEPATH'], 'KLayout/salt/ICPS2023_5/Technology/tech/symbols/LTspice/MinedaLIB')
   Dir.chdir(asc_dir){
     create_cdraw()
   }
   asc_dir = File.join(asc_dir, 'cdraw')
   cdraw2target 'xschem', asc_dir, '/tmp/xschem'
   cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
+  #equire 'debug'; debugger
   cdraw2target 'qucs', asc_dir, '/tmp/qucs'
 end

@@ -271,7 +271,8 @@ end
 if $0 == __FILE__
 #  current = EEschema.new
 #  current.get_cells_and_symbols # run eeschema.rb in the eeschama directory
-  eeschema2cdraw File.join(ENV['HOME'], 'work/4817'), File.join(ENV['HOME'], 'work/4817/eeschema2cdraw')
+#  eeschema2cdraw File.join(ENV['HOME'], 'work/4817'), File.join(ENV['HOME'], 'work/4817/eeschema2cdraw')
+  eeschema2cdraw File.join(ENV['HOME'], 'work/4817'), File.join(ENV['HOME'], 'work/4817/test')
   ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
 #  eeschema2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
 
