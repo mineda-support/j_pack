@@ -2,10 +2,61 @@
 # Copyright Anagix Corporation 2009-2024
 
 require 'rubygems'
-#require 'byebug'
-# require 'ruby-debug'
+require 'debug'
 require 'fileutils'
 require 'yaml'
+require 'sxp'
+require 'securerandom'
+
+def pretty_sexpr(s_expr)
+  #tokens = s_expr.gsub('(', ' ( ').gsub(')', ' ) ').split
+  tokens = []
+  flag = nil
+  token = ''
+  s_expr.each_char{|c|
+    # puts "c=#{c}, flag=#{flag}"
+    if flag
+      if c == flag
+        flag = nil
+        # puts "c=#{c}, token=#{token+c}"
+        tokens << token + c
+        token = ''
+        next
+      else
+        token << c
+        next
+      end
+    elsif c =="'" || c == "\""
+      token << c
+      flag = c
+      next
+    elsif c == '(' || c == ')'
+      tokens << token
+      tokens << c
+      token = ''
+    else
+      token << c
+    end
+  }
+
+  output = ""
+  indent = 0
+  
+  tokens.each do |token|
+    if token == '('
+      output << "\n" << "  " * indent << "("
+      indent += 1
+    elsif token == ')'
+      indent -= 1
+      output << ")"
+    else
+      # Check if this token starts a new line based on context
+      output << " " if output[-1] != "(" && output[-1] != "\n"
+      output << token
+    end
+  end
+  output.strip
+end
 
 def c2q str
   i = str.to_i
@@ -19,8 +70,7 @@ def q2c str
 end
 
 def q2e str
-  i = str.to_i
-  (i.to_f/8.0).to_i
+  str.to_f*0.127
 end
 
 def e2q str
@@ -167,23 +217,28 @@ class QucsComponent
     result << "<Symbol>\n#{@symbol.qucs_symbol_out @params}</Symbol>\n"
   end
   
-  def eeschema_comp_out lib, model_script
-    result = "DEF #{@name} #{@symbol.prefix||'U'} 0 40 N Y 1 F N\n"
+  def eeschema_comp_out lib
+    # "DEF #{@name} #{@symbol.prefix||'U'} 0 40 N Y 1 F N\n"
     if @symbol.name_pos
       name_x = q2e(@symbol.name_pos[0] || 0)
       name_y = -q2e(@symbol.name_pos[1] || 0)    
     else
       name_x = name_y = 0
     end
-    result << "F0 \"#{@symbol.prefix||'U'}\" #{name_x} #{name_y} 50 H V L CNN\n"
+    # result << "F0 \"#{@symbol.prefix||'U'}\" #{name_x} #{name_y} 50 H V L CNN\n"
+    result = [:symbol, @name, [:property, :Reference, @symbol.prefix||'X', 
+                                          [:at, name_x, name_y, 0]]] #, [:uuid, SecureRandom.uuid]]
     if @label_pos
       label_x = q2e(@symbol.label_pos[0] || 0)
       label_y = -q2e(@symbol.label_pos[1] || 0)    
-      result << "F1 \"#{@name}\" #{label_x} #{label_y} 50 H V L CNN\n"
+      #result << "F1 \"#{@name}\" #{label_x} #{label_y} 50 H V L CNN\n"
+      result.push [:property, :Value, @name, [:at, label_x, label_y, 0]] #, [:uuid, SecureRandom.uuid]] 
     end
     @model = @spice = @params = nil
-    result << @symbol.eeschema_symbol_out(@params)
-    result << "ENDDEF\n"
+    # result << "ENDDEF\n"
+    figures, pins = @symbol.eeschema_symbol_out(@params)
+    result.push [:symbol, "#{@name}_0_1", *figures]
+    result.push [:symbol, "#{@name}_1_1", *pins]    
   end
 
   def xschem_comp_out sym_file
@@ -218,7 +273,7 @@ class QucsComponent
 end
 
 class QucsLibrary
-  attr_accessor :components
+  attr_accessor :components, :symbol_libs, :eescm
   def initialize name, target_dir=File.join(ENV['HOME'], '.qucs')
     @target_dir = target_dir
     @qucs_lib_dir = File.join(target_dir, 'user_lib')
@@ -226,6 +281,7 @@ class QucsLibrary
     @lib_name = name
     @components = []
     @component_is_symbol = {}
+    @eescm = []
   end
  
   def cdraw_lib_in lib
@@ -301,7 +357,7 @@ class QucsLibrary
   end
 
   def qucs_lib_out model_script=nil
-    result = {}
+    lib_path = {}
 
     FileUtils.mkdir_p File.dirname(@qucs_lib) unless File.directory? File.dirname(@qucs_lib)
     File.open(@qucs_lib, 'w'){|f|
@@ -311,27 +367,32 @@ class QucsLibrary
         qucs_dir = File.expand_path(File.join(@qucs_lib, '../..'))
         if @component_is_symbol[comp] 
           if ENV['QUCS_DIR']
-            result[comp.name] = @qucs_lib.sub(qucs_dir, ENV['QUCS_DIR']) 
+            lib_path[comp.name] = @qucs_lib.sub(qucs_dir, ENV['QUCS_DIR']) 
           else
-            result[comp.name] = @qucs_lib.sub(qucs_dir, '#'+"{ENV['QUCS_DIR']}") 
+            lib_path[comp.name] = @qucs_lib.sub(qucs_dir, '#'+"{ENV['QUCS_DIR']}") 
           end
         end
       }
     }
-    result
+    lib_path
   end
 
   def eeschema_lib_out model_script=nil
-    result = {}
+    lib_info = {}
     FileUtils.mkdir_p @target_dir unless File.directory? @target_dir
-    File.open(File.join(@target_dir, @lib_name+'.lib'), 'w'){|f|
-      f.puts "EESchema-LIBRARY Version 2.4\n#encoding utf-8\n"
+    File.open(File.join(@target_dir, @lib_name+'.kicad_sym'), 'w'){|f|
+      #f.puts "EESchema-LIBRARY Version 2.4\n#encoding utf-8\n"
+      @eescm = [:kicad_symbol_lib, [:version, 20231120], [:generator, "kicad_symbol_editor"],
+	       [:generator_version, "8.0"], [:uuid, SecureRandom.uuid]]
       @components.each{|comp|
-        f.puts comp.eeschema_comp_out(@lib_name, model_script)
-        result[comp.name] = @lib_name # if @component_is_symbol[comp]
+        #f.puts comp.eeschema_comp_out(@lib_name, model_script)
+        @eescm.push comp.eeschema_comp_out(@lib_name)
+        lib_info[comp.name] = @lib_name # if @component_is_symbol[comp]
       }
+      #f.puts eescm.to_sxp
+      f.puts pretty_sexpr(@eescm.to_sxp)
     }
-    result
+    lib_info
   end
 
   def xschem_lib_out pictures_dir
@@ -829,38 +890,17 @@ EOS
     result
   end
 
-  EESCHEMA_SYMBOL_ORIENTATION = {0 => 'U', 90 => 'R', 180 => 'D', 270 => 'L'}
-
-  def eeschema_symbol_orientation p, center = [0.0, 0.0]
-    if p[:angle]
-      return EESCHEMA_SYMBOL_ORIENTATION[p[:angle]]
-    end
-    x = q2e(p[:xy][0])
-    y = -q2e(p[:xy][1])
-    if (x-center[0]).abs > (y-center[1]).abs
-      if x-center[0] > 0
-        'L'
-      else
-        'R'
-      end
-    else
-      if y-center[1] > 0
-        'D'
-      else
-        'U'
-      end
-    end
-  end
-
   def eeschema_symbol_out params=nil
     return '' if @portsyms.size == 0
-    result = "DRAW\n"
+    # result = "DRAW\n"
+    result = []
     @lines.each{|l|
       x1 = q2e(l[0])
       y1 = -q2e(l[1])
       x2 = q2e(l[2]) + x1
       y2 = -q2e(l[3]) + y1  # -(q2e(l[3]) + q2e(l[1]))
-      result << "P 2 0 1 0 #{x1} #{y1} #{x2} #{y2} N\n"
+      # result << "P 2 0 1 0 #{x1} #{y1} #{x2} #{y2} N\n"
+      result.push [:polyline, [:pts, [:xy, x1, y1], [:xy, x2, y2]]]
     }
     @rectangles.each{|r|
       x1, y1, x2, y2 = r
@@ -868,7 +908,8 @@ EOS
       #      y = [y1, y2].min
       #      w = (x2 - x1).abs
       #      h = (y2 - y1).abs
-      result << "S #{q2e(x1)} #{-q2e(y1)} #{q2e(x2)} #{-q2e(y2)} 0 1 0 f\n"
+      # result << "S #{q2e(x1)} #{-q2e(y1)} #{q2e(x2)} #{-q2e(y2)} 0 1 0 f\n"
+      result.push [:rectangle, [:start, q2e(x1), -q2e(y1)], [:end, q2e(x2), -q2e(y2)]]
     }
     @arcs.each{|a|
       x1, y2, x2, y1, xa1, ya1, xa2, ya2 = a
@@ -883,9 +924,9 @@ EOS
       stopangle = Math.atan2((ya1-yc), (xa1-xc)).to_i
       start = (startangle*180/Math::PI).to_i
       stop = (stopangle*180/Math::PI).to_i
-      printf "start: %f, stop: %f\n", start, stop
-      
-      result << "A #{q2e(x)} #{-q2e(y)} #{q2e([w,h].min/2)} #{start} #{stop} 0 1 0 N #{q2e(xa1)} #{-q2e(ya1)} #{q2e(xa2)} #{-q2e(ya2)}\n"
+      # printf "start: %f, stop: %f\n", start, stop
+      # result << "A #{q2e(x)} #{-q2e(y)} #{q2e([w,h].min/2)} #{start} #{stop} 0 1 0 N #{q2e(xa1)} #{-q2e(ya1)} #{q2e(xa2)} #{-q2e(ya2)}\n"
+      result.push [:arc, [:start, q2e(x), -q2e(y)] ]
     }
     @circles.each{|c|
       cx1, cy1, cx2, cy2 = c
@@ -893,7 +934,8 @@ EOS
       x2 = [cx1, cx2].max
       y1 = [cy1, cy2].min
       y2 = [cy1, cy2].max
-      result << "C #{q2e(x1+x2)/2} #{-q2e((y1+y2)/2)} #{q2e([x2-x1,y2-y1].max/2)} 0 1 0N\n"
+      #result << "C #{q2e(x1+x2)/2} #{-q2e((y1+y2)/2)} #{q2e([x2-x1,y2-y1].max/2)} 0 1 0N\n"
+      result.push [:circle, [:center, q2e(x1+x2)/2, -q2e((y1+y2)/2)], [:radius, q2e([x2-x1,y2-y1].max/2)]]  
     }
 
     center = [0.0, 0.0]
@@ -903,10 +945,17 @@ EOS
     }
     center[0] = center[0]/@portsyms.size
     center[1] = center[1]/@portsyms.size     
+    number = 0
+    pins = []
     @portsyms.each{|p|
-      result << "X #{p[:PinName]||'~'} #{p[:SpiceOrder]} #{q2e(p[:xy][0])} #{-q2e(p[:xy][1])} 25 #{eeschema_symbol_orientation(p, center)} 35 35 1 1 I\n"
+      # result << "X #{p[:PinName]||'~'} #{p[:SpiceOrder]} #{q2e(p[:xy][0])} #{-q2e(p[:xy][1])} 25 #{eeschema_symbol_orientation(p, center)} 35 35 1 1 I\n"
+      number = number + 1
+      
+      pins.push [:pin, :input, :line, [:at, q2e(p[:xy][0]), -q2e(p[:xy][1]), p[:angle]||0],
+                        [:length, 0.635], [:name, '~'], [:number, number.to_s]]
     }
-    result << "ENDDRAW\n"
+    # result << "ENDDRAW\n"
+    [result, pins]
   end
 
   def xschem_symbol_out
@@ -1043,7 +1092,6 @@ class QucsSchematic
     @components =[]
     @texts = []
     @lines = [] 
-    @lib_info = {}
   end
 
   def dump
@@ -1053,6 +1101,9 @@ class QucsSchematic
 
   def cdraw_schema_in
     # File.open(@cell+'.asc', 'r:Windows-1252').read.encode('UTF-8').gsub(181.chr(Encoding::UTF_8), 'u').scrub.each_line{|l|
+    props = {}
+    props = YAML.load(File.read(@cell+'.yaml').encode('UTF-8')) if File.exist? @cell+'.yaml'
+    lib_info = props['cells']||{}
     mu = 181.chr(Encoding::UTF_8)
     File.open(@cell+'.asc', 'r:UTF-8').read.gsub(mu, 'u').scrub.each_line{|l|
       if l =~ /WIRE +(\S+) +(\S+) +(\S+) +(\S+)/ 
@@ -1070,8 +1121,11 @@ class QucsSchematic
         @component = {:name=>$1, :x=>c2q($2), :y=>c2q($3), :rotation=>$4} # so reverted back
         if @component[:name] =~ /(\S+)\\(\S+)/  # like OR1LIB\\PMOS
           @component[:name] = $2
+          # require 'debug'; debugger
+          lib_info[$1]=$2
         elsif @component[:name] =~ /(\S+)@(\S+)/  # like PMOS@OR1LIB
           @component[:name] = $1
+          lib_info[$2]=$1
         end
         @components << @component
       elsif l =~ /SYMATTR +(\S+) +(.*)$/
@@ -1130,11 +1184,9 @@ class QucsSchematic
 
     @symbol = QucsSymbol.new @cell
     @symbol.cdraw_symbol_in if File.exist?(@cell+'.asy')
-    props = {}
-    props = YAML.load(File.read(@cell+'.yaml').encode('UTF-8')) if File.exist? @cell+'.yaml'
-    @lib_info = props['cells']||{}
-    @lib_info['GND'] = 'power'
-    @lib_info
+    # require 'debug'; debugger
+    lib_info['GND'] = 'power'
+    lib_info
   end
 
   def qucs_schema_in
@@ -1150,85 +1202,6 @@ class QucsSchematic
     desc['Wires'] && desc['Wires'].each_line{|w|
       w =~ /<(\S+) +(\S+) +(\S+) +(\S+)/ 
       @wires << [q2c($1), q2c($2), q2c($3), q2c($4)]
-    }
-    desc['Diagrams']
-    desc['Paintings']
-  end
-
-  def eeschema5_schema_in
-    desc = extract_eeschema_cell(File.read(@cell+'.kicad_sch').encode('UTF-8'))
-    #c = QucsComponent.new @cell
-    #c.eeschema_comp_in desc
-    #@symbol = c.symbol
-    desc['Components'] && desc['Components'].each{|lines|
-      @component = {:type => 'Lib'}
-      lines.each_line{|l|
-        if l =~ /^L (\S+):(\S+) (\S+)/ # Simulation_SPICE:VSIN V1
-          @component[:lib_path] = $1
-          @component[:name] = $2
-          @lib_info[@component[:name]] = 'circuits'
-          @component[:symattr] = {'InstName'=> $3}
-          @component[:type] = 'Lib'
-        elsif l =~ /^P (\S+) (\S+)/
-          @component[:x] = e2q($1)
-          @component[:y] = e2q($2)
-        elsif l =~ /F 0 \"(\S+)\" \S+ (\S+) (\S+)/
-          @component[:name_pos] = [e2q($2), e2q($3)]
-          # @component[:name] = $1 # [:symattr][InstName] already set
-        elsif l =~ /F 1 \"(\S+)\" \S+ (\S+) (\S+)/
-          @component[:symattr]['Value'] = $1
-          @component[:label_pos] = [e2q($2), e2q($3)]
-        elsif l =~ /F 5 \"([^\"]*)\"/
-          @component[:symattr]['Value2'] = $1
-        elsif l =~ /\s*((\S+) (\S+) (\S+) (\S+))/
-          case $1
-          when '1 0 0 -1' # 'R0'
-            @component[:rotation] = 'R0'
-          when '0 1 1 0'  # 'R90'
-            @component[:rotation] = 'R90' 
-          when '-1 0 0 1' # 'R180'
-            @component[:rotation] = 'R180'
-          when '0 -1 -1 0' # 'R270'
-            @component[:rotation] = 'R270' 
-          when '-1 0 0 -1' # 'M0'
-            @component[:rotation] = 'M0'
-          when '0 -1 1 0' # 'M90'
-            @component[:rotation] = 'M90' 
-          when '1 0 0 1' # 'M180'
-            @component[:rotation] = 'M180'
-          when '0 1 -1 0' # 'M270'
-            @component[:rotation] = 'M270'
-          end
-        end
-      }
-      # c =~ /<(\S+) +(\S+) +\S+ +(\S+) +(\S+) +0 +0 +(\S+) +(\S+) +"(\S+)" 0 "(\S+)"/
-      # @component = {:type=> $1, :name=>$2, :x=>q2c($3), :y=>q2c($4), :mirror=>$5.to_i, :rotation=>$6.to_i, :lib_path=>$7, :cell_name=>$8}
-      @components << @component
-    }
-    desc['Wires'] && desc['Wires'].each{|w|
-      w =~ /(\S+) +(\S+) +(\S+) +(\S+)/ 
-      @wires << [e2q($1), e2q($2), e2q($3), e2q($4)]
-    }
-    desc['Texts'] && desc['Texts'].each{|l|
-      l =~ /Text +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) +(\S+) ~ 0\n(.*)$/
-      if $1 == 'GLabel'
-        @wires << [e2q($2), e2q($3), e2q($2), e2q($3), $7]
-      elsif $1 == 'HLabel'
-        case $6
-        when 'Output'
-          inst_name = 'out'
-        when 'Input'
-          inst_name= 'in'
-        when 'BiDi'
-          inst_name = 'inout'
-        else
-          inst_name = nil
-        end
-        @component = {:type=> 'Port', :name=>inst_name, :x=>e2q($2), :y=>e2q($3), :symattr=>{"InstName" => $7}}
-        @components << @component
-      else
-        @texts << [e2q($2), e2q($3), $4||"0", $5||"50", $6]
-      end
     }
     desc['Diagrams']
     desc['Paintings']
@@ -1268,7 +1241,7 @@ class QucsSchematic
             @component[:y] = e2q(item[2])
             inst['rotation'] = item[3]
           when :mirror
-            inst['mirror'] = item[3]
+            inst['mirror'] = item[1] # item[3]
           when :property
             inst[item[1]] = item[2] # item[1] == 'Reference'
           when :pin
@@ -1296,7 +1269,7 @@ class QucsSchematic
   
   XschemPorts = {'ipin' => 'in', 'opin' => 'out', 'iopin' => 'inout'}
   def xschem_schema_in
-    @lib_info = {}
+    lib_info = {}
     properties = nil # non-nil means line continued
     name = x = y = code = graph = nil
     num_nc = 0
@@ -1377,7 +1350,7 @@ class QucsSchematic
           properties = nil
           next
         else
-          @lib_info[name] = 'circuits'
+          lib_info[name] = 'circuits'
           type = 'Lib'
         end
         @component = {:type => type, :name=>name, :x=>x2q(x), :y=>x2q(y), :rotation=>xschem_in_orientation(rotation, mirror)} 
@@ -1406,9 +1379,7 @@ class QucsSchematic
     end
     props = {}
     props = YAML.load(File.read(@cell+'.yaml').encode('UTF-8')) if File.exist? @cell+'.yaml'
-    # @lib_info = props['cells']||{}
-    # @lib_info['GND'] = 'power'
-    @lib_info
+    lib_info
   end
 
   def wrap_with_curly_bracket str
@@ -1463,12 +1434,12 @@ class QucsSchematic
     end
   end
 
-  def qucs_schema_out file
+  def qucs_schema_out file, lib_path
     File.open(file, 'w'){|f|
       f.puts "<Qucs Schematic 0.0.21>\n"
       f.puts "<Properties>\n#{properties}</Properties>\n"
       f.puts "<Symbol>\n#{@symbol.qucs_symbol_out}</Symbol>\n" if @symbol
-      f.puts "<Components>\n#{get_components}</Components>\n" if @components
+      f.puts "<Components>\n#{get_components lib_path}</Components>\n" if @components
       f.puts "<Wires>\n#{wires}</Wires>\n"
       f.puts "<Diagrams>\n</Diagrams>\n"
       f.puts "<Paintings>\n#{paintings}</Paintings>\n"
@@ -1581,7 +1552,7 @@ EOS
     }
   end
 
-  def eeschema_schema_out file
+  def eeschema_schema_out file, symbol_libs, lib_info
     File.open(file, 'w'){|f|
       xmin = ymin = 10000000
       xmax = ymax = -xmin
@@ -1594,89 +1565,112 @@ EOS
         end
       }
       @wires = @wires - global_pins
-      offset = [6000 - ((q2e(xmin)+q2e(xmax))/100)*50, 4100 - ((q2e(ymin)+q2e(ymax))/100)*50]
-      f.puts eeschema_schema_header @lib_info.values.uniq
-      f.puts eeschema_schema_components offset
-      f.puts eeschema_schema_wires offset
-      f.puts eeschema_schema_pins global_pins, offset
-      f.puts eeschema_schema_texts offset
-      f.puts '$EndSCHEMATC'
-    }      
+      offset = [120, 80] # [6000 - ((q2e(xmin)+q2e(xmax))/100)*50, 4100 - ((q2e(ymin)+q2e(ymax))/100)*50]
+      eescm = eeschema_schema_header # lib_info.values.uniq
+      eescm.push [:lib_symbols] #, symbols_lib]
+      eescm.concat(eeschema_schema_components lib_info, offset)
+      eescm.concat(eeschema_schema_wires offset)
+      eescm.concat(eeschema_schema_pins global_pins, offset)
+      eescm.concat(eeschema_schema_texts offset)
+      #f.puts eescm.to_sxp
+      symbols = gen_lib_symbols symbol_references(eescm), symbol_libs
+      eescm.assoc(:lib_symbols).concat symbols
+      f.puts pretty_sexpr(eescm.to_sxp)
+    }  
   end
 
-  def eeschema_schema_header libraries
-<<EOS
-EESchema Schematic File Version 4
-LIBS:#{libraries.join ' '}
-EELAYER 29 0
-EELAYER END
-$Descr A4 11693 8268
-encoding utf-8
-Sheet 1 3
-Title ""
-Date ""
-Rev ""
-Comp ""
-Comment1 ""
-Comment2 ""
-Comment3 ""
-Comment4 ""
-$EndDescr
-EOS
+  def symbol_references eescm
+    eescm.select{|a| a[0] == :symbol}.map{|s| s[1][1]}.uniq
   end
 
-  def eeschema_schema_components offset
-    result = ''
+  def gen_lib_symbols ref, symbol_libs
+    symbols = []
+    ref.each{|pair|
+      lib, cell = pair.split(':')
+      if lib.length > 0 
+        symbol = symbol_libs[lib].rassoc(cell)
+        symbol[1] = "#{lib}:#{symbol[1]}"
+        symbols << symbol
+      end
+    }
+    symbols
+  end 
+
+  def eeschema_schema_header
+    [:kicad_sch, [:version, 20231120], [:generator, "eeschema"],
+     [:generator_version, "8.0"], [:uuid, SecureRandom.uuid], [:paper, "A4"]]
+  end
+
+  def eeschema_schema_components lib_info, offset
+    result = []
     @components.each{|c|
       next if ['ipin', 'opin', 'iopin'].include? c[:name]
       x = q2e(c[:x])+offset[0]
       y = q2e(c[:y])+offset[1]
+      rot, mir = eeschema_orientation c[:rotation]
       if c[:name].start_with? '.'
         case c[:name]
         when '.include'
-          result << "Text Notes #{x} #{y} 0 50 ~ 0\n.include #{c[:path]}\n"
+          # result << "Text Notes #{x} #{y} 0 50 ~ 0\n.include #{c[:path]}\n"
+          result.push [:text, ".include #{c[:path]}", [:at, x, y, 0]]
         end
         next
       end
-      result << "$Comp\n"
+      #result << "$Comp\n"
       inst_name = c[:symattr]? c[:symattr]['InstName'] : nil
       component_name = c[:name] 
       component_name = 'GND' if component_name == 'gnd'
-      result << "L #{@lib_info[component_name]}:#{component_name} #{inst_name}\n"
-      result << "U 1 1 #{format("%x", Time.now).upcase}\n"
-      result << "P #{x} #{y}\n"
+
+      
       label_x, label_y = @symbols[component_name] ? @symbols[component_name].label_pos : [0, 0]
       name_x, name_y = @symbols[component_name]? @symbols[component_name].name_pos : [0, 0]
       flags = (component_name == 'GND') ? '0001' : '0000'
-      result << "F 0 \"#{inst_name}\" H #{x+q2e(name_x)} #{y-q2e(name_y)} 50 #{flags} L CNN\n"
+      #result << "F 0 \"#{inst_name}\" H #{x+q2e(name_x)} #{y-q2e(name_y)} 50 #{flags} L CNN\n"
+      symbol = [:symbol, [:lib_id, "#{lib_info[component_name]}:#{component_name}"], 
+                [:at, x, y, rot], [:uuid, SecureRandom.uuid],
+                [:property, :Reference, inst_name, [:at, x+q2e(name_x), y-q2e(name_y), 0]]] #, [:uuid, SecureRandom.uuid]]]
+      if mir
+        symbol.push [:mirror, mir]
+      end
       case component_name
       when 'GND'
-        result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0001 L CNN\n"
+        #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0001 L CNN\n"
+        symbol.push [:property, "Sim.Params", c[:symattr]['Value'], 
+                      [:at, x+q2e(label_x), y - q2e(label_y), 0]]  #, [:uuid, SecureRandom.uuid]] 
       when 'res', 'cap'
-        result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
+        #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
+        symbol.push [:property, "Sim.Params", c[:symattr]['Value'],
+                      [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
       when 'voltage'
         if c[:symattr]['Value2'] && c[:symattr]['Value2'] =~ /type=sine/ 
-          result << "F 1 \"VSIN\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
-          result << "F 2 \"\" H #{x} #{y} 50 0001 L CNN\n"
-          result << "F 3 \"~\" H #{x} #{y} 50 0001 L CNN\n"
-          result << "F 4 \"Y\" H #{x} #{y} 50 0001 L CNN \"Spice_Netlist_Enabled\"\n"
-          result << "F 5 \"V\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
-          result << "F 6 \"#{get_sine c[:symattr]['Value2']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)-11} 50 0000 L CNN \"Spice_Model\"\n"
+          #result << "F 1 \"VSIN\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
+          #result << "F 2 \"\" H #{x} #{y} 50 0001 L CNN\n"
+          #result << "F 3 \"~\" H #{x} #{y} 50 0001 L CNN\n"
+          #result << "F 4 \"Y\" H #{x} #{y} 50 0001 L CNN \"Spice_Netlist_Enabled\"\n"
+          #result << "F 5 \"V\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
+          #result << "F 6 \"#{get_sine c[:symattr]['Value2']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)-11} 50 0000 L CNN \"Spice_Model\"\n"
+          symbol.push [:property, "Sim.Params", get_sine(c[:symattr]['Value2']),
+                        [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
         else
-          result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
+          #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n
+          symbol.push [:property, "Sim.Params", c[:symattr]['Value'],
+                        [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
         end
       when 'NMOS', 'PMOS'
-        result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
-        result << "F 4 \"M\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
+        #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
+        #result << "F 4 \"M\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
         model = c[:symattr]['Value'] || (@symbols[component_name] && @symbols[component_name].value)
-        result << "F 5 \"#{model} #{c[:symattr]['Value2']}\" H #{x} #{y} 50 0001 L CNN \"Spice_Model\"\n"
+        #result << "F 5 \"#{model} #{c[:symattr]['Value2']}\" H #{x} #{y} 50 0001 L CNN \"Spice_Model\"\n"
+        symbol.push [:property, "Sim.Params",
+                     "type=\"M\" model=\"#{model} #{c[:symattr]['Value2']}\" lib=\"\"",
+                     [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]]
       else
-        result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
-        result << "F 5 \"Y\" H #{x} #{y} 50 0001 L CNN \"Spice_Netlist_Enabled\"\n"     
+        #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
+        #result << "F 5 \"Y\" H #{x} #{y} 50 0001 L CNN \"Spice_Netlist_Enabled\"\n"     
+        symbol.push [:property, "Sim.Params", component_name, 
+                     [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
       end
-      result << "\t 1 #{x} #{y}\n"
-      result << "\t #{eeschema_orientation c[:rotation]}\n"
-      result << "$EndComp\n"
+      result.push symbol
     }
     result
   end
@@ -1730,36 +1724,23 @@ EOS
   end    
 
   def eeschema_orientation rotation
-=begin
-  0.step(270, 90){|p|
-    c = Math::cos Math::PI*p/180
-    s = Math::sin Math::PI*p/180
-    puts "R#{p}: [#{c.to_i}, #{-s.to_i}, #{-s.to_i}, #{-c.to_i}]"
-  }
-  0.step(270, 90){|p|
-    c = Math::cos Math::PI*p/180
-    s = Math::sin Math::PI*p/180
-    puts "M#{p}: [#{-c.to_i}, #{s.to_i}, #{-s.to_i}, #{-c.to_i}]"
-  }
-=end  
-
     case rotation
       when 'R0'
-        '1 0 0 -1'
+        [0, nil]
       when 'R90'
-        '0 1 1 0'
+        [90, nil]
       when 'R180'
-        '-1 0 0 1'
+        [180, nil]
       when 'R270'
-        '0 -1 -1 0'
+        [270, nil]
       when 'M0'
-        '-1 0 0 -1'
+        [0, :y]
       when 'M90'
-        '0 -1 1 0'
+        [90, :y]
       when 'M180'
-        '1 0 0 1'
+        [180, :y]
       when 'M270'
-        '0 1 -1 0'
+        [270, :y]
       end
   end
 
@@ -1804,7 +1785,7 @@ EOS
   end
 
   def eeschema_schema_wires offset
-    result = ''
+    result = []
     aa=[]
     @wires.each{|w|
       #      result << "Wire Wire Line\n\t#{q2e(w[0])+10000} #{q2e(w[1])} #{q2e(w[2])+10000} #{q2e(w[3])} \n
@@ -1812,7 +1793,6 @@ EOS
       coord = ss.split
       aa.push([coord[0..2-1],coord[2..-1]])
     }
-#    result
     pts=[]
     cc=[]
     for i in aa
@@ -1842,13 +1822,6 @@ EOS
         else
           ost=aa[0..a-1]
         end
-        #      cc=shifl(i,ind,aa[(a+1)..-1]) # note this cc is different from the above cc 
-        #      if cc[0]==0
-        #        ind=ind+1
-        #      i=cc[1]
-        #      ost.push(cc[1])
-        #      end
-        #      ost=ost+cc[2]
         chng, wire, wirs = shifl(i,ind,aa[(a+1)..-1])
         if chng == 0
           ind = ind + 1
@@ -1862,46 +1835,53 @@ EOS
       a=a+1
     end
     for i in aa
-      result << "Wire Wire Line\n"
+      #result << "Wire Wire Line\n"
       # str="\t"+i[0][0]+" "+i[0][1]+" "+i[1][0]+" "+i[1][1]+"\n"
-      result << "\t#{i[0][0]} #{i[0][1]} #{i[1][0]} #{i[1][1]}\n"
+      #result << "\t#{i[0][0]} #{i[0][1]} #{i[1][0]} #{i[1][1]}\n"
+      result.push [:wire, [:pts, [:xy, i[0][0].to_f, i[0][1].to_f], [:xy, i[1][0].to_f, i[1][1].to_f]]] #, [:uuid, SecureRandom.uuid]]
     end
     for i in pts
       # str="Connection ~ "+i[0]+" "+i[1]+"\n"
       str="Connection ~ #{i[0]} #{i[1]}\n"
-      result << str
+      #result << str
+      result.push [:junction, [:at, i[0].to_f, i[1].to_f]] #, [:uuid, SecureRandom.uuid]]
     end
     result
   end
 
   def eeschema_schema_pins global_pins, offset
-    result = ''
+    result = []
     @components.each{|c|
       x = q2e(c[:x])+offset[0]
       y = q2e(c[:y])+offset[1]
       inst_name = c[:symattr]? c[:symattr]['InstName'] : nil
       case c[:name]
       when 'ipin'
-        result << "Text HLabel #{x} #{y} 0 60 Input ~ 0\n#{inst_name}\n"
+        #result << "Text HLabel #{x} #{y} 0 60 Input ~ 0\n#{inst_name}\n"
+        result.push [:hierarchical_label, inst_name, [:shape, :input] , [:at, x, y]]
       when 'opin'
-        result << "Text HLabel #{x} #{y} 0 60 Output ~ 0\n#{inst_name}\n"
+        #result << "Text HLabel #{x} #{y} 0 60 Output ~ 0\n#{inst_name}\n"
+        result.push [:hierarchical_label, inst_name, [:shape, :output] , [:at, x, y]]
       when 'iopin'
-        result << "Text HLabel #{x} #{y} 0 60 Bidi ~ 0\n#{inst_name}\n"
+        #result << "Text HLabel #{x} #{y} 0 60 Bidi ~ 0\n#{inst_name}\n"
+        result.push [:hierarchical_label, inst_name, [:shape, :bidirectional] , [:at, x, y]]
       end
     }
     global_pins.each{|w|
       x = q2e(w[0])+offset[0]
       y = q2e(w[1])+offset[1]
       pin_name = w[4]
-      result << "Text GLabel #{x} #{y} 0 50 Input ~ 0\n#{pin_name}\n"
+      # result << "Text GLabel #{x} #{y} 0 50 Input ~ 0\n#{pin_name}\n"
+      result.push [:global_label, pin_name, [:shape, :input], [:at, x, y, 0], [:uuid, SecureRandom.uuid]] # need to check if global_label is correct
     }
     result
   end
 
   def eeschema_schema_texts offset
-    result = ''
+    result = []
     @texts.each{|x, y, t3, t4, text|
-      result << "Text Notes #{q2e(x)+offset[0]} #{q2e(y)+offset[1]} 0 50 ~ 0\n#{text}\n"
+      #result << "Text Notes #{q2e(x)+offset[0]} #{q2e(y)+offset[1]} 0 50 ~ 0\n#{text}\n"
+      result.push [:text, text, [:at, q2e(x)+offset[0], q2e(y)+offset[1], 0], [:uuid, SecureRandom.uuid]]
     }
     result
   end
@@ -1983,7 +1963,7 @@ EOS
     result
   end
 
-  def get_components
+  def get_components lib_path
     result = ''
     # require 'debug'; debugger
     @components.each{|c|
@@ -2020,9 +2000,8 @@ EOS
         end
         result << " <Port #{c[:symattr]['InstName']} 1 #{c[:x]} #{c[:y]} 0 0 0 #{direction} \"#{number}\" 1 \"#{porttype}\" 0>\n"
         next
-      # elsif @lib_info && (lib = @lib_info[c[:name]]) && c[:symattr]
-      elsif @lib_path && (lib = @lib_path[c[:name]]) && c[:symattr]
-        if (c[:lib_path] || @lib_path[c[:name]])
+      elsif lib_path && lib_path[c[:name]] && c[:symattr]
+        if (c[:lib_path] || lib_path[c[:name]])
           result << " <Lib #{c[:symattr]['InstName']}"
         else
           result << " <Sub #{c[:symattr]['InstName']}"
@@ -2062,44 +2041,41 @@ EOS
         rotation = 1
       end
       result << " #{mirror} #{rotation}" 
-      if @lib_info # && (lib = @lib_info[c[:name]])
-        if @lib_path[c[:name]]
-          lib_path = @lib_path[c[:name]].sub('.lib', '')
-          symbol = @symbols[c[:name]]
-          if symbol && symbol.params
-            value2, = parse_parameters c[:symattr]['Value2']
-            if c[:name] == 'voltage'
-              case value2['type']
-              when 'sine'
-                unless @symbols['vsin']
-                  symbol_copy = symbol.dup
-                  symbol_copy.cell = 'vsin'
-                  symbol_copy.params = [['sinedc', '0'], ['ampl', '1'], ['freq', '1Khz'], ['delay', '0'], ['damp', '0'], ['sinephase', 0]]
-                  @symbols['vsin'] = symbol_copy
-                end
-                c[:name] = 'vsin'
-                symbol = @symbols[c[:name]]
+      if lib_path && lib_path[c[:name]]
+        lib_name = lib_path[c[:name]].sub('.lib', '')
+        symbol = @symbols[c[:name]]
+        if symbol && symbol.params
+          value2, = parse_parameters c[:symattr]['Value2']
+          if c[:name] == 'voltage'
+            case value2['type']
+            when 'sine'
+              unless @symbols['vsin']
+                symbol_copy = symbol.dup
+                symbol_copy.cell = 'vsin'
+                symbol_copy.params = [['sinedc', '0'], ['ampl', '1'], ['freq', '1Khz'], ['delay', '0'], ['damp', '0'], ['sinephase', 0]]
+                @symbols['vsin'] = symbol_copy
               end
+              c[:name] = 'vsin'
+              symbol = @symbols[c[:name]]
             end
-            values = symbol.params.map{|p|
-              if val = value2[p[0]] || value2[p[0].downcase]
-                val.gsub! '{', ''
-                val.gsub! '}', ''
-              else
-                val = c[:symattr]['Value'] # not sure if this is right
-              end
-              "\"#{val}\" #{p[1] || '0'}"
-            }.join(' ')
-            result << " \"#{lib_path}\" 0 \"#{c[:name]}\" 0 #{values}>\n"
-          else
-            result << " \"#{lib_path}\" 0 \"#{c[:name]}\" 0>\n"
           end
+          values = symbol.params.map{|p|
+            if val = value2[p[0]] || value2[p[0].downcase]
+              val.gsub! '{', ''
+              val.gsub! '}', ''
+            else
+              val = c[:symattr]['Value'] # not sure if this is right
+            end
+            "\"#{val}\" #{p[1] || '0'}"
+          }.join(' ')
+          result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0 #{values}>\n"
         else
-          result << " \"\#{ENV['QUCS_DIR']}/#{File.join @lib_path[c[:name]]+'_prj', c[:name]+'.sch'}\" 0>\n" if @lib_path[c[:name]]
+          result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0>\n"
         end
       else
-        result << ">\n"
+        result << " \"\#{ENV['QUCS_DIR']}/#{File.join lib_path[c[:name]]+'_prj', c[:name]+'.sch'}\" 0>\n" if lib_path && lib_path[c[:name]]
       end
+      # result << ">\n"
     }
     result
   end
@@ -2216,23 +2192,26 @@ end
 
 def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
   target = target.downcase
+  lib_info = {}
   lib_path = {}
   Dir.chdir(pictures_dir){  
     libraries = Dir.glob('*').select{|lib| File.directory? lib}
     symbols = {}
+    symbol_libs = {}
     libraries.each{|lib|
       l = QucsLibrary.new lib, target_dir
       symbols.merge! l.cdraw_lib_in(lib)
       if target == 'qucs'
         lib_path.merge! l.qucs_lib_out(model_script)
       elsif target == 'eeschema'
-        lib_path.merge! l.eeschema_lib_out(model_script)
+        lib_info.merge! l.eeschema_lib_out(model_script)
+        symbol_libs[lib] = l.eescm
       elsif target == 'xschem'
         l.xschem_lib_out(target_dir)
       end
     }
     if target == 'eeschema'
-      eeschema_sym_lib_table lib_path.values.uniq, target_dir
+      eeschema_sym_lib_table lib_info.values.uniq, target_dir
     end
     libraries.each{|lib|
       Dir.chdir(lib){
@@ -2242,15 +2221,15 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
           not asc_contents.include?('SYMBOL') # asc actually had nothing like a 'gnd'
         }
         cells.each{|cell|
-          c = QucsSchematic.new cell, lib_path, symbols
+          c = QucsSchematic.new cell, lib_info[cell], symbols
           c.cdraw_schema_in
           if target == 'qucs'
             proj_dir = File.join(target_dir, "#{lib}_prj")
             FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
             # debugger
-            c.qucs_schema_out File.join(proj_dir, cell + '.sch')
+            c.qucs_schema_out File.join(proj_dir, cell + '.sch'), lib_path
           elsif target == 'eeschema'
-            c.eeschema_schema_out File.join(target_dir, cell + '.kicad_sch')
+            c.eeschema_schema_out File.join(target_dir, cell + '.kicad_sch'), symbol_libs, lib_info
           elsif target == 'xschem'
             c.xschem_schema_out File.join(target_dir, cell + '.sch')
           end
@@ -2261,6 +2240,10 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
 end
 if $0 == __FILE__
   puts Dir.pwd
+  #s_expr = "(kicad_sch (version 20231120) (generator \"eeschema\") (generator_version \"8.0\") (uuid \"6b38e86d-0361-42a0-a937-4aff1de4c7c0\") (paper \"A4\") (lib_symbols) (symbol (lib_id \":voltage\") (at -5.08 3.81 0) (uuid \"5a4cfada-391f-49d9-8198-cb4fc3c31901\") (property Reference \"V2\" (at -5.08 3.81 0)) (property \"Sim.Params\" \"3.3\" (at -5.08 3.81 0))) (symbol (lib_id \":voltage\") (at 10.16 8.89 0) (uuid \"9ec0f994-4909-4144-98f7-bdb5100e26b1\") (property Reference \"V1\" (at 10.16 8.89 0)) (mirror x) (property \"Sim.Params\" \"SINE({Vbias} 0.1 1k)\" (at 10.16 8.89 0))) "
+  #require 'debug'; debugger
+  #spr = pretty_sexpr(s_expr)
+  #exit
   load '../j_pack/j_pack.rb'
 =begin
   require '/home/anagix/work/alb2/lib/xschem'
@@ -2282,7 +2265,7 @@ if $0 == __FILE__
   }
   asc_dir = File.join(asc_dir, 'cdraw')
   cdraw2target 'xschem', asc_dir, '/tmp/xschem'
+  #require 'debug'; debugger
   cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
-  #equire 'debug'; debugger
   cdraw2target 'qucs', asc_dir, '/tmp/qucs'
 end

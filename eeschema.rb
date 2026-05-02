@@ -150,12 +150,13 @@ class EEschemaSchematic <QucsSchematic
     require 'sxp'
     @desc = SXP.read(File.read(@cell+'.kicad_sch').encode('UTF-8'))
   end
-=end
+
   def eeschema_schema_out file
     File.open(file, 'w'){|f|
       f.puts @desc
     }      
   end
+=end
 end
 
 def eeschema_sym_lib_table libraries, directory='.'
