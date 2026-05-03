@@ -19,7 +19,7 @@ load './customize.rb' if File.exist? './customize.rb'
 require 'fileutils'
 
 class NgspiceControl < LTspiceControl
-  attr_accessor :elements, :file, :mtime, :pid, :result, :sheet, :netlist, :step_results
+  attr_accessor :elements, :file, :mtime, :pid, :result, :netlist, :step_results
 
   def initialize ckt=nil, ignore_cir=true, recursive=false
     return unless ckt
@@ -29,16 +29,6 @@ class NgspiceControl < LTspiceControl
     get_models e=@elements[@file.sub(/\.\S+/, '')] || @elements 
   end
   
-  def read_subckt sheets
-    return if sheets.nil? || sheets.empty?
-    sht, file = sheets.first
-    @sheet[file] ||= read_sch file
-    @sheet[file]['sheet_name'] = sht
-    sheets.delete sht
-    read_subckt sheets
-  end
-  private :read_subckt
-
   def capture ckt=@file
     case File.extname ckt
     when '.asc'
@@ -72,9 +62,7 @@ class NgspiceControl < LTspiceControl
       when '.asc'
         command = "#{ltspiceexe} #{options} #{File.basename(file)}"
       when '.sch'
-        if sch_type(file) == 'eeschema'
-          command = "#{eeschemaexe} #{options} #{File.basename(file)}"
-        elsif sch_type(file) == 'xschem'
+        if sch_type(file) == 'xschem'
           command = "#{xschemexe} #{options} #{file}" # necessary to pass pwd for xschem
         else
           raise 'Error: unknown sch file format'
@@ -99,20 +87,6 @@ class NgspiceControl < LTspiceControl
       ckt, work_dir = ckt
       @work_dir = work_dir
     end  
-    @sheet = nil
-    return unless sch_type(ckt) == 'eeschema'
-    @sheet = {ckt => @elements}
-    read_subckt @elements['Sheets']
-    cir = ckt.sub('.sch', '.cir')
-    unless ignore_cir
-      if !File.exist? cir
-        raise "Error: #{cir} is not available yet --  please open #{ckt}, create nelist and save in #{cir}"
-      elsif File.mtime(ckt) > File.mtime(cir)
-        raise "Error: #{ckt} is newer than #{cir} --  please open #{ckt}, create nelist and save in #{cir}"
-      end
-    end
-    @elements = read_net cir if File.exist? cir
-    @elements
   end
 
   def read0 ckt, recursive
@@ -128,9 +102,6 @@ class NgspiceControl < LTspiceControl
         @elements = read_sch @file, work_dir, recursive
     when '.net', '.spice', '.cir', '.spc'
         @elements = read_net @file
-        @sheet && @sheet.each_key{|file|
-          @sheet[file] = read_eeschema_sch file, work_dir, recursive
-        }
     when ''
       if File.exist? @file+'.asc'
         @elements = read_asc @file+'.asc', recursive
@@ -149,82 +120,11 @@ class NgspiceControl < LTspiceControl
   private :read0 
 
   def read_sch file, work_dir, recursive=false, caller=''
-    if sch_type(file) == 'eeschema'
-      read_eeschema_sch file, recursive, caller
-    elsif sch_type(file) == 'xschem'
+    if sch_type(file) == 'xschem'
       read_xschem_sch file, work_dir, recursive, caller
     end
   end
       
-  def read_eeschema_sch file, recursive=false, caller=''
-    puts "read_eeschema_sch reads #{file}"
-    elements = {}
-    name = type = value = value2 = flag_wire = flag_text = group = nil
-    lineno = 0 
-    File.read(file).each_line{|l|
-      l.chomp!
-      # puts l
-      lineno = lineno + 1 
-      if flag_wire
-        flag_wire = false
-      elsif flag_text
-        flag_text = false
-        control = nil
-        if l =~ /^ *(\.(\S+) +.*) */
-          control = $1
-          name = $2
-        elsif l =~ /^ *(;(\S+) +.*) */
-          control = $1
-          name = $2
-        end
-        if control
-          # puts "control='#{control}' for name=#{name}"
-          elements[name] = []
-          # puts "elements[name] = #{elements[name]}"
-          if control[0] == '.'
-            elements[name] <<  {control: control, lineno: lineno}
-          else # ';'
-            elements[name] <<  {comment: control, lineno: lineno}
-          end
-          # name = nil
-        end
-      elsif l =~ /^\$Sheet/
-        group = 'Sheets'
-      elsif l =~ /^\$Comp/
-        group = 'Components'
-      elsif l =~ /^Wire/
-        flag_wire = true
-      elsif l =~ /^Connection/
-      elsif l =~ /^Text/
-        flag_text = true
-      elsif group == 'Components'
-        if l =~ /^L (\S+):(\S+) (\S+)/ # Simulation_SPICE:VSIN V1
-          name = $3
-          type = $2
-          elements[name] ||= {}
-          elements[name][:type] = type 
-        elsif l =~ /^P (\S+) (\S+)/
-        elsif l =~ /^F 0 \"(\S+)\" \S+ (\S+) (\S+)/
-        elsif l =~ /^F 1 \"(\S+)\" \S+ (\S+) (\S+)/
-          elements[name][:value] = $1
-          elements[name][:lineno] = lineno
-        elsif l =~ /^F [56] \"([^\"]*)\"/
-          elements[name][:value] = $1
-          elements[name][:lineno] = lineno
-        elsif l =~ /\s*((\S+) +(\S+) +(\S+) +(\S+))/
-        end
-      elsif group == 'Sheets'
-        if l =~ /^F0 \"(\S+)\"/ 
-          name = $1 
-        elsif l =~ /^F1 \"(\S+)\"/
-          elements['Sheets'] ||= {}
-          elements['Sheets'][name] = $1
-        end
-      end
-    }
-    elements
-  end
-
   def read_xschem_sch file, work_dir, recursive=false, caller=''
     elements = {}
     # @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
@@ -385,21 +285,7 @@ class NgspiceControl < LTspiceControl
     if @file =~ /\.asc/
       super pairs
     else
-      if @sheet && !@sheet.empty?
-        cir = @file.sub('.sch', '.cir')
-        @sheet.each_key{|file|
-          puts "#{file}: #{File.mtime(file)} vs. #{cir}: #{File.mtime(cir)}"
-          if File.mtime(file) > File.mtime(cir)
-            raise "Error: #{file} is newer than #{cir} -- please open #{file}, create netlist and save in #{cir}" 
-          end
-          lines, result2 = set0 pairs, file, @sheet[file], @mtime
-          result2.delete false
-          update(file, lines) unless result2.empty? # all false
-        }
-        file = cir
-      else
-        file = @file
-      end
+      file = @file
       # e = @elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
       e = @elements[@file.sub(/\.\S+/, '')] || @elements 
       lines, result = set0 pairs, file, e, @mtime
@@ -464,7 +350,6 @@ class NgspiceControl < LTspiceControl
        element[:control] = value
     elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=)(\S+)(})/ || # for xschem
        line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ .*value=\")(.*)(\"})/ ||
-       line =~ /(F 1 \")([^\"]*)(\")/ || # for eeschema
        line =~ /(^ *[Mm]\S* +\([^\)]*\) +\S+ +)(.*)( *)/ || # for netlist
        line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
        line =~ /(^ *[VvIiCcRr]\S* +\S+ +\S+ +)(.*)( *)/
@@ -646,10 +531,13 @@ class NgspiceControl < LTspiceControl
           netlist << l
         end
       }
-    elsif @file =~ /\.sch/
+    elsif @file =~ /\.sch/ || @file =~ /\.kicad_sch/
       $stderr.puts "sch_type(@file)=#{sch_type(@file)}"
       if sch_type(@file) == 'eeschema'
-        file = @file.sub('.sch', '.cir')
+        file = @file.sub('.kicad_sch', '.cir')
+        unless File.exist file
+          raise "Error: #{file} does not exit -- please open #{@file}, create netlist and save in #{file}" 
+        end
         $stderr.puts "#{@file}: #{File.mtime(@file)} vs. #{file}: #{File.mtime(file)}"
         if File.mtime(@file) > File.mtime(file)
           raise "Error: #{@file} is newer than #{file} -- please open #{@file}, create netlist and save in #{file}" 
@@ -901,51 +789,6 @@ class NgspiceControl < LTspiceControl
     nil
   end
 
-  def translate a
-    unless @sheet.nil? || @sheet.empty? # variable need to be converted like '/sheet602621c0/out
-      b= (a=~/\(([^\(\)]+)\)/) ? $1 : a
-      c = b.split('/')
-      return b if c[0] == '' || c.size == 1
-      d = (c[0..-2].map{|e|
-             if e =~ /^#([0-9]+) *$/
-               @sheet.to_a[$1.to_i][1]['sheet_name'] || e
-             else
-               e
-             end
-           } + [c.last]).join('/')
-      a.sub! b, '/' + d
-    else
-      a
-    end
-  end
-  private :translate
-  
-  def node_list_to_variables node_list, get_active_traces=true
-    variables = [node_list[0]]
-    node_list[1..-1].each{|a|
-      a.strip!
-      if a =~ /#{pattern='[vV]*\(([^\)\("]*)\)'}/
-        a.gsub(/#{pattern}/){"\"#{translate $1}\""}
-      elsif (a=~ /#{pattern='\("([^()]+)"\)'}/) || (a=~ /#{pattern='\(([^()]+)\)'}/)
-        a.gsub(/#{pattern}/){"(\"#{translate $1}\")"} # change db(/sheet1/out1') ph(/in') -> db("/sheet1/out1") ph("/in")
-      #elsif a =~ /^[^"]\S*[+-\/]\S*/  # wrap with double quote if name is like: 'in-'
-      #  a = '"' + a + '"'        
-      elsif a=~ /#{pattern='(\S+)($| +[\*\/\-\+$])'}/
-        a.gsub(/#{pattern}/){"(\"#{translate $1}\")"}
-      else
-        "\"#{translate a}\""
-      end
-      if variables[0] == 'frequency' && get_active_traces
-        variables << "real(#{a})"
-        variables << "imag(#{a})"
-      else
-        variables << a
-      end
-    }
-    variables
-  end
-  private :node_list_to_variables
-
   def get_traces *node_list
     # require 'debug'; debugger
     return [[], []] if node_list.size <= 1
@@ -1110,7 +953,7 @@ class NgspiceControl < LTspiceControl
     File.open(file){|f|
       line = f.gets 
       return 'xschem' if line =~ /xschem/
-      return 'eeschema' if line =~ /EESchema/
+      return 'eeschema' if line =~ /EESchema/ || line =~ /\(kicad_sch/
     }
     nil
   end
@@ -1152,36 +995,6 @@ class NgspiceControl < LTspiceControl
     command
   end
   private :xschemexe
-
-  def eeschema_path
-    if ENV['Eeschema_path'] 
-      return ENV['Eeschema_path'] 
-    elsif File.exist?( path =  "#{ENV['PROGRAMFILES']}\\KiCad\\bin\\eeschema.exe")
-      return path
-    else
-      raise 'Cannot find Eeschema executable. Please set Eeschema_path'
-    end                     
-  end
-  private :eeschema_path
-
-  def eeschema_path_WSL
-    path = '/mnt/c/Program Files/KiCad/bin/eeschema.exe'
-    return "'#{path}'" if File.exist? path
-    nil
-  end
-  private :eeschema_path_WSL
-
-  def eeschemaexe
-    if /mswin32|mingw/ =~ RUBY_PLATFORM
-      command = "\"" + eeschema_path() + "\""
-    elsif File.directory? '/mnt/c/Windows/SysWOW64/'
-      command = eeschema_path_WSL()
-    else
-      command = "/usr/bin/eeschema"
-    end
-    command
-  end
-  private :eeschemaexe
 end
 if $0 == __FILE__
   #file = File.join 'c:', ENV['HOMEPATH'], 'work/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
