@@ -1656,13 +1656,14 @@ EOS
           symbol.push [:property, "Sim.Params", c[:symattr]['Value'],
                         [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
         end
-      when 'NMOS', 'PMOS'
+      when 'NMOS', 'PMOS', 'NMOS_MIN', 'PMOS_MIN'
         #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
         #result << "F 4 \"M\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
         model = c[:symattr]['Value'] || (@symbols[component_name] && @symbols[component_name].value)
         #result << "F 5 \"#{model} #{c[:symattr]['Value2']}\" H #{x} #{y} 50 0001 L CNN \"Spice_Model\"\n"
         symbol.push [:property, "Sim.Params",
-                     "type=\"M\" model=\"#{model} #{c[:symattr]['Value2']}\" lib=\"\"",
+                     #"type=\"M\" model=\"#{model} #{c[:symattr]['Value2']}\" lib=\"\"",
+                     "#{model} #{c[:symattr]['Value2']}",
                      [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]]
       else
         #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
@@ -2259,6 +2260,7 @@ if $0 == __FILE__
   #asc_dir = '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw'
   #asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
   asc_dir = File.join(ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035')
+  # asc_dir = 'c:/tmp/LTspiceLIB'
   # asc_dir = File.join(ENV['HOMEPATH'], 'KLayout/salt/ICPS2023_5/Technology/tech/symbols/LTspice/MinedaLIB')
   Dir.chdir(asc_dir){
     create_cdraw()
