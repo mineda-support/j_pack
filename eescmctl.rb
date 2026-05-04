@@ -1,5 +1,5 @@
 # ngspctl v0.3 Copyright(C) Anagix Corporation
-if $0 == __FILE__
+#if $0 == __FILE__
   puts Dir.pwd
   Dir.chdir '../j_pack'
   $: << '.'
@@ -7,7 +7,7 @@ if $0 == __FILE__
   puts "$: = #{$:}"
   #$: << '/home/anagix/work/alb2/lib'
   #$: << '/home/anagix/work/alb2/ade_express'
-  end
+#end
 require 'spice_parser'
 require 'alb_lib'
 require 'ngspice'
@@ -254,9 +254,9 @@ class EEschemaControl < NgspiceControl
       a
     end
   end
-private :translate
+  private :translate
   
-def node_list_to_variables node_list, get_active_traces=true
+  def node_list_to_variables node_list, get_active_traces=true
     variables = [node_list[0]]
     node_list[1..-1].each{|a|
       a.strip!
@@ -282,16 +282,24 @@ def node_list_to_variables node_list, get_active_traces=true
   end
   private :node_list_to_variables  
   
+  def kicad_cli arg, input
+    puts command = "#{eeschema_path.sub('eeschema', 'kicad-cli')} #{arg} #{input}"
+    # system command
+    IO_popen command
+  end
+
   def eeschema_path
     if ENV['Eeschema_path'] 
       return ENV['Eeschema_path'] 
+    elsif (paths = Dir.glob('KiCad/*/bin/eeschema.exe', base: ENV['PROGRAMFILES'])).length > 0
+      return File.join(ENV['PROGRAMFILES'], paths.sort.last)
     elsif File.exist?( path =  "#{ENV['PROGRAMFILES']}\\KiCad\\bin\\eeschema.exe")
       return path
     else
       raise 'Cannot find Eeschema executable. Please set Eeschema_path'
     end                     
   end
-  private :eeschema_path
+  #private :eeschema_path
 
   def eeschema_path_WSL
     path = '/mnt/c/Program Files/KiCad/bin/eeschema.exe'
