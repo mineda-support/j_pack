@@ -535,9 +535,15 @@ class NgspiceControl < LTspiceControl
       $stderr.puts "sch_type(@file)=#{sch_type(@file)}"
       if sch_type(@file) == 'eeschema'
         file = @file.sub('.kicad_sch', '.cir')
-        unless File.exist file
-          raise "Error: #{file} does not exit -- please open #{@file}, create netlist and save in #{file}" 
-        end
+        FileUtils.rm(file, force: true) if file && File.exist?(file)
+        start = Time.now
+        kicad_cli "sch export netlist --format spice --output #{@file}", file
+        wait_for File.basename(file), start, 'due to some error'
+        #sleep 1 # weird but file is not available w/o sleep 1
+        netlist, steps, control = parse(file, analysis, '^ *\.step')
+        #$stderr.puts "after parsing steps\n#{netlist}"
+        $stderr.puts "after parsing, steps ='#{steps}', control =", control, '---'        unless File.exist file
+        raise "Error: #{file} does not exit -- please open #{@file}, create netlist and save in #{file}" 
         $stderr.puts "#{@file}: #{File.mtime(@file)} vs. #{file}: #{File.mtime(file)}"
         if File.mtime(@file) > File.mtime(file)
           raise "Error: #{@file} is newer than #{file} -- please open #{@file}, create netlist and save in #{file}" 
