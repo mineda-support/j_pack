@@ -70,7 +70,7 @@ def q2c str
 end
 
 def q2e str
-  str.to_f*0.127
+  (str.to_f*0.127).round(4)
 end
 
 def e2q str
@@ -226,7 +226,7 @@ class QucsComponent
       name_x = name_y = 0
     end
     # result << "F0 \"#{@symbol.prefix||'U'}\" #{name_x} #{name_y} 50 H V L CNN\n"
-    result = [:symbol, @name, [:property, :Reference, @symbol.prefix||'X', 
+    result = [:symbol, @name, [:property, 'Reference', @symbol.prefix||'X', 
                                           [:at, name_x, name_y, 0]]] #, [:uuid, SecureRandom.uuid]]
     if @label_pos
       label_x = q2e(@symbol.label_pos[0] || 0)
@@ -662,47 +662,6 @@ EOS
     }
   end
 
-  def eeschema5_symbol_in desc
-    desc && desc.each_line{|l|
-      if l =~ /^S (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+)/
-        @rectangles << [e2q($1), e2q($2), e2q($3), e2q($4)] 
-        unit = $5; convert = $6; thickness = $7; fill = $8
-      elsif l =~ /^P \S+ \S+ \S+ \S+ (\S+) (\S+) (\S+) (\S+)/
-        x1 = e2q($1)
-        y1 = e2q($2)
-        x2 = e2q($3) -x1
-        y2 = e2q($4) -y1
-        @lines << [x1, y1, x2, y2]
-      elsif l =~ /^C (\S+) (\S+) (\S+)/
-        x = e2q($1)
-        y = -e2q($2)
-        r = e2q($3)
-        @circles << [x-r, y-r, x+r, y+r]
-      elsif l =~ /^X (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+) (\S+)/
-        name = $1; num = $2; posx = $3; posy = $4;
-        length = $5; direction = $6; name_text_size = $7;
-        num_text_size = $8; unit = $9; convert = $10; electrical_type = $11 # [pin_type]
-        @pin = {:xy => [e2q(posx), -e2q(posy)], :SpiceOrder => num} 
-        @portsyms << @pin
-        case direction
-        when 'U'
-          @pin[:angle] = 0
-        when 'R'
-          @pin[:angle] = 90
-        when 'D'
-          @pin[:angle] = 180
-        when 'L'
-          @pin[:angle] = 270
-        end
-      elsif l =~ /^F *0 +"(\S+)" +(\S+) +(\S+) +(\S+)/
-        @prefix = $1
-        @name_pos = [e2q($2.to_i), -e2q($3.to_i)]
-      elsif l =~ /^F *1 +\S+ +(\S+) +(\S+) +(\S+)/
-        @label_pos = [e2q($1.to_i), -e2q($2.to_i)]
-      end
-    }
-  end
-
   def eeschema_symbol_in sym
     @rectangles = []
     #@lines = []
@@ -900,7 +859,7 @@ EOS
       x2 = q2e(l[2]) + x1
       y2 = -q2e(l[3]) + y1  # -(q2e(l[3]) + q2e(l[1]))
       # result << "P 2 0 1 0 #{x1} #{y1} #{x2} #{y2} N\n"
-      result.push [:polyline, [:pts, [:xy, x1, y1], [:xy, x2, y2]]]
+      result.push [:polyline, [:pts, [:xy, x1.round(4), y1.round(4)], [:xy, x2.round(4), y2.round(4)]]]
     }
     @rectangles.each{|r|
       x1, y1, x2, y2 = r
@@ -1565,11 +1524,11 @@ EOS
         end
       }
       @wires = @wires - global_pins
-      offset = [120, 80] # [6000 - ((q2e(xmin)+q2e(xmax))/100)*50, 4100 - ((q2e(ymin)+q2e(ymax))/100)*50]
+      offset = [((127/0.127).to_i*0.127).round(4), ((82.55/0.127).to_i*0.127).round(4)] # [6000 - ((q2e(xmin)+q2e(xmax))/100)*50, 4100 - ((q2e(ymin)+q2e(ymax))/100)*50]
       eescm = eeschema_schema_header # lib_info.values.uniq
       eescm.push [:lib_symbols] #, symbols_lib]
-      eescm.concat(eeschema_schema_components lib_info, offset)
       eescm.concat(eeschema_schema_wires offset)
+      eescm.concat(eeschema_schema_components lib_info, offset)
       eescm.concat(eeschema_schema_pins global_pins, offset)
       eescm.concat(eeschema_schema_texts offset)
       #f.puts eescm.to_sxp
@@ -1598,7 +1557,7 @@ EOS
 
   def eeschema_schema_header
     [:kicad_sch, [:version, 20231120], [:generator, "eeschema"],
-     [:generator_version, "8.0"], [:uuid, SecureRandom.uuid], [:paper, "A4"]]
+     [:generator_version, "8.0"], [:uuid, @root_uuid = SecureRandom.uuid], [:paper, "A4"]]
   end
 
   def eeschema_schema_components lib_info, offset
@@ -1612,7 +1571,7 @@ EOS
         case c[:name]
         when '.include'
           # result << "Text Notes #{x} #{y} 0 50 ~ 0\n.include #{c[:path]}\n"
-          result.push [:text, ".include #{c[:path]}", [:at, x, y, 0]]
+          result.push [:text, ".include #{c[:path]}", [:at, x.round(4), y.round(4), 0]]
         end
         next
       end
@@ -1628,7 +1587,7 @@ EOS
       #result << "F 0 \"#{inst_name}\" H #{x+q2e(name_x)} #{y-q2e(name_y)} 50 #{flags} L CNN\n"
       symbol = [:symbol, [:lib_id, "#{lib_info[component_name]}:#{component_name}"], 
                 [:at, x, y, rot], [:uuid, SecureRandom.uuid],
-                [:property, :Reference, inst_name, [:at, x+q2e(name_x), y-q2e(name_y), 0]]] #, [:uuid, SecureRandom.uuid]]]
+                [:property, 'Reference', inst_name, [:at, x+q2e(name_x), y-q2e(name_y), 0]]] #, [:uuid, SecureRandom.uuid]]]
       if mir
         symbol.push [:mirror, mir]
       end
@@ -1671,6 +1630,7 @@ EOS
         symbol.push [:property, "Sim.Params", component_name, 
                      [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
       end
+      symbol.push [:instances, [:project, @cell, [:path, '/'+@root_uuid, [:reference, inst_name], [:unit, 1]]]]
       result.push symbol
     }
     result
@@ -1839,13 +1799,14 @@ EOS
       #result << "Wire Wire Line\n"
       # str="\t"+i[0][0]+" "+i[0][1]+" "+i[1][0]+" "+i[1][1]+"\n"
       #result << "\t#{i[0][0]} #{i[0][1]} #{i[1][0]} #{i[1][1]}\n"
-      result.push [:wire, [:pts, [:xy, i[0][0].to_f, i[0][1].to_f], [:xy, i[1][0].to_f, i[1][1].to_f]]] #, [:uuid, SecureRandom.uuid]]
+      result.push [:wire, [:pts, [:xy, i[0][0].to_f.round(4), i[0][1].to_f.round(4)],
+                                 [:xy, i[1][0].to_f.round(4), i[1][1].to_f.round(4)]]] #, [:uuid, SecureRandom.uuid]]
     end
     for i in pts
       # str="Connection ~ "+i[0]+" "+i[1]+"\n"
-      str="Connection ~ #{i[0]} #{i[1]}\n"
+      # str="Connection ~ #{i[0]} #{i[1]}\n"
       #result << str
-      result.push [:junction, [:at, i[0].to_f, i[1].to_f]] #, [:uuid, SecureRandom.uuid]]
+      result.push [:junction, [:at, i[0].to_f.round(4), i[1].to_f.round(4)]] #, [:uuid, SecureRandom.uuid]]
     end
     result
   end
@@ -1859,13 +1820,13 @@ EOS
       case c[:name]
       when 'ipin'
         #result << "Text HLabel #{x} #{y} 0 60 Input ~ 0\n#{inst_name}\n"
-        result.push [:hierarchical_label, inst_name, [:shape, :input] , [:at, x, y]]
+        result.push [:hierarchical_label, inst_name, [:shape, :input] , [:at, x.round(4), y.round(4)]]
       when 'opin'
         #result << "Text HLabel #{x} #{y} 0 60 Output ~ 0\n#{inst_name}\n"
-        result.push [:hierarchical_label, inst_name, [:shape, :output] , [:at, x, y]]
+        result.push [:hierarchical_label, inst_name, [:shape, :output] , [:at, x.round(4), y.round(4)]]
       when 'iopin'
         #result << "Text HLabel #{x} #{y} 0 60 Bidi ~ 0\n#{inst_name}\n"
-        result.push [:hierarchical_label, inst_name, [:shape, :bidirectional] , [:at, x, y]]
+        result.push [:hierarchical_label, inst_name, [:shape, :bidirectional] , [:at, x.round(4), y.round(4)]]
       end
     }
     global_pins.each{|w|
@@ -1873,7 +1834,7 @@ EOS
       y = q2e(w[1])+offset[1]
       pin_name = w[4]
       # result << "Text GLabel #{x} #{y} 0 50 Input ~ 0\n#{pin_name}\n"
-      result.push [:global_label, pin_name, [:shape, :input], [:at, x, y, 0], [:uuid, SecureRandom.uuid]] # need to check if global_label is correct
+      result.push [:global_label, pin_name, [:shape, :input], [:at, x.round(4), y.round(4), 0], [:uuid, SecureRandom.uuid]] # need to check if global_label is correct
     }
     result
   end
