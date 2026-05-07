@@ -197,6 +197,7 @@ end
 #  @symbol.eeschema_symbol_in
 #end
 
+# read eeschema files, convert to QUCS format and output in LTspice format
 def eeschema2cdraw eeschema_dir, cdraw_dir
   puts "eeschema2cdraw @eeschema_dir=#{eeschema_dir}, cdraw_dir=#{cdraw_dir}"  
   FileUtils.rm_r cdraw_dir if File.directory? cdraw_dir ; FileUtils.mkdir cdraw_dir
@@ -226,7 +227,8 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
     }
   }
 end
-    
+
+# read eeschema files, convert to QUCS format and output in QUCS format    
 def eeschema2qucs eeschema_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
   puts "eeschema2qucs eeschema_dir=#{eeschema_dir}, qucs_dir=#{qucs_dir}, "
   Dir.chdir(eeschema_dir){
@@ -249,6 +251,7 @@ def eeschema2qucs eeschema_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_
   }
 end
 
+# read eeschema files, convert to QUCS format and output in Xschem format    
 def eeschema2xschem eeschema_dir, xschem_dir
   puts "eeschema2xschem @eeschema_dir=#{eeschema_dir}, xschem_dir=#{xschem_dir}"
   FileUtils.rm_r xschem_dir if File.directory? xschem_dir ; FileUtils.mkdir xschem_dir  

@@ -7,6 +7,7 @@ require 'fileutils'
 require 'yaml'
 require 'sxp'
 require 'securerandom'
+require 'auto_junction_detector'
 
 def pretty_sexpr(s_expr)
   #tokens = s_expr.gsub('(', ' ( ').gsub(')', ' ) ').split
@@ -369,7 +370,10 @@ class QucsLibrary
           if ENV['QUCS_DIR']
             lib_path[comp.name] = @qucs_lib.sub(qucs_dir, ENV['QUCS_DIR']) 
           else
-            lib_path[comp.name] = @qucs_lib.sub(qucs_dir, '#'+"{ENV['QUCS_DIR']}") 
+            #qucs_path = File.join(ENV['HOMEPATH'] || ENV['HOME'], '.qucs')
+            #lib_path[comp.name] = @qucs_lib.sub(qucs_dir, '#'+"{ENV['QUCS_DIR']}") 
+            #lib_path[comp.name] = @qucs_lib.sub(qucs_dir, qucs_path)             
+            lib_path[comp.name] = @qucs_lib
           end
         end
       }
@@ -1058,6 +1062,7 @@ class QucsSchematic
     puts @components #.to_yaml
   end
 
+  # read ltspice schematic file and convert to qucs format
   def cdraw_schema_in
     # File.open(@cell+'.asc', 'r:Windows-1252').read.encode('UTF-8').gsub(181.chr(Encoding::UTF_8), 'u').scrub.each_line{|l|
     props = {}
@@ -1166,6 +1171,7 @@ class QucsSchematic
     desc['Paintings']
   end
 
+  # read kicad_sch in eescm format and convert to qucs format  
   def eeschema_schema_in
     require 'sxp'
     eescm = SXP.read(File.read(@cell+'.kicad_sch').encode('UTF-8'))
@@ -1744,70 +1750,20 @@ EOS
     #out
     [chng, wire, wirs]
   end
-
+  
   def eeschema_schema_wires offset
     result = []
-    aa=[]
+    wires = []
     @wires.each{|w|
-      #      result << "Wire Wire Line\n\t#{q2e(w[0])+10000} #{q2e(w[1])} #{q2e(w[2])+10000} #{q2e(w[3])} \n
-      ss = "#{q2e(w[0])+offset[0]} #{q2e(w[1])+offset[1]} #{q2e(w[2])+offset[0]} #{q2e(w[3])+offset[1]}"
-      coord = ss.split
-      aa.push([coord[0..2-1],coord[2..-1]])
+      xy0 = [(q2e(w[0])+offset[0]).round(4), (q2e(w[1])+offset[1]).round(4)]
+      xy1 = [(q2e(w[2])+offset[0]).round(4), (q2e(w[3])+offset[1]).round(4)]
+      wires << Wire.new(xy0[0], xy0[1], xy1[0], xy1[1])
+      result.push [:wire, [:pts, [:xy, xy0[0], xy0[1]], [:xy, xy1[0], xy1[1]]]] #, [:uuid, SecureRandom.uuid]]
     }
-    pts=[]
-    cc=[]
-    for i in aa
-      cc.push(i[0])
-      cc.push(i[1])
-    end
-    for i in cc
-      a=cc.count(i)
-      if a>2
-        pts.push(i) # count the number of nodes
-      end
-      #    for j in range(a)
-      for j in 0..a-1
-        cc.delete(i)
-      end
-    end
-    #  puts "aa=#{aa.inspect}"
-    a=0
-    while a < aa.length - 1
-      ind=0
-      i=aa[a] # i is wire
-      while(ind!=2)
-        # p=i[ind] # not used
-        #        ost=aa[:a]
-        if a==0 # note: aa[:a] in python is not aa[0..a-1] in ruby when a==0 
-          ost=[]
-        else
-          ost=aa[0..a-1]
-        end
-        chng, wire, wirs = shifl(i,ind,aa[(a+1)..-1])
-        if chng == 0
-          ind = ind + 1
-        end
-        i=wire
-        ost.push wire
-        ost = ost + wirs
-        aa=ost
-        #      puts "> a=#{a} ind=#{ind} aa=#{aa.inspect}"
-      end
-      a=a+1
-    end
-    for i in aa
-      #result << "Wire Wire Line\n"
-      # str="\t"+i[0][0]+" "+i[0][1]+" "+i[1][0]+" "+i[1][1]+"\n"
-      #result << "\t#{i[0][0]} #{i[0][1]} #{i[1][0]} #{i[1][1]}\n"
-      result.push [:wire, [:pts, [:xy, i[0][0].to_f.round(4), i[0][1].to_f.round(4)],
-                                 [:xy, i[1][0].to_f.round(4), i[1][1].to_f.round(4)]]] #, [:uuid, SecureRandom.uuid]]
-    end
-    for i in pts
-      # str="Connection ~ "+i[0]+" "+i[1]+"\n"
-      # str="Connection ~ #{i[0]} #{i[1]}\n"
-      #result << str
-      result.push [:junction, [:at, i[0].to_f.round(4), i[1].to_f.round(4)]] #, [:uuid, SecureRandom.uuid]]
-    end
+    find_auto_junctions(wires).each {|j|
+      puts "Junction at: #{j}" 
+      result.push [:junction, [:at, j.x.to_f.round(4), j.y.to_f.round(4)]] #, [:uuid, SecureRandom.uuid]]       }    
+    }
     result
   end
 
@@ -2010,7 +1966,7 @@ EOS
           value2, = parse_parameters c[:symattr]['Value2']
           if c[:name] == 'voltage'
             case value2['type']
-            when 'sine'
+            when 'sine'  # maybe needed for some case
               unless @symbols['vsin']
                 symbol_copy = symbol.dup
                 symbol_copy.cell = 'vsin'
@@ -2021,15 +1977,17 @@ EOS
               symbol = @symbols[c[:name]]
             end
           end
-          values = symbol.params.map{|p|
+          values = ''
+          symbol.params.each{|p|
             if val = value2[p[0]] || value2[p[0].downcase]
               val.gsub! '{', ''
               val.gsub! '}', ''
             else
-              val = c[:symattr]['Value'] # not sure if this is right
+              values = "\"#{c[:symattr]['Value']}\"" 
+              break
             end
-            "\"#{val}\" #{p[1] || '0'}"
-          }.join(' ')
+            values << "\"#{val}\" #{p[1] || '0'} "
+          }
           result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0 #{values}>\n"
         else
           result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0>\n"
@@ -2152,6 +2110,7 @@ EOS
   end
 end
 
+# read ltspice file, convert to QUCS formant, then covert to target format
 def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
   target = target.downcase
   lib_info = {}

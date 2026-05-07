@@ -14,6 +14,7 @@ require 'ltspctl'
 require 'ngspice'
 require 'ngspctl'
 require 'qucsctl'
+require 'eescmctl'
 require 'bsim3_fit'
 
 def create_cdraw

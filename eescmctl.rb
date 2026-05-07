@@ -1,13 +1,3 @@
-# ngspctl v0.3 Copyright(C) Anagix Corporation
-#if $0 == __FILE__
-  puts Dir.pwd
-  Dir.chdir '../j_pack'
-  $: << '.'
-  $: << './ade_express'
-  puts "$: = #{$:}"
-  #$: << '/home/anagix/work/alb2/lib'
-  #$: << '/home/anagix/work/alb2/ade_express'
-#end
 require 'spice_parser'
 require 'alb_lib'
 require 'ngspice'
@@ -321,6 +311,11 @@ class EEschemaControl < NgspiceControl
   private :eeschemaexe
 end
 if $0 == __FILE__
+  puts Dir.pwd
+  Dir.chdir '../j_pack'
+  $: << '.'
+  $: << './ade_express'
+  puts "$: = #{$:}"
   #ckt = NgspiceControl.new file, true, true # test recursive
   file = File.join 'c:', ENV['HOMEPATH'], "Seafile/Citizen035/Op8_22/Citizen035/EEschema/op8_22_v2.kicad_sch"
   Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035/EEschema')

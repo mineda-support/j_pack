@@ -9,10 +9,13 @@ require 'compact_model'
 #require 'byebug'
 require 'fileutils'
 
-class QucsControl
-  attr_accessor :elements, :file, :mtime, :pid
-  def initialize ckt=nil
-    read ckt if ckt
+class QucsControl < LTspiceControl
+  attr_accessor :elements, :file, :mtime, :pid, :models
+  def initialize ckt=nil, recursive=false
+    @ckts = {}
+    @models = []
+    read(ckt, recursive) if ckt
+    get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')]
   end
   
   def help
@@ -35,27 +38,28 @@ plot *node_list --- plot waves in node_list
 EOF
   end
   
-  def read ckt=@file
+  def read ckt=@file, recursive=false
     @file = ckt
     case File.extname ckt 
     when '.sch'
-        @elements = read_sch ckt
+        elements = read_sch ckt
     when '.net'
-        @elements = read_net ckt
+        elements = read_net ckt
     when ''
       if File.exist? ckt+'.sch'
-        @elements = read_sch ckt+'.sch'
+        elements = read_sch ckt+'.sch', recursive
       elsif File.exist? ckt+'.net'
-        @elements = read_net ckt+'.net'
+        elements = read_net ckt+'.net'
       else
       end
     end
     @mtime = Time.now
     puts "elements updated from #{@file}!"
-    @elements
+    @elements = @ckts if recursive
+    elements
   end
 
-  def read_sch file
+  def read_sch file, recursive=false
     elements = {}
     name = type = value = value2 = nil
     lineno = line1 = line2 = 0 
@@ -68,13 +72,30 @@ EOF
         desc = ''
       elsif desc
         break if l =~ /<\/Components>/
-        if l =~ /<Lib +(\S+) +\S+ +(\S+) +(\S+) +0 +0 +(\S+) +(\S+) +"(\S+)" 0 "(\S+)" 0 "(\S+)"/
+        if l =~ /<Lib +(\S+) +\S+ +(\S+) +(\S+) +0 +0 +(\S+) +(\S+) +"(\S+)" 0 "(\S+)" 0 "(\S+)" 1 "(\S+)"/
         # c = {:type=> $1, :name=>$2, :x=>q2c($3), :y=>q2c($4), :mirror=>$5.to_i, :rotation=>$6.to_i, :lib_path=>$7, :cell_name=>$8} #caution: $ shifted
           name = $1
           cell_name = $7
           value = $8
-          elements[name] = {value: value, type: cell_name, lineno: lineno}
+          if ['NMOS_MIN', 'PMOS_MIN'].include? cell_name
+            value2 = $9
+            elements[name] = {value: "l=#{value} w=#{value2}", type: cell_name, lineno: lineno}
+          else
+            elements[name] = {value: value, type: cell_name, lineno: lineno}
+          end
           desc << l
+        elsif l =~ /<Lib +(\S+) +\S+ +(\S+) +(\S+) +0 +0 +(\S+) +(\S+) +"(\S+)" 0 "(\S+)" 0 "(\S+)"/
+          name = $1
+          cell_name = $7
+          value = $8
+          elements[name] = {value: value, type: cell_name, lineno: lineno}
+        elsif l =~ /<Lib +(\S+) +\S+ +(\S+) +(\S+) +0 +0 +(\S+) +(\S+) +"(\S+)" 0 "(\S+)"/
+          name = $1
+          cell_name = $7
+        elsif l =~ /<SpiceInclude +\S+ +\S+ +\S+ +\S+ +\S+ +\S+ +0 +0 +"(\S+)"/
+          model = $1
+          elements['include'] ||= []
+          elements['include'] << {control: ".include #{$1}"}
         end
       end
     }
@@ -87,7 +108,8 @@ EOF
         name = nil
       end
 =end
-    elements
+    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements
+    elements == {} ? nil : elements
   end
   private :read_sch
   
@@ -279,8 +301,8 @@ EOF
     }
     result
   end
-
-  def get_models
+=begin
+  def get_models elements
     cwd = get_cwd()
     include_files = get('include').map{|l|
       l =~ /include \"\.\/(\S+)\"/
@@ -295,6 +317,7 @@ EOF
       '$'+m.name
     }
   end
+=end
 
   def update_models
     @models.each{|m|
@@ -473,9 +496,9 @@ EOF
     [vars, traces]
   end
 
-  def open file=@file
+  def open file=@file, recursive=false
     view file
-    read file
+    read file, recursive
   end
 
   def view file
@@ -538,7 +561,9 @@ EOF
   def qucs_path
     if ENV['QUCS_path'] 
       return ENV['QUCS_path'] 
-    elsif File.exist?( path =  "#{ENV['ProgramFiles(x86)']}\\Qucs-S\\bin\\qucs-s.exe")
+    elsif File.exist?( path =  "#{ENV['PROGRAMFILES']}\\Qucs-S\\bin\\qucs-s.exe")
+      return path
+    else
       raise 'Cannot find QUCS executable. Please set QUCS_path'
     end                     
   end

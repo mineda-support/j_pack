@@ -158,8 +158,29 @@ def xschem2cdraw xschem_dir, cdraw_dir
   }
 end
     
+def xschem2eeschema xschem_dir, qucs_dir, model_script=nil
+  puts "xschem2eeschema xschem_dir=#{xschem_dir}, qucs_dir=#{qucs_dir}" 
+  Dir.chdir(xschem_dir){
+    l = QucsLibrary.new 'circuits', qucs_dir
+    l.xschem_lib_in
+    lib_info.merge! l.eeschema_lib_out(model_script)
+
+    eeschema_sym_lib_table lib_info.values.uniq, qucs_dir
+
+    proj_dir = File.join(qucs_dir, "circuits_prj")
+    cells = Dir.glob('*.sch').map{|a| a.sub('.sch','')}
+    cells.each{|cell|
+      c = QucsSchematic.new cell
+      c.xschem_schema_in
+      FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
+      c.eeschem_schema_out File.join(proj_dir, cell + '.kicad_sch'), symbol_libs, lib_info
+    }
+  }
+end
+
 def xschem2qucs xschem_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
   puts "xschem2qucs xschem_dir=#{xschem_dir}, qucs_dir=#{qucs_dir}" 
+  lib_info = {}
   Dir.chdir(xschem_dir){
     l = QucsLibrary.new 'circuits', qucs_dir
     l.xschem_lib_in
