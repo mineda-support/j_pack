@@ -362,7 +362,7 @@ class QucsLibrary
 
     FileUtils.mkdir_p File.dirname(@qucs_lib) unless File.directory? File.dirname(@qucs_lib)
     File.open(@qucs_lib, 'w'){|f|
-      f.puts "<Qucs Library 0.0.21 \"#{@lib_name}\">\n"
+      f.puts "<Qucs Library 26.1.0 \"#{@lib_name}\">\n"
       @components.each{|comp|
         f.puts "<Component #{comp.name}>\n#{comp.qucs_comp_out @lib_name, model_script}</Component>\n"
         qucs_dir = File.expand_path(File.join(@qucs_lib, '../..'))
@@ -1046,8 +1046,8 @@ class QucsSchematic
     @lib_path = lib_path
     @symbols = symbols
     @properties = {:View => [0,0,800,800,1,0,0], :Grid => [10,10,1],
-      :DataSet => 'test.dat', :DataDisplay => 'test.dpl', :OpenDisplay => 1,
-#      :Script => 'test.m', :RunScript => 0,
+      :DataSet => "#{cell}.dat", :DataDisplay => "#{cell}.dpl", :OpenDisplay => 1,
+      :Script => "#{cell}.m", :RunScript => 0,
       :showFrame => 0, 
       :FrameText0 => 'Title', :FrameText1 => 'Drawn By:', 
       :FrameText2 => 'Date:', :FrameText3 => 'Revision:'}
@@ -1401,7 +1401,7 @@ class QucsSchematic
 
   def qucs_schema_out file, lib_path
     File.open(file, 'w'){|f|
-      f.puts "<Qucs Schematic 0.0.21>\n"
+      f.puts "<Qucs Schematic 26.1.0>\n"
       f.puts "<Properties>\n#{properties}</Properties>\n"
       f.puts "<Symbol>\n#{@symbol.qucs_symbol_out}</Symbol>\n" if @symbol
       f.puts "<Components>\n#{get_components lib_path}</Components>\n" if @components
@@ -1982,20 +1982,20 @@ EOS
             if val = value2[p[0]] || value2[p[0].downcase]
               val.gsub! '{', ''
               val.gsub! '}', ''
+              values << "\"#{val}\" #{p[1] || '0'} "
             else
-              values = "\"#{c[:symattr]['Value']}\"" 
+              values = "\"#{c[:symattr]['Value']}\" 0" 
               break
             end
-            values << "\"#{val}\" #{p[1] || '0'} "
           }
-          result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0 #{values}>\n"
+          result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0 #{values}"
         else
-          result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0>\n"
+          result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0"
         end
       else
-        result << " \"\#{ENV['QUCS_DIR']}/#{File.join lib_path[c[:name]]+'_prj', c[:name]+'.sch'}\" 0>\n" if lib_path && lib_path[c[:name]]
+        result << " \"\#{ENV['QUCS_DIR']}/#{File.join lib_path[c[:name]]+'_prj', c[:name]+'.sch'}\" 0" if lib_path && lib_path[c[:name]]
       end
-      # result << ">\n"
+      result << ">\n"
     }
     result
   end
