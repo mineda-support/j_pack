@@ -7,7 +7,7 @@ require 'fileutils'
 require 'yaml'
 require 'sxp'
 require 'securerandom'
-require 'auto_junction_detector'
+# require 'auto_junction_detector'
 
 def pretty_sexpr(s_expr)
   #tokens = s_expr.gsub('(', ' ( ').gsub(')', ' ) ').split
@@ -129,7 +129,7 @@ class QucsComponent
     @symbol.xschem_symbol_in desc
   end
 
-  def qucs_comp_out lib, model_script
+  def qucs_comp_out lib, model_script, qucs_symbols
     result = "<Description>\n#{@description}</Description>\n"
     @model = @spice = @params = nil
     case @symbol.prefix
@@ -215,7 +215,10 @@ class QucsComponent
     end
     result << "<Spice>\n#{@spice}</Spice>\n" if @spice
     result << "<Model>\n#{@model}</Model>\n" if @model
-    result << "<Symbol>\n#{@symbol.qucs_symbol_out @params}</Symbol>\n"
+    qucs_symbol = @symbol.qucs_symbol_out @params
+    qucs_symbols[@name] = @symbol # qucs_symbol
+    puts "qucs_symbol for #{@name}: #{qucs_symbol.inspect}"
+    result << "<Symbol>\n#{qucs_symbol}</Symbol>\n"
   end
   
   def eeschema_comp_out lib
@@ -274,7 +277,7 @@ class QucsComponent
 end
 
 class QucsLibrary
-  attr_accessor :components, :symbol_libs, :eescm
+  attr_accessor :components, :symbol_libs, :eescm, :qucs_symbols
   def initialize name, target_dir=File.join(ENV['HOME'], '.qucs')
     @target_dir = target_dir
     @qucs_lib_dir = File.join(target_dir, 'user_lib')
@@ -283,6 +286,7 @@ class QucsLibrary
     @components = []
     @component_is_symbol = {}
     @eescm = []
+    @qucs_symbols = {}
   end
  
   def cdraw_lib_in lib
@@ -364,7 +368,7 @@ class QucsLibrary
     File.open(@qucs_lib, 'w'){|f|
       f.puts "<Qucs Library 26.1.0 \"#{@lib_name}\">\n"
       @components.each{|comp|
-        f.puts "<Component #{comp.name}>\n#{comp.qucs_comp_out @lib_name, model_script}</Component>\n"
+        f.puts "<Component #{comp.name}>\n#{comp.qucs_comp_out @lib_name, model_script, @qucs_symbols}</Component>\n"
         qucs_dir = File.expand_path(File.join(@qucs_lib, '../..'))
         if @component_is_symbol[comp] 
           if ENV['QUCS_DIR']
@@ -810,7 +814,7 @@ EOS
         end
       }.join(' ')
     end
-    result = "  <.ID 0 0 #{@prefix||'X'}#{params}>\n"
+    result = "  <.ID 0 0 #{@prefix||'SUB'}#{params}>\n"
     @lines.each{|l|
       result << "  <Line #{l.join(' ')} #000080 2 1>\n"
     }
@@ -848,7 +852,7 @@ EOS
       result << "  <Ellipse #{x1} #{y1} #{x2-x1} #{y2-y1} #000000 0 1 #c0c0c0 1 0>\n"
     }
     @portsyms.each{|p|
-      result << "  <.PortSym #{p[:xy].join(' ')} #{p[:SpiceOrder]} 0>\n"
+      result << "  <.PortSym #{p[:xy].join(' ')} #{p[:SpiceOrder]} 0 #{p[:PinName]}>\n"
     }
     result
   end
@@ -1069,7 +1073,9 @@ class QucsSchematic
     props = YAML.load(File.read(@cell+'.yaml').encode('UTF-8')) if File.exist? @cell+'.yaml'
     lib_info = props['cells']||{}
     mu = 181.chr(Encoding::UTF_8)
+    net_name = nil
     File.open(@cell+'.asc', 'r:UTF-8').read.gsub(mu, 'u').scrub.each_line{|l|
+      # puts l
       if l =~ /WIRE +(\S+) +(\S+) +(\S+) +(\S+)/ 
         @wires << [c2q($1), c2q($2), c2q($3), c2q($4)]
       elsif l =~ /SHEET +(\S+) +(\S+) +(\S+)/ 
@@ -1080,8 +1086,19 @@ class QucsSchematic
         y = c2q($2)
         net_name = $3                        #    not processed here (WIRE names are ignored?)
         @wires << [x, y, x, y, net_name, x, y]
+      elsif l =~ /IOPIN +(\S+) +(\S+) +(\S+)/ 
+        case direction = $3
+        when 'In'
+          direction = 'ipin'
+        when 'Out'
+          direction = 'opin' 
+        when 'InOut', 'BiDir'
+          direction = 'iopin'
+        end
+        @component = {:name=>direction, :symattr => {'InstName' => net_name}, :x=>c2q($1), :y=>c2q($2)}
+        @components << @component
       elsif l =~ /SYMBOL +(\S+) +(\S+) +(\S+) +(\S+)/
-#        @component = {:name=>$1.downcase, :x=>c2q($2), :y=>c2q($3), :rotation=>$4} # component name in LTspice must be (converted to) downcase ---> this might be okay for symbols but bad for subckts
+#        @component = {:name=>$1.downcase, :x=>c2q($2), :y=>c2q($3),nt name in LTspice must be (converted to) downcase ---> this might be okay for symbols but bad for subckts
         @component = {:name=>$1, :x=>c2q($2), :y=>c2q($3), :rotation=>$4} # so reverted back
         if @component[:name] =~ /(\S+)\\(\S+)/  # like OR1LIB\\PMOS
           @component[:name] = $2
@@ -1217,8 +1234,6 @@ class QucsSchematic
         }
         @component[:name] = inst['Value']
         @component[:symattr] ||= {}
-        @component[:symattr]['Values'] # to be set? 
-        @component[:symattr]['Value2'] = inst['Spice_Model'] 
         @component[:symattr]['InstName'] = inst['Reference']
         @component[:symattr]['Prefix'] = inst['Description']        
         if inst['mirror'] == :x
@@ -1399,12 +1414,16 @@ class QucsSchematic
     end
   end
 
-  def qucs_schema_out file, lib_path
+  def qucs_schema_out file, lib_path, symbols
     File.open(file, 'w'){|f|
       f.puts "<Qucs Schematic 26.1.0>\n"
       f.puts "<Properties>\n#{properties}</Properties>\n"
-      f.puts "<Symbol>\n#{@symbol.qucs_symbol_out}</Symbol>\n" if @symbol
-      f.puts "<Components>\n#{get_components lib_path}</Components>\n" if @components
+      if symbol=symbols[@cell]
+        f.puts "<Symbol>\n#{symbol.qucs_symbol_out}</Symbol>\n"
+      else
+        f.puts "<Symbol>\n#{@symbol.qucs_symbol_out}</Symbol>\n" if @symbol
+      end
+      f.puts "<Components>\n#{get_components lib_path, symbols[@cell]}</Components>\n" if @components
       f.puts "<Wires>\n#{wires}</Wires>\n"
       f.puts "<Diagrams>\n</Diagrams>\n"
       f.puts "<Paintings>\n#{paintings}</Paintings>\n"
@@ -1881,10 +1900,13 @@ EOS
     result
   end
 
-  def get_components lib_path
+  def get_components lib_path, symbol=@symbol
     result = ''
     # require 'debug'; debugger
     @components.each{|c|
+      # puts c[:name]
+      type = c[:symattr] ? c[:symattr]['Prefix'] || c[:symattr]['InstName'][0] : nil 
+      # puts "#{c[:name]} : type=#{type}"
       if c[:name] == '.tran'
         result << " <.TR TR1 1 #{c[:x]} #{c[:y]} 0 71 0 0 \"lin\" 1 \"0\" 1 \"10 ms\" 1 \"11\" 0 \"Trapezoidal\" 0 \"2\" 0 \"1 ns\" 0 \"1e-16\" 0 \"150\" 0 \"0.001\" 0 \"1 pA\" 0 \"1 uV\" 0 \"26.85\" 0 \"1e-3\" 0 \"1e-6\" 0 \"1\" 0 \"CroutLU\" 0 \"no\" 0 \"yes\" 0 \"0\" 0>\n"
         next
@@ -1900,7 +1922,7 @@ EOS
         next
       elsif c[:name] =~ /pin/
         number = nil
-        @symbol.portsyms.each{|p|
+        symbol.portsyms.each{|p|
           if p[:PinName] == c[:symattr]['InstName']
             number = p[:SpiceOrder]
             break
@@ -1919,13 +1941,12 @@ EOS
         result << " <Port #{c[:symattr]['InstName']} 1 #{c[:x]} #{c[:y]} 0 0 0 #{direction} \"#{number}\" 1 \"#{porttype}\" 0>\n"
         next
       elsif lib_path && lib_path[c[:name]] && c[:symattr]
-        if (c[:lib_path] || lib_path[c[:name]])
+        if (c[:lib_path] || lib_path[c[:name]]) && type && type != 'X'
           result << " <Lib #{c[:symattr]['InstName']}"
         else
-          result << " <Sub #{c[:symattr]['InstName']}"
+          result << " <Sub #{c[:symattr]['InstName'].sub(/^X/, 'SUB')}"
         end
       elsif c[:symattr]
-        type = c[:symattr]['Prefix']
         type ||= c[:symattr]['InstName'][0,1] 
         result << " <#{type} #{c[:symattr]['InstName']}"
       else
@@ -1989,8 +2010,8 @@ EOS
             end
           }
           result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0 #{values}"
-        else
-          result << " \"#{lib_name}\" 0 \"#{c[:name]}\" 0"
+        elsif type == nil || type == 'X'
+          result << " \"#{c[:name]}.sch\" 0"
         end
       else
         result << " \"\#{ENV['QUCS_DIR']}/#{File.join lib_path[c[:name]]+'_prj', c[:name]+'.sch'}\" 0" if lib_path && lib_path[c[:name]]
@@ -2115,22 +2136,25 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
   target = target.downcase
   lib_info = {}
   lib_path = {}
-  Dir.chdir(pictures_dir){  
+  eescm_symbol_libs = {}
+  qucs_symbols = {}
+    Dir.chdir(pictures_dir){  
     libraries = Dir.glob('*').select{|lib| File.directory? lib}
     symbols = {}
-    symbol_libs = {}
     libraries.each{|lib|
       l = QucsLibrary.new lib, target_dir
       symbols.merge! l.cdraw_lib_in(lib)
       if target == 'qucs'
         lib_path.merge! l.qucs_lib_out(model_script)
+        qucs_symbols.merge! l.qucs_symbols
       elsif target == 'eeschema'
         lib_info.merge! l.eeschema_lib_out(model_script)
-        symbol_libs[lib] = l.eescm
+        eescm_symbol_libs[lib] = l.eescm
       elsif target == 'xschem'
         l.xschem_lib_out(target_dir)
       end
     }
+    puts "qucs_symbols=#{qucs_symbols.inspect}"
     if target == 'eeschema'
       eeschema_sym_lib_table lib_info.values.uniq, target_dir
     end
@@ -2148,9 +2172,9 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
             proj_dir = File.join(target_dir, "#{lib}_prj")
             FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
             # debugger
-            c.qucs_schema_out File.join(proj_dir, cell + '.sch'), lib_path
+            c.qucs_schema_out File.join(proj_dir, cell + '.sch'), lib_path, qucs_symbols
           elsif target == 'eeschema'
-            c.eeschema_schema_out File.join(target_dir, cell + '.kicad_sch'), symbol_libs, lib_info
+            c.eeschema_schema_out File.join(target_dir, cell + '.kicad_sch'), eescm_symbol_libs, lib_info
           elsif target == 'xschem'
             c.xschem_schema_out File.join(target_dir, cell + '.sch')
           end
@@ -2161,7 +2185,7 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
 end
 if $0 == __FILE__
   puts Dir.pwd
-  #s_expr = "(kicad_sch (version 20231120) (generator \"eeschema\") (generator_version \"8.0\") (uuid \"6b38e86d-0361-42a0-a937-4aff1de4c7c0\") (paper \"A4\") (lib_symbols) (symbol (lib_id \":voltage\") (at -5.08 3.81 0) (uuid \"5a4cfada-391f-49d9-8198-cb4fc3c31901\") (property Reference \"V2\" (at -5.08 3.81 0)) (property \"Sim.Params\" \"3.3\" (at -5.08 3.81 0))) (symbol (lib_id \":voltage\") (at 10.16 8.89 0) (uuid \"9ec0f994-4909-4144-98f7-bdb5100e26b1\") (property Reference \"V1\" (at 10.16 8.89 0)) (mirror x) (property \"Sim.Params\" \"SINE({Vbias} 0.1 1k)\" (at 10.16 8.89 0))) "
+    #s_expr = "(kicad_sch (version 20231120) (generator \"eeschema\") (generator_version \"8.0\") (uuid \"6b38e86d-0361-42a0-a937-4aff1de4c7c0\") (paper \"A4\") (lib_symbols) (symbol (lib_id \":voltage\") (at -5.08 3.81 0) (uuid \"5a4cfada-391f-49d9-8198-cb4fc3c31901\") (property Reference \"V2\" (at -5.08 3.81 0)) (property \"Sim.Params\" \"3.3\" (at -5.08 3.81 0))) (symbol (lib_id \":voltage\") (at 10.16 8.89 0) (uuid \"9ec0f994-4909-4144-98f7-bdb5100e26b1\") (property Reference \"V1\" (at 10.16 8.89 0)) (mirror x) (property \"Sim.Params\" \"SINE({Vbias} 0.1 1k)\" (at 10.16 8.89 0))) "
   #require 'debug'; debugger
   #spr = pretty_sexpr(s_expr)
   #exit
@@ -2186,8 +2210,8 @@ if $0 == __FILE__
     create_cdraw()
   }
   asc_dir = File.join(asc_dir, 'cdraw')
-  cdraw2target 'xschem', asc_dir, '/tmp/xschem'
+  #cdraw2target 'xschem', asc_dir, '/tmp/xschem'
   #require 'debug'; debugger
-  cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
+  #cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
   cdraw2target 'qucs', asc_dir, '/tmp/qucs'
 end
