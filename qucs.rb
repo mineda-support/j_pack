@@ -136,44 +136,50 @@ class QucsComponent
     when 'V'
       case @name
       when 'vdc'
-        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 vdc=0\n"
+        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 vdc={vdc}\n"
         @spice << "V1 _net1 _net2 {vdc}\n"
         @spice << ".ends #{lib}_#{@name}\n"
         @params = [['vdc', '0']]
       when 'vac'
-        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 dc=0 mag=1\n"
+        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 dc={dc} mag={mag}\n"
         @spice << "V1 _net1 _net2 {dc} AC {mag}\n"
         @spice << ".ends #{lib}_#{@name}\n"
         @params = [['dc', '0'], ['mag', '1']]
       when 'vsin'
-        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 sinedc=0 ampl=1 freq=1KHz delay=0 damp=0 sinephase=0\n"
+        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 sinedc=0 ampl={ampl} freq={freq} delay=0 damp=0 sinephase=0\n"
         @spice << "V1 _net1 _net2 SIN ({sinedc} {ampl} {freq} {delay} {damp} {sinephase})\n"
         @spice << ".ends #{lib}_#{@name}\n"
         @params = [['sinedc', '0'], ['ampl', '1'], ['freq', '1Khz'], ['delay', '0'], ['damp', '0'], ['sinephase', 0]]
       when 'vpulse'
-        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 val0=0 val1=1 delay='' rise='' fall='' width='' period=''\n"
+        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 val0={val0} val1={val1} delay=0 rise=0 fall=0 width=0 period=0\n"
         @spice << "V1 _net1 _net2 PULSE ({val0} {val1} {delay} {rise} {fall} {width} {period})\n"
         @spice << ".ends #{lib}_#{@name}\n"
         @params = [['val0', '0'], ['val1', '1'], ['delay', '0'], ['rise', '0'], ['fall', '0'], ['width', '0'], ['period', '0']]
+      else
+        @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 U={U}\n"
+        @spice << "V1 _net1 _net2 {U}\n"
+        @spice << ".ends #{lib}_#{@name}\n"
       end
       @model = ".Def:#{lib}_#{@name} _net1 _net2 U=1.0\n"
       @model << "Vdc:V1 _net1 _net2 U={U}\n"
       @model << ".Def:End\n"
       @params ||= [['U', '1']]
-    when 'R', 'res'
-#      @model = ".Def:#{lib}_#{@name} _net1 _net2 R=\"1 K\"\n"
-      @model = ".Def:#{lib}_#{@name} _net1 _net2 R=1K\n"
-#      @model << "R:R1 _net1 _net2 R=\"R\"\n"
-      @model << "R:R1 _net1 _net2 R={R}\n"
-      @model << ".Def:End\n"
+    when 'R' #, 'res', 'HR_POLY_MIN', 'R_POLY_MIN'
+      @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 R={R}\n"
+      #@model = ".Def:#{lib}_#{@name} _net1 _net2 R=1K\n"
+      @spice << "R1 _net1 _net2 {R}\n"
+      @spice << ".ends #{lib}_#{@name}\n"
+      #@model << "R:R1 _net1 _net2 R={R}\n"
+      #@model << ".Def:End\n"
 #      @params = " \"1=R=R==\""
       @params = [['R', '1']]
-    when 'C', 'cap'
-#      @model = ".Def:#{lib}_#{@name} _net1 _net2 C=\"1 p\"\n"
-      @model = ".Def:#{lib}_#{@name} _net1 _net2 C=1p\n"
-#      @model << "C:C1 _net1 _net2 C=\"C\"\n"
-      @model << "C:C1 _net1 _net2 C={C}\n"
-      @model << ".Def:End\n"
+    when 'C' #, 'cap', 'CAP_MIN'
+      @spice = ".subckt #{lib}_#{@name} gnd _net1 _net2 C={C}\n"
+      @spice << "C1 _net1 _net2 {C}\n"
+      @spice << ".ends #{lib}_#{@name}\n"
+      #@model = ".Def:#{lib}_#{@name} _net1 _net2 C=1p\n"
+      #@model << "C:C1 _net1 _net2 C={C}\n"
+      #@model << ".Def:End\n"
 #      @params = " \"1=C=C==\""
       @params = [['C', '1']]
     when 'S', 'SW'
@@ -183,7 +189,7 @@ class QucsComponent
       @model = ".Def:#{lib}_#{@name} _net1 _net2 _net3 _net4\n"
       @model << "SW:S1 _net1 _net2 _net3 _net4 #{self.symbol.value}\n"
       @model << ".Def:End\n"
-    when 'M', 'MP', 'MN'
+    when 'M', 'MP', 'MN', 'nch', 'pch'
 #      @model = pick_model(model_script, self.symbol.value) || '!!! no model found !!!'
 #      
 #      @model.gsub /\.Def:\S+/, ".Def:#{lib}_#{@name}"
@@ -217,7 +223,7 @@ class QucsComponent
     result << "<Model>\n#{@model}</Model>\n" if @model
     qucs_symbol = @symbol.qucs_symbol_out @params
     qucs_symbols[@name] = @symbol # qucs_symbol
-    puts "qucs_symbol for #{@name}: #{qucs_symbol.inspect}"
+    # puts "qucs_symbol for #{@name}: #{qucs_symbol.inspect}"
     result << "<Symbol>\n#{qucs_symbol}</Symbol>\n"
   end
   
@@ -1915,7 +1921,8 @@ EOS
         result << " <SpiceModel SpiceModel1 1 #{c[:x]} #{c[:y]} -30 17 0 0 \".MODEL #{c[:model]} #{c[:type]} #{c[:rest]}\" 1 \"\" 0 \"\" 0 \"\" 0 \"Line_5=\" 0>\n"
         next
       elsif c[:name] == '.include'
-        result << " <SpiceInclude SpiceInclude1 1 #{c[:x]} #{c[:y]} -36 17 0 0 \"#{c[:path]}\" 1 \"\" 0 \"\" 0 \"\" 0 \"\" 0>\n"
+        path = c[:path].sub('%HOMEPATH%', "$HOMEPATH\\")
+        result << " <SpiceInclude SpiceInclude1 1 #{c[:x]} #{c[:y]} -36 17 0 0 \"#{path}\" 1 \"\" 0 \"\" 0 \"\" 0 \"\" 0>\n"
         next
       elsif c[:name] =~ /gnd/
         result << " <GND * 1 #{c[:x]} #{c[:y]} 0 0 0 0>\n"
@@ -2005,7 +2012,7 @@ EOS
               val.gsub! '}', ''
               values << "\"#{val}\" #{p[1] || '0'} "
             else
-              values = "\"#{c[:symattr]['Value']}\" 0" 
+              values = "\"#{c[:symattr]['Value']}\" 1" 
               break
             end
           }
@@ -2017,6 +2024,32 @@ EOS
         result << " \"\#{ENV['QUCS_DIR']}/#{File.join lib_path[c[:name]]+'_prj', c[:name]+'.sch'}\" 0" if lib_path && lib_path[c[:name]]
       end
       result << ">\n"
+    }
+    @wires.each{|w|
+      if w[4] == '0'
+        result << " <GND * 1 #{w[5]} #{w[6]} 0 0 0 0>\n"    
+      end  
+    } 
+    n = 1   
+    @texts.each{|t|
+      if t[4] =~ /^!*\.(\S+) +(.*)$/
+        command = $1
+        args = $2
+        case command.upcase
+        when 'AC', 'TRAN', 'DC'
+          result << " <.CUSTOMSIM CUSTOM#{n} 1 #{t[0]} #{t[1]} 33 0 0 \"#{command} #{args}\" 1 \"\" 0 \"\" 0>\n"
+        when 'PARAM', 'PAR'
+          params = args.scan(/(\S+)=(\S+)/).map{|a, b| "\"#{a}=#{b}\" 1"}.join(' ')
+          result << " <SpicePar SpicePar1 1 #{t[0]} #{t[1]} -26 17 0 0 #{params}>\n"
+        when 'STEP'
+          # !.step param Vbias 0 3.3 0.66
+          args =~ /param +(\S+) +(\S+) +(\S+) +(\S+)/
+          puts "args: #{args}"
+          nums = (($3.to_f - $2.to_f) / $4.to_f).round(4).to_i + 1
+          result << " <.SW SW1 1 #{t[0]} #{t[1]} 0 33 0 0 \"CUSTOM1\" 1 \"lin\" 1 \"#{$1}\" 1 \"#{$2}\" 1 \"#{$3}\" 1 \"#{nums}\" 1>\n"
+        end
+        n = n + 1
+      end
     }
     result
   end
@@ -2051,7 +2084,9 @@ EOS
       result << "<Line #{l[0]} #{l[1]} #{l[2]} #{l[3]} #000000 0 1>\n"
     }
     @texts.each{|t|
-      result << "<Text #{t[0]} #{t[1]} 12 #000000 0 \"#{t[4]}\">\n"
+      unless t[4] =~ /^!\.(.*)$/
+        result << "<Text #{t[0]} #{t[1]} 12 #000000 0 \"#{t[4]}\">\n"
+      end
     }
     result
   end
@@ -2059,6 +2094,7 @@ EOS
   def wires
     result = ''
     @wires.each{|w|
+      next if w[4] == '0'
       result << "<#{w[0]} #{w[1]} #{w[2]} #{w[3]} \"#{w[4]}\" #{w[5]||"0"} #{w[6]||"0"} 0 \"\">\n"
     }
     result
