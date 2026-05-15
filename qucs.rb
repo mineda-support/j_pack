@@ -236,7 +236,8 @@ class QucsComponent
       name_x = name_y = 0
     end
     # result << "F0 \"#{@symbol.prefix||'U'}\" #{name_x} #{name_y} 50 H V L CNN\n"
-    result = [:symbol, @name, [:property, 'Reference', @symbol.prefix||'X', 
+    result = [:symbol, @name, [:pin_numbers, [:hide, :yes]],
+                              [:property, 'Reference', @symbol.prefix||'X', 
                                           [:at, name_x, name_y, 0]]] #, [:uuid, SecureRandom.uuid]]
     if @label_pos
       label_x = q2e(@symbol.label_pos[0] || 0)
@@ -397,7 +398,7 @@ class QucsLibrary
     File.open(File.join(@target_dir, @lib_name+'.kicad_sym'), 'w'){|f|
       #f.puts "EESchema-LIBRARY Version 2.4\n#encoding utf-8\n"
       @eescm = [:kicad_symbol_lib, [:version, 20231120], [:generator, "kicad_symbol_editor"],
-	       [:generator_version, "8.0"], [:uuid, SecureRandom.uuid]]
+	       [:generator_version, "8.0"]] #, [:uuid, SecureRandom.uuid]]
       @components.each{|comp|
         #f.puts comp.eeschema_comp_out(@lib_name, model_script)
         @eescm.push comp.eeschema_comp_out(@lib_name)
@@ -925,7 +926,7 @@ EOS
       number = number + 1
       
       pins.push [:pin, :input, :line, [:at, q2e(p[:xy][0]), -q2e(p[:xy][1]), p[:angle]||0],
-                        [:length, 0.635], [:name, '~'], [:number, number.to_s]]
+                        [:length, 0.635], [:hide, :yes], [:name, '~'], [:number, number.to_s]]
     }
     # result << "ENDDRAW\n"
     [result, pins]
@@ -1618,19 +1619,19 @@ EOS
       #result << "F 0 \"#{inst_name}\" H #{x+q2e(name_x)} #{y-q2e(name_y)} 50 #{flags} L CNN\n"
       symbol = [:symbol, [:lib_id, "#{lib_info[component_name]}:#{component_name}"], 
                 [:at, x, y, rot], [:uuid, SecureRandom.uuid],
-                [:property, 'Reference', inst_name, [:at, x+q2e(name_x), y-q2e(name_y), 0]]] #, [:uuid, SecureRandom.uuid]]]
+                [:property, 'Reference', inst_name, [:at, x+q2e(name_x), y+q2e(name_y), 0]]] #, [:uuid, SecureRandom.uuid]]]
       if mir
         symbol.push [:mirror, mir]
       end
       case component_name
       when 'GND'
-        #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0001 L CNN\n"
+        #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y + q2e(label_y)} 50 0001 L CNN\n"
         symbol.push [:property, "Sim.Params", c[:symattr]['Value'], 
-                      [:at, x+q2e(label_x), y - q2e(label_y), 0]]  #, [:uuid, SecureRandom.uuid]] 
+                      [:at, x+q2e(label_x), y + q2e(label_y), 0]]  #, [:uuid, SecureRandom.uuid]] 
       when 'res', 'cap'
-        #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
+        #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y + q2e(label_y)} 50 0000 L CNN\n"
         symbol.push [:property, "Sim.Params", c[:symattr]['Value'],
-                      [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
+                      [:at, x+q2e(label_x), y + q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
       when 'voltage'
         if c[:symattr]['Value2'] && c[:symattr]['Value2'] =~ /type=sine/ 
           #result << "F 1 \"VSIN\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
@@ -1640,26 +1641,27 @@ EOS
           #result << "F 5 \"V\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
           #result << "F 6 \"#{get_sine c[:symattr]['Value2']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)-11} 50 0000 L CNN \"Spice_Model\"\n"
           symbol.push [:property, "Sim.Params", get_sine(c[:symattr]['Value2']),
-                        [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
+                        [:at, (x+q2e(label_x)).round(4), (y + q2e(label_y)).round(4), 0]] #, [:uuid, SecureRandom.uuid]] 
         else
           #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n
           symbol.push [:property, "Sim.Params", c[:symattr]['Value'],
-                        [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
+                        [:at, (x+q2e(label_x)).round(4), (y + q2e(label_y)).round(4), 0]] #, [:uuid, SecureRandom.uuid]] 
         end
       when 'NMOS', 'PMOS', 'NMOS_MIN', 'PMOS_MIN'
         #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
         #result << "F 4 \"M\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
         model = c[:symattr]['Value'] || (@symbols[component_name] && @symbols[component_name].value)
         #result << "F 5 \"#{model} #{c[:symattr]['Value2']}\" H #{x} #{y} 50 0001 L CNN \"Spice_Model\"\n"
+        effects = (mir == :y) ? [:effects, [:justify, :left], [:font, [:size, 0.635, 0.635]]] : [:effects, [:font, [:size, 0.635, 0.635]]]
         symbol.push [:property, "Sim.Params",
                      #"type=\"M\" model=\"#{model} #{c[:symattr]['Value2']}\" lib=\"\"",
                      "#{model} #{c[:symattr]['Value2']}",
-                     [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]]
+                     [:at, x+q2e(label_x), y + q2e(label_y) + (mir == :y ? 2.54 : 1.27), 0], effects] #, [:uuid, SecureRandom.uuid]]
       else
         #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
         #result << "F 5 \"Y\" H #{x} #{y} 50 0001 L CNN \"Spice_Netlist_Enabled\"\n"     
-        symbol.push [:property, "Sim.Params", component_name, 
-                     [:at, x+q2e(label_x), y - q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
+        symbol.push [:property, "Sim.Params", c[:symattr]['Value'], #component_name, 
+                     [:at, x+q2e(label_x), y + q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
       end
       symbol.push [:instances, [:project, @cell, [:path, '/'+@root_uuid, [:reference, inst_name], [:unit, 1]]]]
       result.push symbol
@@ -1792,29 +1794,37 @@ EOS
     result
   end
 
+  ROTATION_EFFECTS_MAP = [[0, [:justify, :right]], [90, [:justify, :left]], [180, [:justify, :left]], [270, [:justify, :left]]]
   def eeschema_schema_pins global_pins, offset
     result = []
+    hier_pins = {}
     @components.each{|c|
       x = q2e(c[:x])+offset[0]
       y = q2e(c[:y])+offset[1]
       inst_name = c[:symattr]? c[:symattr]['InstName'] : nil
+      direction = find_direction c[:x], c[:y]
+      rotation, justify = ROTATION_EFFECTS_MAP[direction]
+      effects = [:effects, justify]
       case c[:name]
       when 'ipin'
         #result << "Text HLabel #{x} #{y} 0 60 Input ~ 0\n#{inst_name}\n"
-        result.push [:hierarchical_label, inst_name, [:shape, :input] , [:at, x.round(4), y.round(4)]]
+        result.push [:hierarchical_label, inst_name, [:shape, :input] , [:at, x.round(4), y.round(4), rotation], effects]
+        hier_pins[[x, y]] = [inst_name, :input]
       when 'opin'
         #result << "Text HLabel #{x} #{y} 0 60 Output ~ 0\n#{inst_name}\n"
-        result.push [:hierarchical_label, inst_name, [:shape, :output] , [:at, x.round(4), y.round(4)]]
+        result.push [:hierarchical_label, inst_name, [:shape, :output] , [:at, x.round(4), y.round(4), rotation], effects]
+        hier_pins[[x, y]] = [inst_name, :output]
       when 'iopin'
         #result << "Text HLabel #{x} #{y} 0 60 Bidi ~ 0\n#{inst_name}\n"
-        result.push [:hierarchical_label, inst_name, [:shape, :bidirectional] , [:at, x.round(4), y.round(4)]]
+        result.push [:hierarchical_label, inst_name, [:shape, :bidirectional] , [:at, x.round(4), y.round(4), rotation], effects]
+        hier_pins[[x, y]] = [inst_name, :bidirectional]
       end
     }
     global_pins.each{|w|
       x = q2e(w[0])+offset[0]
       y = q2e(w[1])+offset[1]
+      next if hier_pins[[x, y]]
       pin_name = w[4]
-      # result << "Text GLabel #{x} #{y} 0 50 Input ~ 0\n#{pin_name}\n"
       result.push [:global_label, pin_name, [:shape, :input], [:at, x.round(4), y.round(4), 0], [:uuid, SecureRandom.uuid]] # need to check if global_label is correct
     }
     result
@@ -2248,6 +2258,6 @@ if $0 == __FILE__
   asc_dir = File.join(asc_dir, 'cdraw')
   #cdraw2target 'xschem', asc_dir, '/tmp/xschem'
   #require 'debug'; debugger
-  #cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
-  cdraw2target 'qucs', asc_dir, '/tmp/qucs'
+  #cdraw2target 'qucs', asc_dir, '/tmp/qucs'
+  cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
 end
