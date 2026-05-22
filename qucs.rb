@@ -9,6 +9,29 @@ require 'sxp'
 require 'securerandom'
 # require 'auto_junction_detector'
 
+def detect_encoding(file_path)
+  first_two_bytes = File.read(file_path, 2)
+  
+  case first_two_bytes
+  when "\xFF\xFE".force_encoding("BINARY")
+    "rb:UTF-16LE"
+  when "\xFE\xFF".force_encoding("BINARY")
+    "rb:UTF-16BE"
+  else
+    # Fallback to null byte check if no BOM is found
+    detect_by_null_bytes(file_path)
+  end
+end
+
+def detect_by_null_bytes(file_path)
+  content = File.read(file_path, 512) # Check the first 512 bytes
+  if content.include?("\x00".force_encoding("BINARY"))
+    "rb:UTF-16LE (Likely)"
+  else
+    "r:Windows-1252 (Likely)"
+  end
+end
+
 def pretty_sexpr(s_expr)
   #tokens = s_expr.gsub('(', ' ( ').gsub(')', ' ) ').split
   tokens = []
@@ -2207,10 +2230,15 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
     libraries.each{|lib|
       Dir.chdir(lib){
         cells = Dir.glob('*.asc').map{|a| a.sub('.asc','')}
+        print 'check for fake symbol like gnd: '
         cells.delete_if {|c| # delete a fake symbol if it has nothing inside like a 'gnd'
-          asc_contents = File.open(c + '.asc', 'r:Windows-1252').read.encode('UTF-8').gsub('?', 'u')
+          # puts "checking #{c}.asc for fake symbol like gnd"
+          print "#{c}.asc "
+          read_coding = detect_encoding(c + '.asc').sub(' (Likely)', '') 
+          asc_contents = File.open(c + '.asc', read_coding).read.encode('UTF-8').gsub('?', 'u')
           not asc_contents.include?('SYMBOL') # asc actually had nothing like a 'gnd'
         }
+        puts 
         cells.each{|cell|
           c = QucsSchematic.new cell, lib_info[cell], symbols
           c.cdraw_schema_in
