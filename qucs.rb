@@ -327,8 +327,8 @@ class QucsLibrary
       cells.delete_if {|c|
         puts "File: '#{c}.asc'"
         # asc_contents = File.open(c + '.asc', 'r:Windows-1252').read.encode('UTF-8').gsub('µ', 'u')
-        mu = 181.chr(Encoding::UTF_8)
-        asc_contents = File.open(c + '.asc', 'r:UTF-8').read.gsub(mu, 'u').scrub
+        read_coding = detect_encoding(c + '.asc').sub(' (Likely)', '') 
+        asc_contents = File.open(c + '.asc', read_coding).read.encode('UTF-8').gsub('µ', 'u').scrub
         not asc_contents.include?('SYMBOL') # asc actually had nothing like a 'gnd'
       }
       topcells = cells - symbols
@@ -643,7 +643,8 @@ EOS
   CDRAW2QUCS_DIRECTION = {'TOP' => 0, 'RIGHT' => 90, 'BOTTOM' => 180, 'LEFT'=> 270}
 
   def cdraw_symbol_in
-    File.read(@cell+'.asy').encode('UTF-8').gsub('µ', 'u').scrub.each_line{|l|
+    read_coding = detect_encoding(@cell+'.asy').sub(' (Likely)', '')     
+    File.open(@cell+'.asy', read_coding).read.encode('UTF-8').gsub('µ', 'u').scrub.each_line{|l|
       if l =~ /SymbolType +(\S+)/
         @symbol_type = $1
       elsif l =~ /LINE +(\S+) +(\S+) +(\S+) +(\S+) +(\S+)/
@@ -979,7 +980,22 @@ EOS
       result << "B 5 #{r.map{|a| q2x(a)}.join(' ')} {}\n"
     }
     @arcs.each{|a|
-      result << "A 3 #{a.map{|a| q2x(a)}.join(' ')} {}\n"
+      left, top, right, bottom, xs, ys, xe, ye = a
+      cx = (left + right) / 2.0
+      cy = (top + bottom) / 2.0
+      radius = (right - left).abs / 2.0
+      start_angle = Math.atan2(ys - cy, xs - cx) * 180.0 / Math::PI
+      end_angle   = Math.atan2(ye - cy, xe - cx) * 180.0 / Math::PI
+      start_angle %= 360.0
+      end_angle   %= 360.0
+
+      #sweep_angle = end_angle - start_angle
+      #sweep_angle += 360.0 if sweep_angle <= 0
+      xschem_start = end_angle
+      sweep_angle  = start_angle - end_angle
+      sweep_angle += 360.0 if sweep_angle <= 0
+      #result << "A 3 #{q2c(cx).round(2)} #{q2c(cy).round(2)} #{radius.round(2)} #{start_angle.round(1)} #{end_angle.round(1)}\n"
+      result << "A 3 #{q2c(cx).round(2)} #{q2c(cy).round(2)} #{radius.round(2)} #{xschem_start.round(1)} #{sweep_angle.round(1)}\n"
     }
     @circles.each{|c|
       cx1, cy1, cx2, cy2 = c
@@ -1102,9 +1118,9 @@ class QucsSchematic
     props = {}
     props = YAML.load(File.read(@cell+'.yaml').encode('UTF-8')) if File.exist? @cell+'.yaml'
     lib_info = props['cells']||{}
-    mu = 181.chr(Encoding::UTF_8)
     net_name = nil
-    File.open(@cell+'.asc', 'r:UTF-8').read.gsub(mu, 'u').scrub.each_line{|l|
+    read_coding = detect_encoding(@cell + '.asc').sub(' (Likely)', '') 
+    File.open(@cell+'.asc', read_coding).read.encode('UTF-8').gsub('µ', 'u').scrub.each_line{|l|
       # puts l
       if l =~ /WIRE +(\S+) +(\S+) +(\S+) +(\S+)/ 
         @wires << [c2q($1), c2q($2), c2q($3), c2q($4)]
@@ -1474,37 +1490,14 @@ class QucsSchematic
   def xschem_schema_out file
     File.open(file, 'w'){|f|
       f.puts <<EOS    
-v {xschem version=3.0.0 file_version=1.1}
+v {xschem version=3.4.6 file_version=1.2}
 G {}
 V {}
 S {}
 E {}
 EOS
-      global_pins = []
-      @wires.each{|w|
-        if w[4] && (w[0] == w[2]) && (w[1] == w[3])
-          global_pins << w
-        end
-      }
-      @wires = @wires - global_pins
-      index = 0
-      global_pins.each{|w|
-        f.puts "C {iopin.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}\n}"
-        index = index + 1
-      }
-      index = 0
-      @texts.each{|x, y, t3, t4, text|
-        if text =~ /^!\./
-          attributes="name=s#{index} value=\"#{text[1..-1]}\""
-          attributes.sub! '.lib', '.include' # .lib is not supported in ngspice
-          attributes.sub! '%HOMEPATH%', "$HOMEPATH\\"
-          f.puts "C {netlist.sym} #{x} #{y} 0 0 {#{attributes}}\n"
-        else
-          f.puts "Text {#{text}} #{q2x(x)} #{q2x(y)} 0 0 0.4 0.4 {}"
-        end
-        index = index + 1 
-      }
-      @components.each{|c|
+pin_labels = {}
+@components.each{|c|
         x = q2x(c[:x])
         y = q2x(c[:y])
         orientation = xschem_out_orientation(c[:rotation]) || '0 0'
@@ -1533,7 +1526,10 @@ EOS
             end
           end
         elsif c[:name] =~ /[io]pin/
-          attributes << " lab=#{c[:symattr]['InstName']}" if c[:symattr]
+          if c[:symattr]
+            attributes << " lab=#{c[:symattr]['InstName']}" 
+            pin_labels[[c[:x], c[:y]]] = c[:symattr]['InstName']
+          end
         else
           # attributes << " lab=#{c[:name]}" if c[:name]
           if c[:symattr]
@@ -1559,10 +1555,39 @@ EOS
         end
         f.puts "C {#{c[:name]}.sym} #{x} #{y} #{orientation} {#{attributes}}\n"
       }
+      global_pins = []
+      @wires.each{|w|
+        if w[4] && (w[0] == w[2]) && (w[1] == w[3])
+          global_pins << w
+        end
+      }
+      @wires = @wires - global_pins
+      index = 0
+      global_pins.each{|w|
+        next if pin_labels[[w[0], w[1]]]
+        f.puts "C {iopin.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}\n}"
+        index = index + 1
+      }
+      index = 0
       @wires.each{|w|
       #      result << "Wire Wire Line\n\t
         f.puts "N #{q2x(w[0])} #{q2x(w[1])} #{q2x(w[2])} #{q2x(w[3])} {}"
       }
+      @texts.each{|x, y, t3, t4, text|
+        if text =~ /^!\./
+          attributes="name=s#{index} value=\"#{text[1..-1]}\""
+          attributes.sub! '.lib', '.include' # .lib is not supported in ngspice
+          attributes.sub! '%HOMEPATH%', "$HOMEPATH\\"
+          f.puts "C {netlist.sym} #{x} #{y} 0 0 {#{attributes}}\n"
+        else
+          f.print "C {code_shown.sym} #{q2x(x)} #{q2x(y)} 0 0 {name=m#{index} spice_ignore=true value=\""
+            text.split("\\n").each{|l|
+              f.puts l
+            }
+          f.puts "\"}"
+        end
+        index = index + 1 
+      }      
     }
   end
 
@@ -2230,12 +2255,12 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
     libraries.each{|lib|
       Dir.chdir(lib){
         cells = Dir.glob('*.asc').map{|a| a.sub('.asc','')}
-        print 'check for fake symbol like gnd: '
+        print 'check for faken symbol like gnd: '
         cells.delete_if {|c| # delete a fake symbol if it has nothing inside like a 'gnd'
           # puts "checking #{c}.asc for fake symbol like gnd"
           print "#{c}.asc "
           read_coding = detect_encoding(c + '.asc').sub(' (Likely)', '') 
-          asc_contents = File.open(c + '.asc', read_coding).read.encode('UTF-8').gsub('?', 'u')
+          asc_contents = File.open(c + '.asc', read_coding).read.encode('UTF-8').gsub('µ', 'u')        
           not asc_contents.include?('SYMBOL') # asc actually had nothing like a 'gnd'
         }
         puts 
