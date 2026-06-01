@@ -500,10 +500,11 @@ EOF
         if v.class == Hash 
           if v[:models_update] && v[:models_update].length > 0
             models_update = v[:models_update]
-            model_lines = get_models @elements
-            model_lines.each{|lineno|
-              lines[lineno-1].sub! '.include', ';include'
-            } 
+            if model_lines = get_models(@elements)
+              model_lines.each{|lineno|
+                lines[lineno-1].sub! '.include', ';include'
+              } 
+            end
           end
           if v[:variations]
             variations = v[:variations]
@@ -678,8 +679,9 @@ EOF
   end
 
   def get_models elements
-    @models = {}
+    @models = nil
     return if elements.nil? || elements['include'].nil?
+    @models = {}
     model_lines = []
     include_files = []
     home = ENV['HOMEPATH']||ENV['HOME']
