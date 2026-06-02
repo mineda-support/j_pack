@@ -1500,7 +1500,7 @@ pin_labels = {}
 @components.each{|c|
         x = q2x(c[:x])
         y = q2x(c[:y])
-        orientation = xschem_out_orientation(c[:rotation]) || '0 0'
+        orientation = xschem_out_orientation(c[:rotation]) || "0 0"
         attributes = c[:symattr] ? "name=#{c[:symattr]['InstName']}" : ''
         if c[:name].start_with? '.'
           case c[:name]
@@ -1530,6 +1530,9 @@ pin_labels = {}
             attributes << " lab=#{c[:symattr]['InstName']}" 
             pin_labels[[c[:x], c[:y]]] = c[:symattr]['InstName']
           end
+          if c[:name] == 'iopin'
+            orientation = "#{find_direction(c[:x], c[:y])} 1" # for bidir, mirror is needed to be set to 1 to avoid wrong orientation in xschem
+          end
         else
           # attributes << " lab=#{c[:name]}" if c[:name]
           if c[:symattr]
@@ -1553,7 +1556,7 @@ pin_labels = {}
             end
           end
         end
-        f.puts "C {#{c[:name]}.sym} #{x} #{y} #{orientation} {#{attributes}}\n"
+        f.puts "C {#{c[:name]}.sym} #{x} #{y} #{orientation} {#{attributes.gsub('{', '\{').gsub('}', '\}')}}\n"
       }
       global_pins = []
       @wires.each{|w|
@@ -1568,28 +1571,29 @@ pin_labels = {}
         f.puts "C {iopin.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}\n}"
         index = index + 1
       }
-      index = 0
       @wires.each{|w|
       #      result << "Wire Wire Line\n\t
         f.puts "N #{q2x(w[0])} #{q2x(w[1])} #{q2x(w[2])} #{q2x(w[3])} {}"
       }
+      index = 0
       @texts.each{|x, y, t3, t4, text|
         if text =~ /^!\./
-          attributes="name=s#{index} value=\"#{text[1..-1]}\""
+          attributes="name=s#{index} value=\"#{split_text text[1..-1]}\""
           attributes.sub! '.lib', '.include' # .lib is not supported in ngspice
           attributes.sub! '%HOMEPATH%', "$HOMEPATH\\"
           f.puts "C {netlist.sym} #{x} #{y} 0 0 {#{attributes}}\n"
         else
-          f.print "C {code_shown.sym} #{q2x(x)} #{q2x(y)} 0 0 {name=m#{index} spice_ignore=true value=\""
-            text.split("\\n").each{|l|
-              f.puts l
-            }
-          f.puts "\"}"
+          f.puts "C {code_shown.sym} #{q2x(x)} #{q2x(y)} 0 0 {name=m#{index} spice_ignore=true value=\"#{split_text text}\"}"
         end
         index = index + 1 
       }      
     }
   end
+
+  def split_text text
+    text.gsub('{', '\{').gsub('}', '\}').split("\\n").join("\n")
+  end
+  private :split_text
 
   def eeschema_schema_out file, symbol_libs, lib_info
     File.open(file, 'w'){|f|
@@ -2225,6 +2229,27 @@ pin_labels = {}
   end
 end
 
+def create_xschem_my_netlist_symbol target_dir
+  File.open(File.join(target_dir, 'netlist.sym'), 'w'){|f|
+    f.puts <<EOF
+v {xschem version=3.4.6 file_version=1.2}
+G {}
+K {type=netlist_commands
+template="name=s1 value=blabla"
+format="
+@value
+"}
+V {}
+S {}
+E {}
+L 13 0 -10 0 10 {}
+L 13 0 -10 70 -10 {}
+T {NETLIST} 5 -25 0 0 0.3 0.3 {hide=instance}
+T {@value} 5 -5 0 0 0.3 0.3 {}
+EOF
+  }
+end
+
 # read ltspice file, convert to QUCS formant, then covert to target format
 def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
   target = target.downcase
@@ -2251,6 +2276,8 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
     puts "qucs_symbols=#{qucs_symbols.inspect}"
     if target == 'eeschema'
       eeschema_sym_lib_table lib_info.values.uniq, target_dir
+    elsif target == 'xschem'
+      create_xschem_my_netlist_symbol target_dir
     end
     libraries.each{|lib|
       Dir.chdir(lib){
