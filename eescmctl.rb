@@ -1,3 +1,8 @@
+if $0 == __FILE__
+  $: << '.'
+  $: << './ade_express'
+end
+require 'debug'
 require 'spice_parser'
 require 'alb_lib'
 require 'ngspice'
@@ -94,7 +99,7 @@ class EEschemaControl < NgspiceControl
     when '.asc'
         @elements = read_asc @file, recursive
     when '.kicad_sch'
-        @elements = read_sch @file, work_dir, recursive
+        @elements = read_eeschema_sch @file, work_dir, recursive
     when '.net', '.spice', '.cir', '.spc'
         @elements = read_net @file
         @sheet && @sheet.each_key{|file|
@@ -190,6 +195,32 @@ class EEschemaControl < NgspiceControl
     elements
   end
 
+  def read_eeschema_sch file, recursive=false, caller=''
+    puts "read_eeschema_sch reads #{file}"
+    require 'sxp'
+    elements = {}
+    inst = {}
+    name = type = value = value2 = flag_wire = flag_text = group = nil
+    eescm = SXP.read(File.read(file).encode('UTF-8'))
+    eescm[1..-1].each{|blk|
+      case blk[0]
+      when :text
+        puts 'text'
+      when :symbol
+        blk[1..-1].each{|item|
+          case item[0]
+          when :property
+            inst[item[1]] = item[2] # item[1] == 'Reference'
+          when :pin
+          when :instances
+          end
+        }
+      end
+      elements[:name] = inst['Sim.Params'] || inst['Value']
+    }
+    elements
+  end
+
   def set pairs
     if @file =~ /\.asc/
       super pairs
@@ -273,16 +304,18 @@ class EEschemaControl < NgspiceControl
   private :node_list_to_variables  
   
   def kicad_cli arg, input
-    puts command = "#{eeschema_path.sub('eeschema', 'kicad-cli')} #{arg} #{input}"
-    # system command
-    IO_popen command
+    puts command = [eeschema_path.gsub('\\', '/').sub('eeschema', 'kicad-cli')] + arg.split(' ') + [input]
+    puts "command = #{command}"
+    IO.popen command
   end
 
   def eeschema_path
     if ENV['Eeschema_path'] 
       return ENV['Eeschema_path'] 
     elsif (paths = Dir.glob('KiCad/*/bin/eeschema.exe', base: ENV['PROGRAMFILES'])).length > 0
-      return File.join(ENV['PROGRAMFILES'], paths.sort.last)
+      return File.join(ENV['PROGRAMFILES'], 
+                       paths.max_by{|path| path.match(%r{KiCad/([^/]+)/bin})&.captures&.first.split('.').map(&:to_f)}
+                      )
     elsif File.exist?( path =  "#{ENV['PROGRAMFILES']}\\KiCad\\bin\\eeschema.exe")
       return path
     else
