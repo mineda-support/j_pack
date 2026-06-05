@@ -420,8 +420,8 @@ class QucsLibrary
     FileUtils.mkdir_p @target_dir unless File.directory? @target_dir
     File.open(File.join(@target_dir, @lib_name+'.kicad_sym'), 'w'){|f|
       #f.puts "EESchema-LIBRARY Version 2.4\n#encoding utf-8\n"
-      @eescm = [:kicad_symbol_lib, [:version, 20231120], [:generator, "kicad_symbol_editor"],
-	       [:generator_version, "8.0"]] #, [:uuid, SecureRandom.uuid]]
+      @eescm = [:kicad_symbol_lib, [:version,  20260306], [:generator, "kicad_symbol_editor"],
+	       [:generator_version, "10.0"]] #, [:uuid, SecureRandom.uuid]]
       @components.each{|comp|
         #f.puts comp.eeschema_comp_out(@lib_name, model_script)
         @eescm.push comp.eeschema_comp_out(@lib_name)
@@ -910,7 +910,8 @@ EOS
       result.push [:rectangle, [:start, q2e(x1), -q2e(y1)], [:end, q2e(x2), -q2e(y2)]]
     }
     @arcs.each{|a|
-      x1, y2, x2, y1, xa1, ya1, xa2, ya2 = a
+=begin
+    x1, y2, x2, y1, xa1, ya1, xa2, ya2 = a
       x = [x1, x2].min
       y = [y1, y2].min
       w = (x2 - x1).abs
@@ -924,7 +925,21 @@ EOS
       stop = (stopangle*180/Math::PI).to_i
       # printf "start: %f, stop: %f\n", start, stop
       # result << "A #{q2e(x)} #{-q2e(y)} #{q2e([w,h].min/2)} #{start} #{stop} 0 1 0 N #{q2e(xa1)} #{-q2e(ya1)} #{q2e(xa2)} #{-q2e(ya2)}\n"
-      result.push [:arc, [:start, q2e(x), -q2e(y)] ]
+=end      
+      left, top, right, bottom, xs, ys, xe, ye = a.map(&:to_f)
+      cx = (left + right) / 2.0
+      cy = (top + bottom) / 2.0
+      radius = (right - left).abs / 2.0     
+      start_angle = Math.atan2(ys - cy, xs - cx)
+      end_angle   = Math.atan2(ye - cy, xe - cx)
+      angle_diff = start_angle - end_angle
+      angle_diff += 2 * Math::PI if angle_diff <= 0
+      mid_angle = start_angle - (angle_diff / 2.0)
+      mx = cx + radius * Math.cos(mid_angle)
+      my = cy + radius * Math.sin(mid_angle)
+      result.push [:arc, [:start, q2e(xs).round(4), -q2e(ys).round(4)],
+                  [:mid, q2e(mx).round(4), -q2e(my).round(4)],
+                  [:end, q2e(xe).round(4), -q2e(ye).round(4)]]
     }
     @circles.each{|c|
       cx1, cy1, cx2, cy2 = c
@@ -1591,6 +1606,7 @@ pin_labels = {}
   end
 
   def split_text text
+    text.sub!(/^[!;]/, '')
     text.gsub('{', '\{').gsub('}', '\}').split("\\n").join("\n")
   end
   private :split_text
@@ -1630,18 +1646,18 @@ pin_labels = {}
     symbols = []
     ref.each{|pair|
       lib, cell = pair.split(':')
-      if lib.length > 0 
-        symbol = symbol_libs[lib].rassoc(cell)
-        symbol[1] = "#{lib}:#{symbol[1]}"
-        symbols << symbol
+      if lib.length > 0 && symbol = symbol_libs[lib].rassoc(cell)
+        symbol_copy = symbol.dup
+        symbol_copy[1] = "#{lib}:#{symbol[1]}"
+        symbols << symbol_copy
       end
     }
     symbols
   end 
 
   def eeschema_schema_header
-    [:kicad_sch, [:version, 20231120], [:generator, "eeschema"],
-     [:generator_version, "8.0"], [:uuid, @root_uuid = SecureRandom.uuid], [:paper, "A4"]]
+    [:kicad_sch, [:version,  20260306], [:generator, "eeschema"],
+     [:generator_version, "10.0"], [:uuid, @root_uuid = SecureRandom.uuid], [:paper, "A4"]]
   end
 
   def eeschema_schema_components lib_info, offset
@@ -1840,7 +1856,7 @@ pin_labels = {}
       result.push [:wire, [:pts, [:xy, xy0[0], xy0[1]], [:xy, xy1[0], xy1[1]]]] #, [:uuid, SecureRandom.uuid]]
     }
     find_auto_junctions(wires).each {|j|
-      puts "Junction at: #{j}" 
+      # puts "Junction at: #{j}" 
       result.push [:junction, [:at, j.x.to_f.round(4), j.y.to_f.round(4)]] #, [:uuid, SecureRandom.uuid]]       }    
     }
     result
@@ -1886,7 +1902,8 @@ pin_labels = {}
     result = []
     @texts.each{|x, y, t3, t4, text|
       #result << "Text Notes #{q2e(x)+offset[0]} #{q2e(y)+offset[1]} 0 50 ~ 0\n#{text}\n"
-      result.push [:text, text, [:at, q2e(x)+offset[0], q2e(y)+offset[1], 0], [:uuid, SecureRandom.uuid]]
+      result.push [:text, split_text(text), [:at, q2e(x)+offset[0], q2e(y)+offset[1], 0], 
+                  [:effects, [:justify, :left]], [:uuid, SecureRandom.uuid]]
     }
     result
   end
@@ -1991,12 +2008,16 @@ pin_labels = {}
         next
       elsif c[:name] =~ /pin/
         number = nil
-        symbol.portsyms.each{|p|
-          if p[:PinName] == c[:symattr]['InstName']
-            number = p[:SpiceOrder]
-            break
-          end
-        }
+        if symbol
+          symbol.portsyms.each{|p|
+            if p[:PinName] == c[:symattr]['InstName']
+              number = p[:SpiceOrder]
+                break
+            end
+          }
+        else
+          puts "Warning: no symbol information for pin #{c[:symattr]['InstName']}, c:#{c.inspect}"
+        end
         direction = find_direction c[:x], c[:y]
         porttype = 'analog'
         case c[:name]
@@ -2282,7 +2303,7 @@ def cdraw2target target, pictures_dir, target_dir=File.join(ENV['HOME'], '.qucs'
     libraries.each{|lib|
       Dir.chdir(lib){
         cells = Dir.glob('*.asc').map{|a| a.sub('.asc','')}
-        print 'check for faken symbol like gnd: '
+        print 'check for fake symbol like gnd: '
         cells.delete_if {|c| # delete a fake symbol if it has nothing inside like a 'gnd'
           # puts "checking #{c}.asc for fake symbol like gnd"
           print "#{c}.asc "
@@ -2329,7 +2350,8 @@ if $0 == __FILE__
 =end
   #asc_dir = '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw'
   #asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
-  asc_dir = File.join(ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035')
+  #asc_dir = File.join(ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035')
+  asc_dir = File.join(ENV['HOMEPATH'], 'work/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
   # asc_dir = 'c:/tmp/LTspiceLIB'
   # asc_dir = File.join(ENV['HOMEPATH'], 'KLayout/salt/ICPS2023_5/Technology/tech/symbols/LTspice/MinedaLIB')
   Dir.chdir(asc_dir){
@@ -2339,5 +2361,5 @@ if $0 == __FILE__
   #cdraw2target 'xschem', asc_dir, '/tmp/xschem'
   #require 'debug'; debugger
   #cdraw2target 'qucs', asc_dir, '/tmp/qucs'
-  cdraw2target 'eeschema', asc_dir, '/tmp/eeschema'
+  cdraw2target 'eeschema', asc_dir, File.join(asc_dir, '../EEschema/tmp')
 end
