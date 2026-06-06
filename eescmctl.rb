@@ -41,11 +41,7 @@ class EEschemaControl < NgspiceControl
   end
   
   def view file, options=nil
-    if file.class == Array
-      file, work_dir = file
-    else
-      work_dir = File.dirname(file)
-    end
+    work_dir = File.dirname(file)
     Dir.chdir(work_dir){
       pwd = Dir.pwd
       case File.extname file
@@ -71,10 +67,6 @@ class EEschemaControl < NgspiceControl
 
   def read ckt=@file, ignore_cir=false, recursive=false
     read0 ckt, recursive # @elements is set
-    if ckt.class == Array
-      ckt, work_dir = ckt
-      @work_dir = work_dir
-    end  
     @sheet = {ckt => @elements}
     read_subckt @elements['Sheets']
     cir = ckt.sub('.kicad_sch', '.cir')
@@ -85,31 +77,27 @@ class EEschemaControl < NgspiceControl
         raise "Error: #{ckt} is newer than #{cir} --  please open #{ckt}, create nelist and save in #{cir}"
       end
     end
-    @elements = read_net cir if File.exist? cir
+    # @elements = read_net cir if File.exist? cir
     @elements
   end
 
   def read0 ckt, recursive
-    if ckt.class == Array
-      @file, work_dir = ckt
-    else
-      @file = ckt
-    end  
+    @file = ckt
     case File.extname @file 
     when '.asc'
         @elements = read_asc @file, recursive
     when '.kicad_sch'
-        @elements = read_eeschema_sch @file, work_dir, recursive
+        @elements = read_eeschema_sch @file, recursive
     when '.net', '.spice', '.cir', '.spc'
         @elements = read_net @file
         @sheet && @sheet.each_key{|file|
-          @sheet[file] = read_eeschema_sch file, work_dir, recursive
+          @sheet[file] = read_eeschema_sch file, recursive
         }
     when ''
       if File.exist? @file+'.asc'
         @elements = read_asc @file+'.asc', recursive
       elsif File.exist? @file+'.kicad_sch'
-        @elements = read_sch @file+'.kicad_sch', work_dir, recursive
+        @elements = read_sch @file+'.kicad_sch', recursive
       elsif File.exist? @file+'.net'
         @elements = read_net @file+'.net', recursive
       else
@@ -122,10 +110,10 @@ class EEschemaControl < NgspiceControl
   end
   private :read0 
 
-  def read_sch file, work_dir, recursive=false, caller=''
+  def read_sch file, recursive=false, caller=''
     read_eeschema_sch file, recursive, caller
   end
-      
+=begin    
   def read_eeschema_sch file, recursive=false, caller=''
     puts "read_eeschema_sch reads #{file}"
     elements = {}
@@ -194,18 +182,22 @@ class EEschemaControl < NgspiceControl
     }
     elements
   end
-
+=end
   def read_eeschema_sch file, recursive=false, caller=''
     puts "read_eeschema_sch reads #{file}"
     require 'sxp'
     elements = {}
-    inst = {}
+    @ckts[file.sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = flag_wire = flag_text = group = nil
     eescm = SXP.read(File.read(file).encode('UTF-8'))
     eescm[1..-1].each{|blk|
+      inst = {}
       case blk[0]
       when :text
-        puts 'text'
+        blk[1] =~ /^ *\.(\S+)/
+        name = $1 || 'netlist'
+        elements[name] ||= []
+        elements[name] << {control: blk[1]}
       when :symbol
         blk[1..-1].each{|item|
           case item[0]
@@ -216,7 +208,10 @@ class EEschemaControl < NgspiceControl
           end
         }
       end
-      elements[:name] = inst['Sim.Params'] || inst['Value']
+      if name = inst['Reference']
+        elements[name] ||= {}        
+        elements[name][:value] = inst['Sim.Params'] || inst['Value']
+      end
     }
     elements
   end
@@ -350,8 +345,9 @@ if $0 == __FILE__
   $: << './ade_express'
   puts "$: = #{$:}"
   #ckt = NgspiceControl.new file, true, true # test recursive
-  file = File.join 'c:', ENV['HOMEPATH'], "Seafile/Citizen035/Op8_22/Citizen035/EEschema/op8_22_v2.kicad_sch"
-  Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035/EEschema')
+  #file = File.join 'c:', ENV['HOMEPATH'], "Seafile/Citizen035/Op8_22/Citizen035/EEschema/op8_22_v2.kicad_sch"
+  file = File.join 'c:', ENV['HOMEPATH'], "work/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/EEschema/AND2_X1.kicad_sch"
+  #Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035/EEschema')
   ckt = EEschemaControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
   #ckt.set({:VD=>"0.05"})
