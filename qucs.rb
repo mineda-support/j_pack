@@ -1212,7 +1212,7 @@ class QucsSchematic
             @component[:type] = $2
           end
           @component[:rest] = $3
-        elsif text =~ /!\.include +(.*)$/
+        elsif text =~ /!\.include +(.*)$/ || text =~ /!\.inc +(.*)$/
           @component[:name] = '.include'
           @component[:path] = $1.gsub(/['\"]/,'')
         else
@@ -1592,8 +1592,9 @@ pin_labels = {}
       }
       index = 0
       @texts.each{|x, y, t3, t4, text|
+        text.gsub('{', '\{').gsub('}', '\}')
         if text =~ /^!\./
-          attributes="name=s#{index} value=\"#{split_text text[1..-1]}\""
+          attributes="name=s#{index} value=\"#{split_text(text[1..-1]).join("\n")}\""
           attributes.sub! '.lib', '.include' # .lib is not supported in ngspice
           attributes.sub! '%HOMEPATH%', "$HOMEPATH\\"
           f.puts "C {netlist.sym} #{x} #{y} 0 0 {#{attributes}}\n"
@@ -1607,7 +1608,7 @@ pin_labels = {}
 
   def split_text text
     text.sub!(/^[!;]/, '')
-    text.gsub('{', '\{').gsub('}', '\}').split("\\n").join("\n")
+    text.split("\\n")
   end
   private :split_text
 
@@ -1902,7 +1903,16 @@ pin_labels = {}
     result = []
     @texts.each{|x, y, t3, t4, text|
       #result << "Text Notes #{q2e(x)+offset[0]} #{q2e(y)+offset[1]} 0 50 ~ 0\n#{text}\n"
-      result.push [:text, split_text(text), [:at, q2e(x)+offset[0], q2e(y)+offset[1], 0], 
+      split_text(text).each{|line|
+        if line =~ /^\./
+          options = ''
+          break
+        else
+          options = '.options\n'
+        end
+      }
+      lines = options + split_text(text).join("\n")  # eeschema ignores netlist which do not include spice directives, so options is added to make sure the text is included in netlist
+      result.push [:text, lines, [:at, q2e(x)+offset[0], q2e(y)+offset[1], 0], 
                   [:effects, [:justify, :left]], [:uuid, SecureRandom.uuid]]
     }
     result
