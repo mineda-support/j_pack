@@ -203,14 +203,29 @@ class EEschemaControl < NgspiceControl
           case item[0]
           when :property
             inst[item[1]] = item[2] # item[1] == 'Reference'
+          when :lib_id
+            inst['lib_id'] = item[1]
           when :pin
           when :instances
           end
         }
       end
       if name = inst['Reference']
-        elements[name] ||= {}        
-        elements[name][:value] = inst['Sim.Params'] || inst['Value']
+        elements[name] ||= {} 
+        if name =~ /^X/
+          elements[name][:value] = inst['lib_id'] 
+          if recursive
+            type = inst['lib_id'].split(':').last
+            caller = '.' + name
+            target = File.join(File.dirname(file), type + '.kicad_sch')
+            if File.exist? target
+              @ckts[type] = read_eeschema_sch(target, true, caller)
+              @ckts[caller] = type 
+            end
+          end
+        else
+          elements[name][:value] = inst['Sim.Params'] || inst['Value']
+        end
       end
     }
     elements
