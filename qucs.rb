@@ -2,7 +2,6 @@
 # Copyright Anagix Corporation 2009-2024
 
 require 'rubygems'
-require 'debug'
 require 'fileutils'
 require 'yaml'
 require 'sxp'
