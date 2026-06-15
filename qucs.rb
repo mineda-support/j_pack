@@ -1009,7 +1009,7 @@ EOS
       sweep_angle  = start_angle - end_angle
       sweep_angle += 360.0 if sweep_angle <= 0
       #result << "A 3 #{q2c(cx).round(2)} #{q2c(cy).round(2)} #{radius.round(2)} #{start_angle.round(1)} #{end_angle.round(1)}\n"
-      result << "A 3 #{q2c(cx).round(2)} #{q2c(cy).round(2)} #{radius.round(2)} #{xschem_start.round(1)} #{sweep_angle.round(1)}\n"
+      result << "A 3 #{q2c(cx).round(2)} #{q2c(cy).round(2)} #{radius.round(2)} #{xschem_start.round(1)} #{sweep_angle.round(1)} {}\n"
     }
     @circles.each{|c|
       cx1, cy1, cx2, cy2 = c
@@ -1582,7 +1582,7 @@ pin_labels = {}
       index = 0
       global_pins.each{|w|
         next if pin_labels[[w[0], w[1]]]
-        f.puts "C {iopin.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}\n}"
+        f.puts "C {lab_wire.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}}"
         index = index + 1
       }
       @wires.each{|w|
@@ -1591,12 +1591,20 @@ pin_labels = {}
       }
       index = 0
       @texts.each{|x, y, t3, t4, text|
-        text.gsub('{', '\{').gsub('}', '\}')
+        text.gsub!('{', '\\{')
+        text.gsub!('}', '\\}')
         if text =~ /^!\./
-          attributes="name=s#{index} value=\"#{split_text(text[1..-1]).join("\n")}\""
+          if text.downcase =~ /^!\.step *(.*$)/
+            text = "!*.step #{$1}"
+          elsif text.downcase =~ /^!\.tran *(\S+) *(\S+) *(\S+) *(\S+) */
+            text = "!.tran #{$4} #{$2}"
+          end
+          attributes="name=s#{index} value=\"#{split_text text[1..-1]}\""
           attributes.sub! '.lib', '.include' # .lib is not supported in ngspice
           attributes.sub! '%HOMEPATH%', "$HOMEPATH\\"
           f.puts "C {netlist.sym} #{x} #{y} 0 0 {#{attributes}}\n"
+        elsif text =~ /^!/
+          f.puts "C {code_shown.sym} #{q2x(x)} #{q2x(y)} 0 0 {name=m#{index} spice_ignore=false value=\"#{split_text text[1..-1]}\"}"
         else
           f.puts "C {code_shown.sym} #{q2x(x)} #{q2x(y)} 0 0 {name=m#{index} spice_ignore=true value=\"#{split_text text}\"}"
         end
@@ -1607,7 +1615,7 @@ pin_labels = {}
 
   def split_text text
     text.sub!(/^[!;]/, '')
-    text.split("\\n")
+    text.split("\\n").join("\n")
   end
   private :split_text
 
@@ -2360,14 +2368,15 @@ if $0 == __FILE__
   #asc_dir = '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw'
   #asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
   #asc_dir = File.join(ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035')
-  asc_dir = File.join(ENV['HOMEPATH'], 'work/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
+  #asc_dir = File.join(ENV['HOMEPATH'], 'work/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
+  asc_dir = File.join(ENV['HOME'], 'Seafile/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
   # asc_dir = 'c:/tmp/LTspiceLIB'
   # asc_dir = File.join(ENV['HOMEPATH'], 'KLayout/salt/ICPS2023_5/Technology/tech/symbols/LTspice/MinedaLIB')
   Dir.chdir(asc_dir){
     create_cdraw()
   }
   asc_dir = File.join(asc_dir, 'cdraw')
-  #cdraw2target 'xschem', asc_dir, '/tmp/xschem'
+  cdraw2target 'xschem', asc_dir, File.join(asc_dir, 'Xschem')
   #require 'debug'; debugger
   #cdraw2target 'qucs', asc_dir, '/tmp/qucs'
   cdraw2target 'eeschema', asc_dir, File.join(asc_dir, '../EEschema/tmp')
