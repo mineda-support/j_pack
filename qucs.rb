@@ -812,7 +812,21 @@ EOS
         x2 = x2q($3) -x1
         y2 = -x2q($4) -y1
         @lines << [x1, y1, x2, y2]
-      elsif l =~ /^A \S+ (\S+) (\S+) (\S+) (\S+) 360 {}/
+      elsif l=~ /^A \S+ (\S+) (\S+) (\S+) (\S+) (\S+) {}/
+        cx, cy, radius, start_angle, sweep_angle = [$1, $2, $3, $4, $5].map(&:to_i)
+        x1 = (cx - radius).round
+        y1 = (cy - radius).round
+        x2 = (cx + radius).round
+        y2 = (cy + radius).round
+        end_angle = start_angle + sweep_angle
+        rad_start = start_angle * Math::PI / 180.0
+        rad_end   = end_angle * Math::PI / 180.0
+        x3 = (cx + radius * Math.cos(rad_start)).round
+        y3 = (cy - radius * Math.sin(rad_start)).round
+        x4 = (cx + radius * Math.cos(rad_end)).round
+        y4 = (cy - radius * Math.sin(rad_end)).round
+        @arcs << [x2q(x1), x2q(y1), x2q(x2), x2q(y2), x2q(x3), x2q(y3), x2q(x4), x2q(y4)]
+      elsif l=~ /^V (\S+) (\S+) (\S+) (\S+)/
         x = x2q($1.to_i)
         y = x2q($2.to_i)
         r = x2q($3.to_i)
@@ -970,14 +984,40 @@ EOS
     [result, pins]
   end
 
+  def get_xschem_device_props cell
+    templates = YAML.load(File.read('/home/anagix/Seafile/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/cdraw/MinedaLIB/templates.yaml'))
+    if props = templates["#{cell}.sym"]
+      props =~ /type=(\S+)/
+      device = $1
+      props.sub! "type=#{device}\n", ''
+      props.chop!
+    else
+      device, prefix = XSCHEM_DEVICE_MAP[cell.to_sym]
+      device = 'subcircuit' if @symbol_type == 'BLOCK'
+      device = device.to_sym if device
+      props = XSCHEM_GLOBAL_PROP[device]
+    end
+    [device, props]
+  end
+  private :get_xschem_device_props
+
+  def get_schema_pins cell
+    result = {}
+    File.exist?(cell+'.sch') && File.read(cell + '.sch').each_line{|l|
+      if l =~ /C {(iopin|ipin|opin).sym}.*{name=(\S+)/
+        result[$2] = QucsSchematic::XschemPorts[$1]
+      end
+    }
+    result
+  end
+  private :get_schema_pins
+
   def xschem_symbol_out
-    device, prefix = XSCHEM_DEVICE_MAP[@cell.to_sym]
-    device = 'subcircuit' if @symbol_type == 'BLOCK'
-    device = device.to_sym if device
+    device, device_props = get_xschem_device_props @cell
     result =<<EOS
 v {xschem version=3.4.4 file_version=1.1}
 G {type=#{device}
-#{XSCHEM_GLOBAL_PROP[device]}
+#{device_props}
 }
 V {}
 S {}
@@ -1019,9 +1059,10 @@ EOS
       y2 = [cy1, cy2].max
       result << "A 3 #{q2x(x1+x2)/2} #{q2x((y1+y2)/2)} #{q2x([x2-x1,y2-y1].max/2)} 0 360 {}\n"
     }
+    pin_direction = get_schema_pins @cell
     @portsyms.sort{|a,b| a[:SpiceOrder] <=> b[:SpiceOrder]}.each{|p|
       x, y = p[:xy]
-      result << "B 5 #{q2x(x)-2} #{q2x(y)-2} #{q2x(x)+2} #{q2x(y)+2} {name=#{p[:PinName]} dir=inout}\n"
+      result << "B 5 #{q2x(x)-2} #{q2x(y)-2} #{q2x(x)+2} #{q2x(y)+2} {name=#{p[:PinName]} dir=#{pin_direction[p[:PinName]] || 'inout'}}\n"
       orientation = 0
       case p[:angle]
       when 0
@@ -1315,28 +1356,33 @@ class QucsSchematic
     num_nc = 0
     File.read(@cell+'.sch').each_line{|l|
       # puts l
+      l.chop!
+      l.gsub! /\\{/, '{'
+      l.gsub! /\\}/, '}'
       if code
-        if l.strip =~ /}$/
+        if l =~ /(.*)"}$/ || l =~/(.*)"$/
+          @texts << [x2q(x), x2q(y), 0.2, 0.2, $1 != '' ? code + "\\n" + $1 : code]
+          name = code = properties = nil
+        elsif l =~ /^ *}$/
           @texts << [x2q(x), x2q(y), 0.2, 0.2, code]
-          name = code = nil
+          name = code = properties = nil
         elsif l =~ /value=/ # ignore
-        elsif l =~ /^[\.\*]/ || l =~ /^[vViI]/
-          code << l.chop + "\\n"
+        else # l =~ /^[\.\*]/ || l =~ /^[vViI]/
+          code << l + "\\n"
         end
         next
       elsif graph # not used
         if l.strip =~ /([^}]*)}$/
-          graph << l.chop + "\\n"
+          graph << l + "\\n"
           graph = nil
         else
           graph << l
         end
       end
-      l.chop!
       #puts l
       if properties && @component
         if l =~ /^ *} *$/ || l =~ /^ *\*([^}]*)}/ # like '*value=0}'
-          parse_properties properties # ignore commened value
+          parse_properties properties # ignore commented value
           @components << @component
           properties = nil
         elsif l =~ /([^}\*]*)}/ # like 'value=0}'
@@ -1352,7 +1398,7 @@ class QucsSchematic
       end
       if l =~ /^N +(\S+) +(\S+) +(\S+) +(\S+)/ #  {lab=(\S+)}/ 
         @wires << [x2q($1), x2q($2), x2q($3), x2q($4)]
-      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {([^}]*)}*/ 
+      elsif l =~ /^C {(\S+).sym} +(\S+) +(\S+) +(\S+) +(\S+) {(.*)}* *$/ 
         name = $1
         x = $2
         y = $3
@@ -1369,13 +1415,13 @@ class QucsSchematic
           @texts << [x2q(x), x2q(y), 1.0, 1.0, "Author: #{$1}"]
           properties = nil
           next
-        elsif name == 'code' || name == 'code_shown'
+        elsif name == 'code' || name == 'code_shown' || name == 'netlist'
           if properties =~ /value="(.*)"/
-            properties = nil
             @texts << [x2q(x), x2q(y), 0.2, 0.2, 'Code: ' + $1]
           elsif properties =~ /value="([^"]*)/
-            code = 'Code: ' + $1
+            code = 'Code: ' + $1  + "\\n"
           end
+          properties = nil
           next
         end
         if ['ipin', 'opin', 'iopin', 'lab_wire'].include? name
@@ -1535,7 +1581,6 @@ pin_labels = {}
             elsif value.downcase.include?('sine') || value.downcase.include?('pulse') || value.downcase.include?('pwl')            
               attributes << " value=\"#{value} #{c[:symattr]['Value2']}\""
             else
-
               attributes << " value=#{wrap_with_quote(value)}"
             end
           end
@@ -1555,14 +1600,14 @@ pin_labels = {}
                 attributes << " value=#{wrap_with_quote(value)}"
               else
                 if c[:symattr]['Value2'] 
-                  attributes << " model=#{value}"
+                  attributes << " model=#{value}" if value && value != ''
                 else
                   attributes << " value=#{wrap_with_quote(value)}"
                 end
               end
             else
               if symbol = @symbols[c[:name]]
-                attributes << " model=#{symbol.value}"
+                attributes << " model=#{symbol.value}" if symbol.value && symbol.value != ''
               end
             end
             if value2 = c[:symattr]['Value2'] 
@@ -1599,7 +1644,7 @@ pin_labels = {}
           elsif text.downcase =~ /^!\.tran *(\S+) *(\S+) *(\S+) *(\S+) */
             text = "!.tran #{$4} #{$2}"
           end
-          attributes="name=s#{index} value=\"#{split_text text[1..-1]}\""
+          attributes="name=s#{index} value=\"#{split_text convert_ltspice_to_ngspice(text[1..-1])}\""
           attributes.sub! '.lib', '.include' # .lib is not supported in ngspice
           attributes.sub! '%HOMEPATH%', "$HOMEPATH\\"
           f.puts "C {netlist.sym} #{x} #{y} 0 0 {#{attributes}}\n"
@@ -1618,6 +1663,64 @@ pin_labels = {}
     text.split("\\n").join("\n")
   end
   private :split_text
+
+  def convert_ltspice_to_ngspice(spice_text)
+    converted_lines = []
+
+    spice_text.each_line do |line|
+      line_stripped = line.strip
+      
+      # .measure (または .meas) 行のみを対象にする
+      if line_stripped =~ /^\s*\.(measure|meas)\b/i
+        working_line = line_stripped.dup
+
+        # 1. trig/targ の直後に VAL= がなければ追加
+        # [例] trig v(A)={(vil+vih)/2}  ->  trig v(A) VAL={(vil+vih)/2}
+        working_line.gsub!(/(trig|targ)\s+([iv]\([^)]+\))\s*(?!val\s*=)\s*(=)?\s*({[^}]+}|'[^']+'|[^\s=]+)/i) do
+          key = $1
+          signal = $2
+          value = $4
+          "#{key} #{signal} VAL=#{value}"
+        end
+
+        # 2. FROM / TO の直後に = がなければ追加
+        # クォーテーション ' ' で囲まれた数式は、ngspice用に波括弧 { } に統一変換します
+        # [例] from 10n to 'simtime-10n'  ->  FROM=10n TO={simtime-10n}
+        working_line.gsub!(/\b(from|to)\s*(=)?\s*({[^}]+}|'[^']+'|[^\s=]+)/i) do
+          key = $1.upcase
+          value = $3
+          
+          # もしシングルクォーテーションで囲まれていたら波括弧に置換
+          if value.start_with?("'") && value.end_with?("'")
+            value = "\\{#{value[1...-1]}\\}"
+          end
+          
+          "#{key}=#{value}"
+        end
+
+        converted_lines << working_line
+      else
+        # .measure 以外の行はそのまま保持
+        converted_lines << line_stripped
+      end
+    end
+
+    converted_lines.join("\n")
+  end
+  private :convert_ltspice_to_ngspice
+=begin
+  # --- テスト実行 ---
+  input_code = <<~SPICE
+  .measure tran and2_X1_rise_a trig v(A)={(vil+vih)/2} rise=1 targ v(Y)={vda/2} rise=1
+  .measure tran and2_X1_fall_a trig v(A)={(vil+vih)/2} fall=1 targ v(Y)={vda/2} fall=1
+  .measure tran and2_X1_rise_b trig v(B)={(vil+vih)/2} rise=1 targ v(Y)={vda/2} rise=2
+  .measure tran and2_X1_fall_b trig v(B)={(vil+vih)/2} fall=2 targ v(Y)={vda/2}  fall=2
+  .measure tran ivddmaxand2 max i(VVDD) from 10n to 'simtime-10n'
+  .measure tran ivddavgand2 avg i(VVDD) from 10n to 'simtime-10n'
+  SPICE
+
+  puts convert_ltspice_to_ngspice_simple(input_code)
+=end
 
   def eeschema_schema_out file, symbol_libs, lib_info
     File.open(file, 'w'){|f|
@@ -1910,15 +2013,19 @@ pin_labels = {}
     result = []
     @texts.each{|x, y, t3, t4, text|
       #result << "Text Notes #{q2e(x)+offset[0]} #{q2e(y)+offset[1]} 0 50 ~ 0\n#{text}\n"
-      split_text(text).each{|line|
+      options = nil
+      split_text(text).each_line{|line|
         if line =~ /^\./
           options = ''
           break
         else
-          options = '.options\n'
+          options = ".options\n"
         end
+        line.sub!(/\.tran (\S+) +(\S+) +(\S+) *(\S+) *$/, '.tran \4 \2')
       }
-      lines = options + split_text(text).join("\n")  # eeschema ignores netlist which do not include spice directives, so options is added to make sure the text is included in netlist
+      lines = convert_ltspice_to_ngspice(options + split_text(text))  # eeschema ignores netlist which do not include spice directives, so options is added to make sure the text is included in netlist
+      lines.gsub! /\\{/, '{'
+      lines.gsub! /\\}/, '}'
       result.push [:text, lines, [:at, q2e(x)+offset[0], q2e(y)+offset[1], 0], 
                   [:effects, [:justify, :left]], [:uuid, SecureRandom.uuid]]
     }
@@ -1980,7 +2087,9 @@ pin_labels = {}
         }
       @texts.each{|txt|
         if txt[4] =~ /Code: (.*$)/
-          f.puts "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 2 !#{$1}"
+          text = $1
+          text.sub!(/\.tran (\S+) (\S+) *$/, '.tran 0 \2 0 \1')
+          f.puts "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 2 !#{convert_ngspice_to_ltspice text}"
         else
           f.puts "TEXT #{q2c txt[0]} #{q2c txt[1]} Left 2 ;#{txt[4]}"
         end
@@ -1988,6 +2097,66 @@ pin_labels = {}
     }
     lib_paths.uniq
   end
+
+  def convert_ngspice_to_ltspice(spice_text)
+    converted_lines = []
+
+    spice_text.each_line do |line|
+      line_stripped = line.strip
+    
+      # .measure (または .meas) 行のみを対象にする
+      if line_stripped =~ /^\s*\.(measure|meas)\b/i
+        working_line = line_stripped.dup
+
+        # 1. trig/targ の後ろにある "VAL=" を削除する
+        # [例] trig v(A) VAL={(vil+vih)/2}  ->  trig v(A) {(vil+vih)/2}
+        # [例] targ v(Y) VAL=1.2            ->  targ v(Y) 1.2
+        working_line.gsub!(/(trig|targ)\s+([iv]\([^)]+\))\s+val\s*=\s*({[^}]+}|[^\s]+)/i) do
+          key = $1
+          signal = $2
+          value = $3
+          "#{key} #{signal} #{value}"
+        end
+ 
+        # 2. FROM= / TO= の等号を削除し、波括弧をシングルクォーテーションに戻す
+        # [例] FROM=10n               ->  from 10n
+        # [例] TO={simtime-10n}       ->  to 'simtime-10n'
+        # [例] TO=ng_param            ->  to ng_param
+        working_line.gsub!(/\b(from|to)\s*=\s*({[^}]+}|[^\s]+)/i) do
+          key = $1.downcase
+          value = $2
+        
+          # もし値が波括弧 { } で囲まれていたら、LTspice流のシングルクォーテーション ' ' に変換
+          if value.start_with?("{") && value.end_with?("}")
+            value = "'#{value[1...-1]}'"
+          end
+        
+          "#{key} #{value}"
+        end
+
+        converted_lines << working_line
+      else
+        # .measure 以外の行はそのまま保持
+        converted_lines << line_stripped
+      end
+    end
+
+    converted_lines.join("\n")
+  end
+private :convert_ngspice_to_ltspice
+=begin
+# --- テスト実行 ---
+ngspice_code = <<~SPICE
+.measure tran and2_X1_rise_a trig v(A) VAL={(vil+vih)/2} rise=1 targ v(Y) VAL={vda/2} rise=1
+.measure tran and2_X1_fall_a trig v(A) VAL={(vil+vih)/2} fall=1 targ v(Y) VAL={vda/2} fall=1
+.measure tran and2_X1_rise_b trig v(B) VAL={(vil+vih)/2} rise=1 targ v(Y) VAL={vda/2} rise=2
+.measure tran and2_X1_fall_b trig v(B) VAL={(vil+vih)/2} fall=2 targ v(Y) VAL={vda/2}  fall=2
+.measure tran ivddmaxand2 max i(VVDD) FROM=10n TO={simtime-10n}
+.measure tran ivddavgand2 avg i(VVDD) FROM=10n TO={simtime-10n}
+SPICE
+
+puts convert_ngspice_to_ltspice(ngspice_code)
+=end
 
   private
   def properties
@@ -2369,9 +2538,9 @@ if $0 == __FILE__
   #asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
   #asc_dir = File.join(ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035')
   #asc_dir = File.join(ENV['HOMEPATH'], 'work/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
-  asc_dir = File.join(ENV['HOME'], 'Seafile/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
+  asc_dir = File.join(ENV['HOME'], 'Seafile/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl')
   # asc_dir = 'c:/tmp/LTspiceLIB'
-  # asc_dir = File.join(ENV['HOMEPATH'], 'KLayout/salt/ICPS2023_5/Technology/tech/symbols/LTspice/MinedaLIB')
+  #asc_dir = File.join(ENV['HOME'], '.klayout/salt/Citizen035/Technology/tech/symbols/LTspice/MinedaLIB')
   Dir.chdir(asc_dir){
     create_cdraw()
   }
@@ -2379,5 +2548,5 @@ if $0 == __FILE__
   cdraw2target 'xschem', asc_dir, File.join(asc_dir, 'Xschem')
   #require 'debug'; debugger
   #cdraw2target 'qucs', asc_dir, '/tmp/qucs'
-  cdraw2target 'eeschema', asc_dir, File.join(asc_dir, '../EEschema/tmp')
+  #cdraw2target 'eeschema', asc_dir, File.join(asc_dir, '../EEschema/tmp')
 end
