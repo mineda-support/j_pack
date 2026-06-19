@@ -1617,15 +1617,15 @@ pin_labels = {}
         end
         f.puts "C {#{c[:name]}.sym} #{x} #{y} #{orientation} {#{attributes.gsub('{', '\{').gsub('}', '\}')}}\n"
       }
-      global_pins = []
+      lab_wires = []
       @wires.each{|w|
         if w[4] && (w[0] == w[2]) && (w[1] == w[3])
-          global_pins << w
+          lab_wires << w
         end
       }
-      @wires = @wires - global_pins
+      @wires = @wires - lab_wires
       index = 0
-      global_pins.each{|w|
+      lab_wires.each{|w|
         next if pin_labels[[w[0], w[1]]]
         f.puts "C {lab_wire.sym} #{q2x(w[0])} #{q2x(w[1])} 0 1 {name=p#{index} lab=#{w[4]}}"
         index = index + 1
@@ -1726,21 +1726,21 @@ pin_labels = {}
     File.open(file, 'w'){|f|
       xmin = ymin = 10000000
       xmax = ymax = -xmin
-      global_pins = []
+      net_labels = []
       @wires.each{|w|
         xmin = [w[0], w[2], xmin].min
         xmax = [w[1], w[3], xmax].max
         if w[4] && (w[0] == w[2]) && (w[1] == w[3])
-          global_pins << w
+          net_labels << w
         end
       }
-      @wires = @wires - global_pins
+      @wires = @wires - net_labels
       offset = [((127/0.127).to_i*0.127).round(4), ((82.55/0.127).to_i*0.127).round(4)] # [6000 - ((q2e(xmin)+q2e(xmax))/100)*50, 4100 - ((q2e(ymin)+q2e(ymax))/100)*50]
       eescm = eeschema_schema_header # lib_info.values.uniq
       eescm.push [:lib_symbols] #, symbols_lib]
       eescm.concat(eeschema_schema_wires offset)
       eescm.concat(eeschema_schema_components lib_info, offset)
-      eescm.concat(eeschema_schema_pins global_pins, offset)
+      eescm.concat(eeschema_schema_pins net_labels, offset)
       eescm.concat(eeschema_schema_texts offset)
       #f.puts eescm.to_sxp
       symbols = gen_lib_symbols symbol_references(eescm), symbol_libs
@@ -1839,7 +1839,7 @@ pin_labels = {}
       else
         #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
         #result << "F 5 \"Y\" H #{x} #{y} 50 0001 L CNN \"Spice_Netlist_Enabled\"\n"     
-        symbol.push [:property, "Sim.Params", c[:symattr]['Value'], #component_name, 
+        symbol.push [:property, "Sim.Params", c[:symattr]['Value'] || component_name, #component_name, 
                      [:at, x+q2e(label_x), y + q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
       end
       symbol.push [:instances, [:project, @cell, [:path, '/'+@root_uuid, [:reference, inst_name], [:unit, 1]]]]
@@ -1974,7 +1974,7 @@ pin_labels = {}
   end
 
   ROTATION_EFFECTS_MAP = [[0, [:justify, :right]], [90, [:justify, :left]], [180, [:justify, :left]], [270, [:justify, :left]]]
-  def eeschema_schema_pins global_pins, offset
+  def eeschema_schema_pins net_labels, offset
     result = []
     hier_pins = {}
     @components.each{|c|
@@ -1999,12 +1999,12 @@ pin_labels = {}
         hier_pins[[x, y]] = [inst_name, :bidirectional]
       end
     }
-    global_pins.each{|w|
+    net_labels.each{|w|
       x = q2e(w[0])+offset[0]
       y = q2e(w[1])+offset[1]
       next if hier_pins[[x, y]]
       pin_name = w[4]
-      result.push [:global_label, pin_name, [:shape, :input], [:at, x.round(4), y.round(4), 0], [:uuid, SecureRandom.uuid]] # need to check if global_label is correct
+      result.push [:label, pin_name, [:at, x.round(4), y.round(4), 0], [:uuid, SecureRandom.uuid]] 
     }
     result
   end
@@ -2021,9 +2021,10 @@ pin_labels = {}
         else
           options = ".options\n"
         end
-        line.sub!(/\.tran (\S+) +(\S+) +(\S+) *(\S+) *$/, '.tran \4 \2')
       }
       lines = convert_ltspice_to_ngspice(options + split_text(text))  # eeschema ignores netlist which do not include spice directives, so options is added to make sure the text is included in netlist
+      lines.sub!(/\.tran (\S+) +(\S+) +(\S+) *(\S+) *$/, '.tran \4 \2')
+      lines.sub!(/\.step .*$/, '*\0')
       lines.gsub! /\\{/, '{'
       lines.gsub! /\\}/, '}'
       result.push [:text, lines, [:at, q2e(x)+offset[0], q2e(y)+offset[1], 0], 
@@ -2545,8 +2546,8 @@ if $0 == __FILE__
     create_cdraw()
   }
   asc_dir = File.join(asc_dir, 'cdraw')
-  cdraw2target 'xschem', asc_dir, File.join(asc_dir, 'Xschem')
+  #cdraw2target 'xschem', asc_dir, File.join(asc_dir, 'Xschem')
   #require 'debug'; debugger
   #cdraw2target 'qucs', asc_dir, '/tmp/qucs'
-  #cdraw2target 'eeschema', asc_dir, File.join(asc_dir, '../EEschema/tmp')
+  cdraw2target 'eeschema', asc_dir, File.join(asc_dir, 'EEschema')
 end
