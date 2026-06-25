@@ -582,6 +582,8 @@ EOF
       command = "\"" + qucs_path() + "\""
     elsif command = `which qucs-s` # use linux version even under WSL
       command = "#{command.chop!}"
+    elsif `flatpak list | grep qucs`
+      command = 'flatpak run io.github.ra3xdh.qucs_s'
     elsif File.directory? '/mnt/c/Windows/SysWOW64/'
       command = qucs_path_WSL() 
     else

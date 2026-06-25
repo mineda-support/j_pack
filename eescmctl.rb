@@ -2,7 +2,6 @@ if $0 == __FILE__
   $: << '.'
   $: << './ade_express'
 end
-require 'debug'
 require 'spice_parser'
 require 'alb_lib'
 require 'ngspice'
@@ -11,7 +10,6 @@ require 'ngspctl'
 require 'postprocess'
 require 'compact_model'
 load './customize.rb' if File.exist? './customize.rb'
-require 'debug'
 require 'fileutils'
 
 class EEschemaControl < NgspiceControl
@@ -346,8 +344,10 @@ class EEschemaControl < NgspiceControl
       command = "\"" + eeschema_path() + "\""
     elsif File.directory? '/mnt/c/Windows/SysWOW64/'
       command = eeschema_path_WSL()
-    else
+    elsif File.exist? "/usr/bin/eeschema"
       command = "/usr/bin/eeschema"
+    else
+      command = 'flatpak run --command=eeschema org.kicad.KiCad'
     end
     command
   end

@@ -42,11 +42,13 @@ def find_auto_junctions(wires)
   junctions
 end
 
-# Example: A horizontal wire intersected by a vertical wire (T-junction)
-wires = [
-  Wire.new(0, 50, 100, 50), # Horizontal wire
-  Wire.new(50, 0, 50, 50)   # Vertical wire ending AT the horizontal one
-]
+if $0 == __FILE__
+  # Example: A horizontal wire intersected by a vertical wire (T-junction)
+  wires = [
+    Wire.new(0, 50, 100, 50), # Horizontal wire
+    Wire.new(50, 0, 50, 50)   # Vertical wire ending AT the horizontal one
+  ]
 
-puts "Detected Junctions:"
-find_auto_junctions(wires).each { |j| puts "Junction at: #{j}" }
+  puts "Detected Junctions:"
+  find_auto_junctions(wires).each { |j| puts "Junction at: #{j}" }
+end
