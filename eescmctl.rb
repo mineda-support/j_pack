@@ -361,7 +361,7 @@ if $0 == __FILE__
   puts "$: = #{$:}"
   #ckt = NgspiceControl.new file, true, true # test recursive
   #file = File.join 'c:', ENV['HOMEPATH'], "Seafile/Citizen035/Op8_22/Citizen035/EEschema/op8_22_v2.kicad_sch"
-  file = File.join 'c:', ENV['HOMEPATH'], "work/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/EEschema/AND2_X1.kicad_sch"
+  file = File.join 'c:', ENV['HOMEPATH'], "work/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/EEschema/AND2_X1_tb.kicad_sch"
   #Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035/EEschema')
   ckt = EEschemaControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect

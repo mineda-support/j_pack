@@ -325,7 +325,7 @@ EOF
 
   def wait_for file, start, error_message=nil
     count = 0
-    $stderr.puts "wait for file:'#{file}', start at #{start}"
+    $stderr.puts "wait for file:'#{Dir.pwd}/#{file}', start at #{start}"
     until File.exist?(file) && (File.mtime(file) >= start) do
       $stderr.puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
       # puts "count=#{count}"

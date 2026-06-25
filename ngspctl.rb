@@ -421,7 +421,72 @@ class NgspiceControl < LTspiceControl
     [keys, values]
   end
 
-  def parse file, analysis, comment_step=nil
+  def call_kicad_netlister kicad_file
+    file = kicad_file.sub('.kicad_sch', '.cir').gsub('\\', '/')
+    FileUtils.rm(file, force: true) if file && File.exist?(file)
+    start = Time.now
+    command = "sch export netlist --format spice --output #{file.gsub('\\', '/')}"
+    puts "command = #{command}"
+    kicad_cli command, kicad_file.gsub('\\', '/')
+    wait_for File.basename(file), start, 'due to some error'
+    #sleep 1 # weird but file is not available w/o sleep 1
+    #
+    pin_order, params, files = parse_kicad_file kicad_file
+    circuit = File.read(file).encode('UTF-8', invalid: :replace)
+    files.each{|f| 
+      call_kicad_netlister f + '.kicad_sch'
+    }
+    File.open(file, 'w'){|f| 
+      f.puts ".subcircuit #{file} #{pin_order}"
+      f.puts '*' + circuit # change title line to comment
+      f.puts ".ends #{file}"
+    }
+    [file, params]
+  end
+
+  def parse_kicad_file kicad_file
+    eescm = SXP.read(File.read(kicad_file).encode('UTF-8', invalid: :replace))
+    files = []
+    pin_order = nil
+    params = {}
+    eescm[1..-1].each{|blk|
+      inst = {}
+      case blk[0]
+      when :text
+        if blk[1] =~ /^pin_order +(.*)$/
+          pin_order = $1
+        elsif blk[1] =~ /\.par/
+          blk[1].scan(/(\S+) *= *(\S+)/).each{|a, b| params[a]=b}
+        end
+      when :symbol
+        blk[1..-1].each{|item|
+          case item[0]
+          when :property
+            inst[item[1]] = item[2] # item[1] == 'Reference'
+          when :lib_id
+            inst['lib_id'] = item[1]
+          end
+        }
+      end
+      if name = inst['Reference']
+        # elements[name] ||= {} 
+        if name =~ /^X/
+          #elements[name][:value] = inst['lib_id'] 
+          #if recursive
+            type = inst['lib_id'].split(':').last
+            files << type # + '.kicad_sch'
+            target = File.join(File.dirname(file), type + '.kicad_sch')
+            if File.exist? target
+              call_kicad_netlister target
+            end
+          #end
+        end
+      end
+    }
+    [pin_order, params, files]
+  end
+
+  def parse file, analysis, comment_step=nil, params={}
     netlist = ''
     steps = []
     home = (ENV['HOMEPATH'] || ENV['HOME'])
@@ -432,11 +497,11 @@ class NgspiceControl < LTspiceControl
       l.sub!(/%HOMEPATH%|%HOME%|\$HOMEPATH\\*|\$HOME\\*/, home) # avoid ArgumentError: invalid byte sequence in UTF-8 
       # $stderr.puts "l:#{l}"
       if l =~ /^ *\.*ac +(.*)/
-        analysis[:ac] = $1
+        analysis[:ac] = substitute_params($1, params)
       elsif l =~ /^ *\.*tran +(.*)/
-        analysis[:tran] = $1
+        analysis[:tran] = substitute_params($1, params)
       elsif l =~ /^ *\.*dc +(.*)/
-        analysis[:dc] = $1
+        analysis[:dc] = substitute_params($1, params)
       elsif comment_step && l =~ /#{comment_step}/
         steps = step2params(l)
         netlist << '*' + l + "\n"
@@ -450,13 +515,23 @@ class NgspiceControl < LTspiceControl
         end
       elsif l =~ /^ *\.control/
         control = ''
-      else
         netlist << l + "\n"
       end
     }
     [netlist, steps, cont_return]
   end
   private :parse
+
+  def substitute_params(str, params)
+    # { と } に挟まれた、1文字以上の文字（英数字やアンダースコアなど）にマッチ
+    str.gsub(/\{([^}]+)\}/) do |match|
+      key = $1 # 括弧 () でキャプチャした中身（キー名）を取得
+    
+      # ハッシュにキーが存在すれば置換、なければ元々のマッチした文字列のままにする
+      params.key?(key) ? params[key] : match
+    end
+  end
+  private :substitute_params
 
   def step2params net
     return nil if net.nil?
@@ -534,6 +609,7 @@ class NgspiceControl < LTspiceControl
     elsif @file =~ /\.sch/ || @file =~ /\.kicad_sch/
       $stderr.puts "sch_type(@file)=#{sch_type(@file)}"
       if sch_type(@file) == 'eeschema'
+=begin
         file = @file.sub('.kicad_sch', '.cir').gsub('\\', '/')
         FileUtils.rm(file, force: true) if file && File.exist?(file)
         start = Time.now
@@ -542,7 +618,11 @@ class NgspiceControl < LTspiceControl
         kicad_cli command, @file.gsub('\\', '/')
         wait_for File.basename(file), start, 'due to some error'
         #sleep 1 # weird but file is not available w/o sleep 1
-        netlist, steps, control = parse(file, analysis, '^ *\.step')
+=end
+        Dir.chdir(File.dirname @file) {
+          file, params = call_kicad_netlister @file
+          netlist, steps, control = parse(file, analysis, '^ *\.step', params)
+        }
         #$stderr.puts "after parsing steps\n#{netlist}"
         $stderr.puts "after parsing, steps ='#{steps}', control =", control, '---' 
         #unless File.exist? file
@@ -602,7 +682,7 @@ class NgspiceControl < LTspiceControl
           if v[:variations]
             variations = v[:variations]
             puts "v[:variations]=#{variations}"
-          else        
+          elsif v.first[0] != :probes        
             analysis[v.first[0]] = v.first[1]
           end
         else
@@ -614,8 +694,9 @@ class NgspiceControl < LTspiceControl
           @models[model_name.to_s][1][key.to_s] = value
         } 
       }
-
-      fix_net File.basename(@file), analysis, extra_commands, models_update, variations
+      unless @file =~ /\.kicad_sch/
+        fix_net File.basename(@file), analysis, extra_commands, models_update, variations
+      end
 
       @step_results = [[], [], [], nil]
       node_list = variables[0] ? variables[0][:probes] : nil
@@ -690,6 +771,7 @@ class NgspiceControl < LTspiceControl
       meas_result = nil
       analysis.each{|k, v|
         error_messages = ''
+        $stderr.puts "Ngspice.command: #{k} #{v.downcase}"
         with_stringio(){
           Ngspice.command "#{k} #{v.downcase}" # do not know why but must be lowercase
         }.each_line{|l|
