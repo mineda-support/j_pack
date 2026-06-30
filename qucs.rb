@@ -275,12 +275,14 @@ class QucsComponent
   end
 
   def xschem_comp_out sym_file
+    FileUtils.mkdir_p File.dirname(sym_file)
     File.open(sym_file, 'w'){|f|
       f.puts @symbol.xschem_symbol_out
     }
   end
 
   def cdraw_comp_out asy_file
+    FileUtils.mkdir_p File.dirname(asy_file)
     File.open(asy_file, 'w'){|f|
       f.puts @symbol.cdraw_symbol_out
     }
@@ -321,7 +323,7 @@ class QucsLibrary
   def cdraw_lib_in lib
     symbol_info = {}
     Dir.chdir(lib){
-      symbols = Dir.glob('*.asy').map{|a| a.sub('.asy','')}
+      symbols = (Dir.glob('*.asy')+Dir.glob('**/*.asy')).map{|a| a.sub('.asy','')}
       cells = Dir.glob('*.asc').map{|a| a.sub('.asc','')}
       cells.delete_if {|c|
         puts "File: '#{c}.asc'"
