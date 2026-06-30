@@ -35,8 +35,10 @@ def create_cdraw
   cells.each{|cell|
     FileUtils.cp cell+'.asc', File.join('cdraw/cells', cell+'.asc')
   }
-  extract_MinedaLIB
-  extract_LTspiceLIB
+  Dir.chdir('cdraw/symbols'){
+    extract_MinedaLIB
+    extract_LTspiceLIB
+  }
 end
 
 def extract_zip(zip_data)
