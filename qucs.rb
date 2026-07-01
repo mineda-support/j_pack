@@ -1723,21 +1723,30 @@ pin_labels = {}
 
   puts convert_ltspice_to_ngspice_simple(input_code)
 =end
+  TARGET_CENTER_X = 150.0  # A4枠(297x210)のほぼ中央
+  TARGET_CENTER_Y = 100.0  # A4枠(297x210)のほぼ中央
 
   def eeschema_schema_out file, symbol_libs, lib_info
     File.open(file, 'w'){|f|
       xmin = ymin = 10000000
       xmax = ymax = -xmin
       net_labels = []
+      sum_x = 0.0
+      sum_y = 0.0
       @wires.each{|w|
         xmin = [w[0], w[2], xmin].min
         xmax = [w[1], w[3], xmax].max
         if w[4] && (w[0] == w[2]) && (w[1] == w[3])
           net_labels << w
         end
+        sum_x += w[0]+w[2]
+        sum_y += w[1]+w[3]
       }
+      center_x = q2e(sum_x) / (@wires.size*2)
+      center_y = q2e(sum_y) / (@wires.size*2)
+
       @wires = @wires - net_labels
-      offset = [((127/0.127).to_i*0.127).round(4), ((82.55/0.127).to_i*0.127).round(4)] # [6000 - ((q2e(xmin)+q2e(xmax))/100)*50, 4100 - ((q2e(ymin)+q2e(ymax))/100)*50]
+      offset = [TARGET_CENTER_X - center_x, TARGET_CENTER_Y - center_y].map{|a| (a/1.27).to_i*1.27}
       eescm = eeschema_schema_header # lib_info.values.uniq
       eescm.push [:lib_symbols] #, symbols_lib]
       eescm.concat(eeschema_schema_wires offset)
@@ -1792,7 +1801,6 @@ pin_labels = {}
       inst_name = c[:symattr]? c[:symattr]['InstName'] : nil
       component_name = c[:name] 
       component_name = 'GND' if component_name == 'gnd'
-
       
       label_x, label_y = @symbols[component_name] ? @symbols[component_name].label_pos : [0, 0]
       name_x, name_y = @symbols[component_name]? @symbols[component_name].name_pos : [0, 0]
@@ -1809,11 +1817,13 @@ pin_labels = {}
         #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y + q2e(label_y)} 50 0001 L CNN\n"
         symbol.push [:property, "Sim.Params", c[:symattr]['Value'], 
                       [:at, x+q2e(label_x), y + q2e(label_y), 0]]  #, [:uuid, SecureRandom.uuid]] 
+=begin
       when 'res', 'cap'
         #result << "F 1 \"#{c[:symattr]['Value']}\" H #{x+q2e(label_x)} #{y + q2e(label_y)} 50 0000 L CNN\n"
         symbol.push [:property, "Sim.Params", c[:symattr]['Value'],
                       [:at, x+q2e(label_x), y + q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
-      when 'voltage'
+=end
+       when 'voltage'
         if c[:symattr]['Value2'] && c[:symattr]['Value2'] =~ /type=sine/ 
           #result << "F 1 \"VSIN\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
           #result << "F 2 \"\" H #{x} #{y} 50 0001 L CNN\n"
@@ -1828,6 +1838,7 @@ pin_labels = {}
           symbol.push [:property, "Sim.Params", c[:symattr]['Value'],
                         [:at, (x+q2e(label_x)).round(4), (y + q2e(label_y)).round(4), 0]] #, [:uuid, SecureRandom.uuid]] 
         end
+=begin
       when 'NMOS', 'PMOS', 'NMOS_MIN', 'PMOS_MIN'
         #result << "F 1 \"#{component_name}\" H #{x+q2e(label_x)} #{y - q2e(label_y)} 50 0000 L CNN\n"
         #result << "F 4 \"M\" H #{x} #{y} 50 0001 L CNN \"Spice_Primitive\"\n"
@@ -1843,6 +1854,35 @@ pin_labels = {}
         #result << "F 5 \"Y\" H #{x} #{y} 50 0001 L CNN \"Spice_Netlist_Enabled\"\n"     
         symbol.push [:property, "Sim.Params", c[:symattr]['Value'] || component_name, #component_name, 
                      [:at, x+q2e(label_x), y + q2e(label_y), 0]] #, [:uuid, SecureRandom.uuid]] 
+=end
+      else
+        model = c[:symattr]['Value'] || (@symbols[component_name] && @symbols[component_name].value)
+        effects = (mir == :y) ? [:effects, [:justify, :left], [:font, [:size, 0.635, 0.635]]] : [:effects, [:font, [:size, 0.635, 0.635]]]
+        if c[:symattr]
+          if value = c[:symattr]['Value']
+            if value.include? '='
+              value=wrap_with_quote(value)
+            else
+              if c[:symattr]['Value2'] 
+                model=value if value && value != ''
+              else
+                value=wrap_with_quote(value)
+              end
+            end
+          else
+            if sym = @symbols[c[:name]]
+              model=sym.value if sym.value && sym
+              .value != ''
+            end
+          end
+          if value2 = c[:symattr]['Value2'] 
+            value2.sub!('L=', 'l=')
+            value2.sub!('W=', 'w=')
+          end
+        end
+        symbol.push [:property, "Sim.Params",
+                     "#{model} #{c[:symattr]['Value2']}",
+                     [:at, x+q2e(label_x), y + q2e(label_y) + (mir == :y ? 2.54 : 1.27), 0], effects] #, [:uuid, SecureRandom.uuid]]
       end
       symbol.push [:instances, [:project, @cell, [:path, '/'+@root_uuid, [:reference, inst_name], [:unit, 1]]]]
       result.push symbol
@@ -1903,11 +1943,11 @@ pin_labels = {}
       when 'R0'
         [0, nil]
       when 'R90'
-        [90, nil]
+        [270, nil]
       when 'R180'
         [180, nil]
       when 'R270'
-        [270, nil]
+        [90, nil]
       when 'M0'
         [0, :y]
       when 'M90'
@@ -2539,9 +2579,9 @@ if $0 == __FILE__
 =end
   #asc_dir = '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw'
   #asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
-  #asc_dir = File.join(ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035')
+  asc_dir = File.join(ENV['HOMEPATH'] || ENV['HOME'], 'Seafile/Citizen035/Op8_16')
   #asc_dir = File.join(ENV['HOMEPATH'], 'work/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
-  asc_dir = File.join(ENV['HOME'], 'Seafile/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl')
+  #asc_dir = File.join(ENV['HOME'], 'Seafile/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl')
   # asc_dir = 'c:/tmp/LTspiceLIB'
   #asc_dir = File.join(ENV['HOME'], '.klayout/salt/Citizen035/Technology/tech/symbols/LTspice/MinedaLIB')
   Dir.chdir(asc_dir){
