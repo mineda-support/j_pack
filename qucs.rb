@@ -987,7 +987,8 @@ EOS
   end
 
   def get_xschem_device_props cell
-    templates = YAML.load(File.read('/home/anagix/Seafile/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/cdraw/MinedaLIB/templates.yaml'))
+    templates_file = File.join(Dir.pwd, '..', 'MinedaLIB/templates.yaml')
+    templates = File.exist?(templates_file) ? YAML.load(File.read(templates_file)) : {}
     if props = templates["#{cell}.sym"]
       props =~ /type=(\S+)/
       device = $1
@@ -1591,9 +1592,10 @@ pin_labels = {}
             attributes << " lab=#{c[:symattr]['InstName']}" 
             pin_labels[[c[:x], c[:y]]] = c[:symattr]['InstName']
           end
-          if c[:name] == 'iopin'
+          #if c[:name] == 'iopin'
             orientation = "#{find_direction(c[:x], c[:y])} 1" # for bidir, mirror is needed to be set to 1 to avoid wrong orientation in xschem
-          end
+            puts "orientation=#{orientation} for #{c[:name]} #{c[:symattr]['InstName']} at (#{c[:x]}, #{c[:y]})"
+            #end
         else
           # attributes << " lab=#{c[:name]}" if c[:name]
           if c[:symattr]
@@ -2370,6 +2372,7 @@ puts convert_ngspice_to_ltspice(ngspice_code)
     candidate = 0
     @wires.each{|x1, y1, x2, y2|
       if y1 == y2 and y == y1
+        puts "x1, y1, x2, y2 = #{x1}, #{y1}, #{x2}, #{y2} and x = #{x}, y = #{y}" if ([x1, x2].min == x || [x1, x2].max == x)
         return 0 if [x1, x2].min == x
         return 2 if [x1, x2].max == x
         candidate = 1

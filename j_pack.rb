@@ -38,6 +38,80 @@ def create_cdraw
   Dir.chdir('cdraw/symbols'){
     extract_MinedaLIB
     extract_LTspiceLIB
+    Dir.chdir('MinedaLIB'){
+      File.open('templates.yaml', 'w'){|f|
+        f.puts <<EOF
+NMOS_MIN.sym: |
+  type=nmos4
+  format="@spiceprefix@name @pinlist @model w=@w l=@l @extra as=@as ps=@ps ad=@ad pd=@pd m=@m"
+  template="name=M1 model=nch w=5u l=1u as=0 ps=0 ad=0 pd=0 m=1"
+PMOS_MIN.sym: |
+  type=pmos4
+  format="@spiceprefix@name @pinlist @model w=@w l=@l @extra as=@as ps=@ps ad=@ad pd=@pd m=@m"
+  template="name=M1 model=pch w=5u l=0.18u as=0 ps=0 ad=0 pd=0 m=1"
+CAP_MIN.sym: |
+  type=capacitor
+  format="@name @pinlist @value m=@m"
+  tedax_format="footprint @name @footprint 
+  value @name @value
+  device @name @device
+  @comptag"
+  verilog_ignore=true
+  template="name=C1
+  m=1
+  value=1p
+  footprint=1206
+  device=\"ceramic capacitor\""
+HR_POLY_MIN.sym: |
+  type=resistor
+  format="@name @pinlist @value m=@m"
+  verilog_format="tran @name (@@P\\, @@M\\);"
+  tedax_format="footprint @name @footprint
+  value @name @value
+  device @name @device
+  @comptag"
+  template="name=R1
+  value=1k
+  footprint=1206
+  device=resistor
+  m=1"
+NMOS_ESD_MIN.sym: |
+  type=subcircuit
+  format="@name @pinlist @symname"
+  template="name=x1"
+PMOS_ESD_MIN.sym: |
+  type=subcircuit
+  format="@name @pinlist @symname"
+  template="name=x1"
+RES_MIN.sym: |
+  type=resistor
+  format="@name @pinlist @value m=@m"
+  verilog_format="tran @name (@@P\\, @@M\\);"
+  tedax_format="footprint @name @footprint
+  value @name @value
+  device @name @device
+  @comptag"
+  template="name=R1
+  value=1k
+  footprint=1206
+  device=resistor
+  m=1"
+R_POLY_MIN.sym: |
+  type=resistor
+  format="@name @pinlist @value m=@m"
+  verilog_format="tran @name (@@P\\, @@M\\);"
+  tedax_format="footprint @name @footprint
+  value @name @value
+  device @name @device
+  @comptag"
+  template="name=R1
+  value=1k
+  footprint=1206
+  device=resistor
+  m=1"                  
+EOF
+      }    
+    }
   }
 end
 
