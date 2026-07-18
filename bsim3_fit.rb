@@ -2452,7 +2452,7 @@ class Bsim3Fit < ModelFit
       entry["x"] = cleaned.map { |p| p[0] }
       entry["y"] = cleaned.map { |p| p[1] }
     end
-  end
+  end  
 
   ### NULL/NIL data cut
   def clean_data(xs, ys)
