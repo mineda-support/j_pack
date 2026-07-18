@@ -150,12 +150,13 @@ class EEschemaSchematic <QucsSchematic
     require 'sxp'
     @desc = SXP.read(File.read(@cell+'.kicad_sch').encode('UTF-8'))
   end
-=end
+
   def eeschema_schema_out file
     File.open(file, 'w'){|f|
       f.puts @desc
     }      
   end
+=end
 end
 
 def eeschema_sym_lib_table libraries, directory='.'
@@ -196,6 +197,7 @@ end
 #  @symbol.eeschema_symbol_in
 #end
 
+# read eeschema files, convert to QUCS format and output in LTspice format
 def eeschema2cdraw eeschema_dir, cdraw_dir
   puts "eeschema2cdraw @eeschema_dir=#{eeschema_dir}, cdraw_dir=#{cdraw_dir}"  
   FileUtils.rm_r cdraw_dir if File.directory? cdraw_dir ; FileUtils.mkdir cdraw_dir
@@ -225,7 +227,8 @@ def eeschema2cdraw eeschema_dir, cdraw_dir
     }
   }
 end
-    
+
+# read eeschema files, convert to QUCS format and output in QUCS format    
 def eeschema2qucs eeschema_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
   puts "eeschema2qucs eeschema_dir=#{eeschema_dir}, qucs_dir=#{qucs_dir}, "
   Dir.chdir(eeschema_dir){
@@ -248,6 +251,7 @@ def eeschema2qucs eeschema_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_
   }
 end
 
+# read eeschema files, convert to QUCS format and output in Xschem format    
 def eeschema2xschem eeschema_dir, xschem_dir
   puts "eeschema2xschem @eeschema_dir=#{eeschema_dir}, xschem_dir=#{xschem_dir}"
   FileUtils.rm_r xschem_dir if File.directory? xschem_dir ; FileUtils.mkdir xschem_dir  
@@ -271,7 +275,8 @@ end
 if $0 == __FILE__
 #  current = EEschema.new
 #  current.get_cells_and_symbols # run eeschema.rb in the eeschama directory
-  eeschema2cdraw File.join(ENV['HOME'], 'work/4817'), File.join(ENV['HOME'], 'work/4817/eeschema2cdraw')
+#  eeschema2cdraw File.join(ENV['HOME'], 'work/4817'), File.join(ENV['HOME'], 'work/4817/eeschema2cdraw')
+  eeschema2cdraw File.join(ENV['HOME'], 'work/4817'), File.join(ENV['HOME'], 'work/4817/test')
   ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
 #  eeschema2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/eeschema2qucs'
 

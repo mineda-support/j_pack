@@ -325,7 +325,7 @@ EOF
 
   def wait_for file, start, error_message=nil
     count = 0
-    $stderr.puts "wait for file:'#{file}', start at #{start}"
+    $stderr.puts "wait for file:'#{Dir.pwd}/#{file}', start at #{start}"
     until File.exist?(file) && (File.mtime(file) >= start) do
       $stderr.puts "mtime: #{File.mtime(file)} vs. #{start}" if File.exist? file
       # puts "count=#{count}"
@@ -500,10 +500,11 @@ EOF
         if v.class == Hash 
           if v[:models_update] && v[:models_update].length > 0
             models_update = v[:models_update]
-            model_lines = get_models @elements
-            model_lines.each{|lineno|
-              lines[lineno-1].sub! '.include', ';include'
-            } 
+            if model_lines = get_models(@elements)
+              model_lines.each{|lineno|
+                lines[lineno-1].sub! '.include', ';include'
+              } 
+            end
           end
           if v[:variations]
             variations = v[:variations]
@@ -678,8 +679,9 @@ EOF
   end
 
   def get_models elements
-    @models = {}
+    @models = nil
     return if elements.nil? || elements['include'].nil?
+    @models = {}
     model_lines = []
     include_files = []
     home = ENV['HOMEPATH']||ENV['HOME']
@@ -691,7 +693,8 @@ EOF
         model_lines << l[:lineno]
       end
     }
-    # puts "include_files=#{include_files.inspect}"
+    puts "include_files=#{include_files.inspect}"
+    puts "model_files=#{model_files(include_files).inspect}"
     model_files(include_files).each{|f|
       if File.exist? f
         m = CompactModel.new f

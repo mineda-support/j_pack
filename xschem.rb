@@ -158,12 +158,14 @@ def xschem2cdraw xschem_dir, cdraw_dir
   }
 end
     
-def xschem2qucs xschem_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
-  puts "xschem2qucs xschem_dir=#{xschem_dir}, qucs_dir=#{qucs_dir}" 
+def xschem2eeschema xschem_dir, qucs_dir, model_script=nil
+  puts "xschem2eeschema xschem_dir=#{xschem_dir}, qucs_dir=#{qucs_dir}" 
   Dir.chdir(xschem_dir){
     l = QucsLibrary.new 'circuits', qucs_dir
     l.xschem_lib_in
-    l.qucs_lib_out
+    lib_info.merge! l.eeschema_lib_out(model_script)
+
+    eeschema_sym_lib_table lib_info.values.uniq, qucs_dir
 
     proj_dir = File.join(qucs_dir, "circuits_prj")
     cells = Dir.glob('*.sch').map{|a| a.sub('.sch','')}
@@ -171,7 +173,27 @@ def xschem2qucs xschem_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_scri
       c = QucsSchematic.new cell
       c.xschem_schema_in
       FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
-      c.qucs_schema_out File.join(proj_dir, cell + '.sch')
+      c.eeschem_schema_out File.join(proj_dir, cell + '.kicad_sch'), symbol_libs, lib_info
+    }
+  }
+end
+
+def xschem2qucs xschem_dir, qucs_dir=File.join(ENV['HOME'], '.qucs'), model_script=nil
+  puts "xschem2qucs xschem_dir=#{xschem_dir}, qucs_dir=#{qucs_dir}" 
+  lib_info = {}
+  lib_path = {}
+  qucs_symbols = {}
+  Dir.chdir(xschem_dir){
+    l = QucsLibrary.new 'circuits', qucs_dir
+    lib_path.merge! l.qucs_lib_out
+    qucs_symbols.merge! l.qucs_symbols
+    proj_dir = File.join(qucs_dir, "circuits_prj")
+    cells = Dir.glob('*.sch').map{|a| a.sub('.sch','')}
+    cells.each{|cell|
+      c = QucsSchematic.new cell
+      c.xschem_schema_in
+      FileUtils.mkdir_p proj_dir unless File.directory? proj_dir
+      c.qucs_schema_out File.join(proj_dir, cell + '.sch'), lib_path, qucs_symbols
     }
   }
 end
@@ -188,9 +210,10 @@ if $0 == __FILE__
      File.exist?(target = 'c:/Users/mined/Seafile/nejime/circuits') ||
      File.exist?(target = 'c:/Users/mined/Seafile/nejime/test') ||
      #File.exist?(target = 'c:/Users/seiji/Seafiles/Seafile/nejime/circuits') ||
-     File.exist?(target = 'c:/Users/seiji/Seafiles/Seafile/nejime/test')
+     File.exist?(target = 'c:/Users/seiji/Seafiles/Seafile/nejime/test') ||
+     File.exist?(target = '/home/anagix/Seafile/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/Xschem')
     #xschem2cdraw 'c:/Users/seiji/work/nejime/xschem_library/devices/', 'c:/Users/seiji/work/nejime/xschem_library/devices/'
-    xschem2cdraw target, File.join(target, 'LTspice') #'c:/tmp/IP62_5_stdcell' #'c:/tmp/test_devices' #'c:/tmp/cdraw' # target
+    xschem2cdraw target, File.join(target, 'LTspice_test') #'c:/tmp/IP62_5_stdcell' #'c:/tmp/test_devices' #'c:/tmp/cdraw' # target
   end
     ENV['QUCS_DIR'] = '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'  
    # xschem2qucs '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem', '/usr/local/anagix_tools/alb2/public/system/projects/my_amp/xschem2qucs'
