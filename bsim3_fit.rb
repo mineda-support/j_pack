@@ -24,22 +24,64 @@ Ni  = 1.5e+10   unless defined? Ni
 Vt  = K*T/Q     unless defined? Vt  
 NDS = 1.0e20    unless defined? NDS
 
-J_data  = {"x" => [],"y" => [],"z" => [],"vgs"=> 0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"gmax"=>[],"name" =>"","mode" =>"lines","meas"=>true,"type" =>:body} unless defined? J_data
+J_data  = {"x" => [],"y" => [],"z" => [],"vgs"=> 0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"gmax"=>[],"name" =>"","mode" =>"lines","meas"=>true,"sweep" =>"vgs"} unless defined? J_data
 #J_table = [{"plot_number"=>0,"title"=>[],"title_x"=>[],"title_y"=>[],"xaxis_is_log"=> [],"yaxis_is_log"=> [],"day"=> "","basename"=> "","filename" => "","ver"=>0.99,"act"=> " ","device"=> "","dir"=>"json/","ext"=> "json","step"=> ""},{},{}] unless defined? J_table
 J_table = [{"plot_number"=>0,"title"=>[],"title_x"=>[],"title_y"=>[],"xaxis_is_log"=> [],"yaxis_is_log"=> [],"day"=> "","basename"=> "","filename" => "","ver"=>0.99,"act"=> " ","device"=> "","dir"=>"json/","ext"=> "json","step"=> ""},{"plotdata"=> [],"measdata"=> []}] unless defined? J_table
 ### xls file read point ###
 M_IdVgs = [{ "vgs"=> 'H' ,"ids"=>'A',"vds"=>'B'},
-       { "vgs"=> 'S' ,"ids"=>'L',"vds"=>'M'},
-       { "vgs"=> 'AD',"ids"=>'W',"vds"=>'X' } ]         
+           { "vgs"=> 'S' ,"ids"=>'L',"vds"=>'M'},
+           { "vgs"=> 'AD',"ids"=>'W',"vds"=>'X' } ]
+
+M_IdVds = [{ "ids"=> 'Q' ,"vds"=>'R',"vgs"=>'X'},
+           { "ids"=> 'Y' ,"vds"=>'Z',"vgs"=>'AF'},
+           { "ids"=> 'AG' ,"vds"=>'AH',"vgs"=>'AN'},
+           { "ids"=> 'AO' ,"vds"=>'AP',"vgs"=>'AV'},
+           { "ids"=> 'AW' ,"vds"=>'AX',"vgs"=>'BD'} ]
+       
+
 
 class ModelFit
-  attr_accessor :model, :model_org, :jtable, :phis
+  attr_accessor :model, :model_org, :jtable, :phis,:vbi
   def initialize model="models/test.lib", model_org="models/MinedaPTS06_TT"
     @model     = CompactModel::new model
     @model_org = CompactModel::new model_org
     @jtable    = duplication_j_table 
-    nsub = (@model.get :NSUB).to_f
+    nsub = get_nsub
     @phis = 2.0*Vt*Math.log(nsub/Ni)
+    nch = (@model.get :NCH).to_f
+    @vbi   = Vt * Math.log(nch  * NDS / (Ni**2))
+  
+  end
+
+  # define NSUB
+  def get_nsub
+    nch_cm = (@model.get :NCH).to_f      # [cm^-3]
+    tox    = (@model.get :TOX).to_f      # [m]
+    k1     = (@model.get :K1 ).to_f
+
+    nch    = nch_cm * 1.0e6              # [m^-3] に変換
+
+    eps_si = ESi * E0                    # 比誘電率 × ε0 → [F/m]
+    cox    = Eox * E0 / tox              # [F/m^2]
+
+    gamma1 = Math.sqrt(2 * Q * eps_si * nch) / cox
+
+    nsub_m3 = ((gamma1 - k1) * cox)**2 / (2 * Q * eps_si)
+    nsub_cm3 = sig_round(nsub_m3 / 1.0e6,4)           # [cm^-3] に戻す
+
+    #p "nch_cm=#{nch_cm} tox=#{tox} K1=#{k1} gamma1=#{gamma1} nsub_cm3=#{nsub_cm3}"
+    @model.set :NSUB => nsub_cm3
+    @model.save
+    @phis = 2.0*Vt*Math.log(nsub_cm3/Ni)
+
+    return nsub_cm3
+  end
+
+  # 有効数字 N 桁丸め
+  def sig_round(x, n)
+    return x if x == 0
+    factor = 10 ** (n - 1 - Math.log10(x.abs).floor)
+    (x * factor).round / factor.to_f
   end
 
   # read csv file to table(like json type)
@@ -98,7 +140,7 @@ class ModelFit
     v_tmp = ver_check data
     data["ver"] = v_tmp
     ver  = (data["ver"]+0.01).round(3)
-    p "ver =#{data["ver"]}"
+    #p "ver =#{data["ver"]}"
     data["ver"] = ver
     if data["device"].empty? then
       device = ""
@@ -132,6 +174,19 @@ class ModelFit
 
     File.open(new_file, 'w') do |file|
       JSON.dump(table, file)
+    end
+  end
+
+  def invert_sign(target: "measdata", keys: ["x", "y"])
+    return unless @jtable[1][target].is_a?(Array)
+    @jtable[1][target].each do |row|
+      keys.each { |key| row[key].map! { |n| -n } }
+    end
+  end
+
+  def set_data(target: "measdata", type: "sweep", value: nil)
+    for i in 0..@Jtable[1][target].size - 1 do
+      @Jtable[1][target][i][type] = value
     end
   end
 
@@ -172,9 +227,48 @@ class ModelFit
     }
   end
 
+  def read_idvds_xls dir: "IdVgs", files:{},graph: "measdata",is_lw: false,l:10e-6,w:60e-6,vbs:0
+    files.each{|v| # indidual xls-files read and act
+      if is_lw then
+        array = v.split( /(\w+)L([0-9]+).*W([0-9]+)/)
+        dname = array[1]+ "_NL#{array[2]}W#{array[3]}"
+        dl    = array[2].to_f * 1e-6 
+        dw    = array[3].to_f * 1e-6 
+      else
+        dname = v.split(".xls")
+        dl    = l
+        dw    = w
+      end
+
+      # read xls file
+
+      s = Roo::Excel.new([dir , v].join("/"))
+      sheet = s.sheet(0)
+
+      for i in 0..M_IdVds.size - 1 do
+        tmp = duplicate_j_data
+        tmp["name"] = dname
+        tmp["l"] = dl.round(9)
+        tmp["w"] = dw.round(9)
+        tmp["vbs"] = 0
+        tmp["x"] = sheet.column(M_IdVds[i]["vds"]).dup        #copy vgs
+        tmp["x"].shift()
+        for j in 0..tmp["x"].size - 1 do
+          tmp["x"][j] = tmp["x"][j].to_f #round(4)        #rounding off at 1e-4
+        end
+        tmp["y"]   = sheet.column(M_IdVds[i]["ids"])          #copy ids
+        tmp["y"].shift()
+        tmp["vgs"] = sheet.cell(M_IdVds[i]["vgs"],2).to_f #round(3) #rounding off at 1e-3
+        tmp["name"] = "Vgs= #{tmp["vgs"].round(1)}V"
+        @jtable[1][graph] << tmp.dup
+      end
+    }
+  end
+
 end #end ModelFit
 
 class Bsim3Fit < ModelFit
+
 
   ### [STEP00]  Delta-Vth Calculation ###
   def step0_calculate_vth_l model=@model,files,vbs: 0.0,vds: 0.05,l: 100e-6,w:100e-6
@@ -188,7 +282,7 @@ class Bsim3Fit < ModelFit
     lint   =  (model.get:LINT).to_f 
     wint   =  (model.get:WINT).to_f 
     leff   =  l - 2.0 * lint
-    weff   =  w + 2.0 * wint
+    weff   =  w - 2.0 * wint
 
     tox    =  (model.get:TOX).to_f 
     nch    =  (model.get:NCH).to_f
@@ -299,10 +393,10 @@ class Bsim3Fit < ModelFit
     lint   =  (model.get:LINT).to_f 
     wint   =  (model.get:WINT).to_f 
     #leff   =  l - 2.0 * lint
-    #weff   =  w + 2.0 * wint
+    #weff   =  w - 2.0 * wint
 
     tox    =  (model.get:TOX).to_f 
-    if (model.get:NSUB).nil? then
+    if (model.get:NCH).nil? then
       nch = 1.7E+017
     else
       nch    =  (model.get:NCH).to_f
@@ -394,24 +488,38 @@ class Bsim3Fit < ModelFit
   end
 
   ###[STEP1]Define Vth Parameter (VTH0,K1,K2) Sub ###
-  def convert_vth_lwvdvb param: "l",process: "PTS06"
+  def convert_vth_lwvdvb(target: "measdata",param: "l",process: "PTS06")
     meas = duplicate_j_data
-    for i in 0..@jtable[1]["measdata"].size - 1 do
+=begin
+    @jtable[1][target.each_with_index do |v,i|
+      meas["x"][i] = v[param]
+      meas["y"][i] = v["vth"]
+      meas["l"]     = v["l"]
+      meas["w"]     = v["w"]
+      meas["vbs"]   = v["vbs"]
+      meas["vds"]   = v["vds"]
+      meas["name"]  = "sweep #{param}"
+      meas["sweep"] = param
+      meas["meas"]  = true
+      meas[param] = nil
+    end
+=end
+    for i in 0..@jtable[1][target].size - 1 do
       if param == 'i' then
         meas["x"][i] = i
       else
-        meas["x"][i] = @jtable[1]["measdata"][i][param]
+        meas["x"][i] = @jtable[1][target][i][param]
       end
-      meas["y"][i] = @jtable[1]["measdata"][i]["vth"].round(5)
+      meas["y"][i] = @jtable[1][target][i]["vth"].round(5)
     end
-    meas["l"]     = @jtable[1]["measdata"][0]["l"]
-    meas["w"]     = @jtable[1]["measdata"][0]["w"]
-    meas["vbs"]   = @jtable[1]["measdata"][0]["vbs"]
-    meas["vds"]   = @jtable[1]["measdata"][0]["vds"]
-    meas["name"]  = process
-    meas["sweep"] = "#{param} sweep"
+    meas["l"]     = @jtable[1][target][0]["l"]
+    meas["w"]     = @jtable[1][target][0]["w"]
+    meas["vbs"]   = @jtable[1][target][0]["vbs"]
+    meas["vds"]   = @jtable[1][target][0]["vds"]
+    meas["name"]  = "sweep #{param}"
+    meas["sweep"] = param
     meas["meas"]  = true
-  
+    meas[param] = nil
     return meas
   end
 
@@ -419,12 +527,18 @@ class Bsim3Fit < ModelFit
   def print_condition
     #p "filename =  " + @jtable[0]["dir"] + @jtable[0]["basename"] + @jtable[0]["ext"]
     meas =@jtable[1]["measdata"]
-    datas =["name","vbs","vgs","vds","vth","l","w","mode"]
+    datas =["name","vbs","vgs","vds","vth","l","w","mode","Vgmax","Imax","Gmmax"]
     datas.each{|a| 
       tmp =format("%-8s,",a)
       for i in 0..meas.size - 1 do
         if a == "vth" then
           tmp += format("%-8.4f,",meas[i][a].to_f)
+        elsif a =="Vgmax" then
+          tmp += format("%-8s,","#{meas[i]["gmax"][0].round(4)}")
+        elsif a =="Imax" then
+          tmp += format("%-8s,","#{meas[i]["gmax"][1].round(9)}")
+        elsif a =="Gmmax" then
+          tmp += format("%-8s,","#{meas[i]["gmax"][2].round(6)}")
         else
           tmp += format("%-8s,",meas[i][a].to_s)
         end
@@ -569,8 +683,7 @@ class Bsim3Fit < ModelFit
   #### Duplicate jtable and data ####
   #### (-1) J_table Duplication
   def duplication_j_table
-    ddata = [{},{}]
-    ddata[0] = J_table[0].dup
+    ddata = duplicate_hash J_table
     ddata[1]["plotdata"] = []
     ddata[1]["measdata"] = []
     return ddata
@@ -588,66 +701,16 @@ class Bsim3Fit < ModelFit
   #### (1) "measdata" duplication #####
   def duplicate_data from = "measdata"
     if from.instance_of?(Array) then
-      data = from.dup
-      #p "from = Array, size =#{data.size}"
+      data = duplicate_hash(from)
     else
-      data  = @jtable[1][from].dup
-      p "from = #{from}, size =#{data.size}"
+      data  = duplicate_hash(@jtable[1][from])
     end
-
-    ddata =[]
-    for i in 0..data.size - 1 do
-      ddata[i] = duplicate_j_data
-      ddata[i] = duplicate_hash data[i]
-    end
-    return ddata
+    return data
   end
 
   #### (1.5) Hash duplication #####
   def duplicate_hash from 
-    data  = from.dup
-    # p data.size
-    if data.instance_of?(Array) then
-      ddata = []
-      if data == ddata then
-        return ddata
-      end
-      
-      for j in 0..data.size - 1 do
-        d_list = data[j].keys
-        d_list.each {|x|
-        
-          if data[j][x].instance_of?(Array) then
-            ddata[j][x] = []
-            for i in 0..data[i][x].size - 1 do
-              ddata[j][x][i] =data[j][x][i].dup
-            end
-          else
-            ddata[x] = data[x].dup
-          end
-        }
-        end
-    elsif data.instance_of?(Hash) then
-      ddata = duplicate_j_data
-      if data == ddata then
-        return ddata
-      end
-      d_list = data.keys
-      d_list.each {|x|
-        if data[x].instance_of?(Array) then
-          ddata[x] = []
-          for i in 0..data[x].size - 1 do
-            ddata[x][i] =data[x][i].dup
-          end
-        else
-          ddata[x] = data[x].dup
-        end
-      }
-    else
-      p "#{from} is not Array nor Hash"
-      return data
-    end 
-    return ddata
+    Marshal.load(Marshal.dump(from))
   end
 
   ### (2) duplicate @jtable[0]  ###
@@ -783,7 +846,7 @@ class Bsim3Fit < ModelFit
       end
     end
 
-    @jtable[1][dist] = duplicate_data  source     #@jtable[1][source]
+    @jtable[1][dist] = duplicate_data(source)     #@jtable[1][source]
     p list_graph
     true
   end
@@ -821,10 +884,8 @@ class Bsim3Fit < ModelFit
   #### (6) graph add source <= target
   def add_graph source: "measdata",target: "plotdata"
     ss = duplicate_data(source)
-    i_ss = ss.size
-    for i in 0..i_ss -1
-      @jtable[1][target] << ss[i]
-    end
+    tt = duplicate_data(target)
+    @jtable[1][target] = tt + ss
   end
     
   ### Storage calc data ("gmdata","simpledata","vthdata#)
@@ -892,10 +953,22 @@ class Bsim3Fit < ModelFit
     else
       @jtable[1]["measdata"] = []
     end
-    @jtable[0] = duplicate_head
-    @jtable[0]["basename"] = File.basename(json_file,".json")
-    @jtable[0]["ver"] = 0.99
-    write_json @jtable
+    #@jtable[0] = duplicate_head
+    #@jtable[0]["basename"] = File.basename(json_file,".json")
+    #@jtable[0]["ver"] = 0.99
+    #write_json @jtable
+  end
+
+  # [STEP-1-1]
+  def read_table_all json_file
+    if !File.exist?(json_file) then
+      p "File::#{json_file} is not exist!!"
+      return
+    end
+    p "json_file =#{json_file} " #, @jtanle[0] = #{@jtable[0]}"
+    tmp = (read_json json_file).dup
+    @jtable[1] = tmp[1].dup
+    
   end
 
   # [STEP0] Read amd Convert data from "plotdata" to "measdata" and save file.converted.json
@@ -932,12 +1005,10 @@ class Bsim3Fit < ModelFit
 
 
   ### [STEP0] Calculate Vth from Id-Vgs curve [STEP1],[STEP2],[STEP3],[STEP4],[STEP6]
-  def calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 0.05, vbs: [0.0, -0.5 , -1.0, -1.5,-2.0], lw: [[30e-6,30e-6]], mode: "lines",name: ["vbs=0.0","vbs=-0.5","vbs=-1.0","vbs=-1.5","vbs=-2.0"]
+  def calculate_vth_vbs_relation(target: "measdata", flg: false, vgs: 0.0, vds: 0.05, vbs: [0.0, -0.5 , -1.0, -1.5,-2.0], lw: [[30e-6,30e-6]], mode: "lines",name: ["l=3u","l=4u","l=5u","l=6u","l=10u"])
     
-    meas = @jtable[1]["measdata"]
-
+    meas = @jtable[1][target]
     for i in 0..meas.size - 1 do
-
       if name.instance_of?(Array) then
         if name.size == 1 then
           meas[i]["name"] = name[0]
@@ -947,7 +1018,6 @@ class Bsim3Fit < ModelFit
       else
         meas[i]["name"] = name
       end
-        
 
       if vbs.instance_of?(Array) then
         if vbs.size == 1 then
@@ -1019,8 +1089,6 @@ class Bsim3Fit < ModelFit
     @jtable[0]["act"] += "cal [vth,gm],"
     @jtable[0]["step"] = "STEP1"
     
-    #@jtable[0]["device"] = ""
-    #write_json @jtable
   end
 
   ###[STEP1-0] ###
@@ -1080,7 +1148,7 @@ class Bsim3Fit < ModelFit
     @model.set :K1   => k1.round(5)
     @model.set :K2   => k2.round(5)
     @model.save
-
+    get_params_all
     a = "VTH0 =" + (@model.get :VTH0)
     b = " K1 = "  + (@model.get :K1)
     c = " K2 = "  + (@model.get :K2)
@@ -1108,7 +1176,7 @@ class Bsim3Fit < ModelFit
     lint   =  (model.get:LINT).to_f 
     wint   =  (model.get:WINT).to_f 
     leff   =  l - 2.0 * lint
-    weff   =  w + 2.0 * wint
+    weff   =  w - 2.0 * wint
     #nds    =  1.0e20
 
     nlx    =  (model.get:NLX).to_f
@@ -1355,7 +1423,7 @@ class Bsim3Fit < ModelFit
   ### [STEP2-2] estimation ueff from ueff curve
   
   ### [STEP2-1] Calc. Ueff-Vgs Curve ["measdata"][i]["y"]:: Id => ueff  
-  def step2_calculate_ueff_vgs_relation mag: 1.0, vgmf: true
+  def step2_calculate_ueff_vgs_relation mag: 0.9, ismax: false
     
     tox  = (@model.get :TOX).to_f
     cox = Eox*E0/tox
@@ -1371,13 +1439,20 @@ class Bsim3Fit < ModelFit
       vth  = id[i]["vth"].dup
       vds  = id[i]["vds"].dup
       vgm  = id[i]["gmax"][0].dup
-      if vgmf then
-        ii   = id[i]["x"].index{|v| v>=vgm*mag}
+      gmax = id[i]["gmax"][2].dup
+      ii   = id[i]["x"].index{|v| v>=vgm} 
+      #p "i = #{ii} Xgmax =#{vgm}  gmax #{gmax}"
+      id[i]["x"].slice!(0,ii)
+      id[i]["y"].slice!(0,ii)
+      id[i]["z"].slice!(0,ii)
+      #p "x = #{id[i]["x"][0]}  y =#{id[i]["y"][0]}  z = #{id[i]["z"][0]}"
+      ii = id[i]["z"].index{|v| v <= gmax * mag}
+      if ismax then
+        ik = id[i]["x"].size - 1
       else
-        ii   = id[i]["x"].index{|v| v>=vth*mag}
+        ik   = ii + 10
       end
-      
-      ik   = id[i]["x"].size - 1
+      p "step2_calculate... vgs_min =#{id[i]["x"][ii]}, Vgs_max =#{id[i]["x"][ik]} mag = #{mag}"
       
       idm =id[i].dup
       id[i]["x"] = []
@@ -1391,66 +1466,74 @@ class Bsim3Fit < ModelFit
         id[i]["y"] << (idm["y"][j]/tmp/cox/w*l/vds).dup
         id[i]["z"] << idm["z"][j].dup
       end
+      #p "gmax =#{gmax} x=#{id[0]["x"]} y = #{id[0]["y"]} z= #{id[0]["z"]}"
     end 
-
+    p "=== end of step2_calculate_ueff_vgs_relation ==="
     return id
   end
 
   # [STEP2-2] estimation ueff from ueff curve
-  def step2_estimation_u0_ua_ub_uc err: 1e-5,mag: 1.5 ,isvbs: false
+  def step2_estimation_u0_ua_ub_uc(err: 1e-5,mag: 1.5 ,isvbs: false,ismax:false)
 
     tox  =(model.get :TOX).to_f
   
     @jtable[0]["step"] = "STEP2" 
     tag = 1.0
-    magx = 1.0
-    while(tag >= err && magx <= mag)  do 
-      xy = (step2_calculate_ueff_vgs_relation mag: magx,vgmf: false).dup
-      a = xy[0].dup
-      b = xy[0].dup
-      b["y"] = []
+    magx = 0.9
+    #ismax = false
+    
+    xy = (step2_calculate_ueff_vgs_relation mag: magx,ismax: ismax).dup
+    p "vgs[0] = #{xy[0]["x"][0]}"
+    p "ueff[0] = #{xy[0]["z"][0]}"
+    a = xy[0].dup
+    b = xy[0].dup
+    b["y"] = []
 
-      u0ss = []
-      uass = []
-      ubss = []
-      vbss = []
+    u0ss = []
+    uass = []
+    ubss = []
+    vbss = []
       
-      #calc dtermine_2nd
-      for j in 0..xy.size - 1 do
-        xd = []
-        yd = []
-        vth = xy[j]["vth"].dup
-        vbss << xy[j]["vbs"].dup
-        for i in 0..xy[j]["x"].size - 1 do
-          xd << (xy[j]["x"][i] + vth).dup
-          yd << (1.0/xy[j]["y"][i].abs).dup
-        end
-        zzz = determine_2nd xd,yd
-        u0 = 1.0/zzz[2]
-        ua = zzz[1]*u0*tox
-        ub = zzz[0]*u0*tox**2
+    #calc dtermine_2nd
+    for j in 0..xy.size - 1 do
+      xd = []
+      yd = []
+      vth = xy[j]["vth"].dup
+      vbss << xy[j]["vbs"].dup
+      
+      for i in 0..xy[j]["x"].size - 1 do
+        xd << (xy[j]["x"][i] + vth).dup
+        yd << (1.0/xy[j]["y"][i].abs).dup
+      end
+      
+      zzz = determine_2nd xd,yd
+      u0 = 1.0/zzz[2]
+      ua = zzz[1]*u0*tox
+      ub = zzz[0]*u0*tox**2
      
-        u0ss << u0
-        uass << ua
-        ubss << ub
-      end
-
-      vth = b["vth"].dup
-      vbs = b["vbs"].dup
-      jj  = b["x"].size
-      aa  = []
-      bb  = []
-
-      for j in 0..jj - 1 do
-        dx = (b["x"][j] + vth)/tox
-        b["y"][j] = u0/(1 + (ua ) * dx + ub * dx**2)
-      end
-      aa[0] = xy[0].dup
-      bb[0] = b.dup
-      tag = calc_stdv bb,aa
-      magx += 0.01
+      u0ss << u0
+      uass << ua
+      ubss << ub
     end
+
+    vth = b["vth"].dup
+    vbs = b["vbs"].dup
+    jj  = b["x"].size
+    aa  = []
+    bb  = []
+
+    for j in 0..jj - 1 do
+      dx = (b["x"][j] + vth)/tox
+      b["y"][j] = u0/(1 + (ua ) * dx + ub * dx**2)
+    end
+    
+    aa[0] = xy[0].dup
+    bb[0] = b.dup
+    tag = calc_stdv bb,aa
+    magx += 0.01
+  
     p "cal. error #{((tag * 100).round(12))}% @ mag= #{(magx - 0.01).round(4)}"
+    
     if isvbs==false then
       uc = 0.0
       model.set :U0 => (format("%5.5e",u0)).to_f
@@ -1458,6 +1541,11 @@ class Bsim3Fit < ModelFit
       model.set :UB => (format("%5.5e",ub)).to_f
       model.set :UC => (format("%5.5e",uc)).to_f
       model.save
+      u0x = "U0 = " + (model.get :U0).to_s
+      uax = "UA = " + (model.get :UA).to_s
+      ubx = "UB = " + (model.get :UB).to_s
+      ucx = "UC = " + (model.get :UC).to_s
+      puts "Ueff[SOI]: #{u0x} #{uax} #{ubx} #{ucx}"
       return
     end
 
@@ -1467,6 +1555,7 @@ class Bsim3Fit < ModelFit
     stds = (u0ss.map{|x| ((x - avgs)/avgs)**2}.sum)
     stdv = Math.sqrt(stds)/ii
     puts 'U0 AVG= ' + format("%3.6f",avgs) + ' stdv = ' + format("%2.4f",stdv*100.0)+ "%"
+  
     ii = uass.size
     avgs = (uass.sum / ii)
     stds = (uass.map{|x| ((x - avgs)/avgs)**2}.sum)
@@ -1501,37 +1590,30 @@ class Bsim3Fit < ModelFit
     tag = calc_stdv xy.dup,bbb.dup
     p "total error = #{(tag * 100).round(4)}% @mag = #{(magx - 0.01).round(3)}"
 
-      model.set :U0 => (format("%5.5e",u0)).to_f
-      model.set :UA => (format("%5.5e",ua)).to_f
-      model.set :UB => (format("%5.5e",ub)).to_f
-      model.set :UC => (format("%5.5e",uc)).to_f
-      model.save
+    model.set :U0 => (format("%5.5e",u0)).to_f
+    model.set :UA => (format("%5.5e",ua)).to_f
+    model.set :UB => (format("%5.5e",ub)).to_f
+    model.set :UC => (format("%5.5e",uc)).to_f
+    model.save
 
-      u0x = "U0 = " + (model.get :U0).to_s
-      uax = "UA = " + (model.get :UA).to_s
-      ubx = "UB = " + (model.get :UB).to_s
-      ucx = "UC = " + (model.get :UC).to_s
-      puts 'Model Parameters SET:'
-      puts u0x
-      puts uax
-      puts ubx
-      puts ucx
+    u0x = "U0 = " + (model.get :U0).to_s
+    uax = "UA = " + (model.get :UA).to_s
+    ubx = "UB = " + (model.get :UB).to_s
+    ucx = "UC = " + (model.get :UC).to_s
+    puts "Ueff: #{u0x} #{uax} #{ubx} #{ucx}"
 
-      zz = []
-      @jtable[0]["act"] =" Estimate Ueff "
-    
-     # data
+    @jtable[0]["act"] =" Estimate Ueff "
   end
 
   ### verification Ueff(Vgs) ###
-  def step2_verification_ueff step: 0.2 
+  def step2_verification_ueff step: 0.1
     u0  = (@model.get :U0).to_f
     ua  = (@model.get :UA).to_f
     ub  = (@model.get :UB).to_f
     uc  = (@model.get :UC).to_f
     tox = (@model.get :TOX).to_f
-    p [u0,ua,ub,uc,tox]
-    ueff = change_step(datas: step2_calculate_ueff_vgs_relation(mag: 1.0, vgmf: true),step: step)
+    #p [u0,ua,ub,uc,tox]
+    ueff = change_step(datas: step2_calculate_ueff_vgs_relation(mag: 1.0, ismax: true),step: step)
     ii   = ueff.size
     for i in 0..ii - 1 do
       ueff[i+ii]      = ueff[i].dup
@@ -1555,7 +1637,7 @@ class Bsim3Fit < ModelFit
     tmp = calc_stdv a,b
     p tmp
     @jtable[1]["ver_ueff"] = ueff
-    list_graph
+  #  list_graph
   end
 
   ## Calc standard deviation between 2 Curves
@@ -1581,7 +1663,7 @@ class Bsim3Fit < ModelFit
   ### -------------------------------------------------
 
   ###[STEP3] Estimate RDSW & Lint from Vgs-Id(several L)
-  #  [STEP3-0] read Id-Vgs-l data            => imitateimitate_measdata
+  #  [STEP3-0] read Id-Vgs-l data            => imitate_measdata
   #  [STEP3-1] Calculate Vth-l               => calculate_vth_l_relation
   #  [STEP3-2] Transform Id-Vgs-L to Rds-L   => transform_id_vgs_to_rd_l
   #  [STEP3-3] Estimate RDSW & LINT
@@ -1595,8 +1677,8 @@ class Bsim3Fit < ModelFit
     calculate_vth_vbs_relation flg: flg,vgs: vgs,vds: vds,vbs: vbs,lw: lw,mode: mode,name: name
       
     data0 = @jtable[0]
-    data0["step"]   = "STEP3"
-    data0["act"]    = "STEP3: "
+    #data0["step"]   = "STEP3"
+    #data0["act"]    = "STEP3: "
     data0["device"] = ""
     data0["ver"]    = 0.99
       
@@ -1663,7 +1745,7 @@ class Bsim3Fit < ModelFit
     end
     rds_l = []
     for i in 0..zz.size - 1 do
-      rfs_l[i] = duplicate_hash(zz[i])
+      rds_l[i] = duplicate_hash(zz[i])
     end
     for i in 0..rds_l.size - 1 do
       rds_l[i]["y"]    = []
@@ -1750,126 +1832,103 @@ class Bsim3Fit < ModelFit
       end
       ii += 1
     end
-    p "n = #{ii},LINT =#{(x1/2.0).round(12)},RDSW =#{(a_avg * x1 + b_avg).round(2)},STDV=#{stdv1.round(4)},dx = #{dx.round(16)}"
+    u0 = (@model.get :U0).to_f
+    p "lint_rdsw :: n = #{ii},LINT =#{(x1/2.0).round(12)},RDSW =#{(a_avg * x1 + b_avg).round(2)}, U0 = #{u0},STDV=#{stdv1.round(4)},dx = #{dx.round(16)}"
 
     @model.set :LINT => (x1/2.0).round(9)
     @model.set :RDSW => (a_avg * x1 + b_avg).round(2)
     @model.save
+    get_params_all    
 
+
+    x0 = (x1).round(9)
+    y0 =  (a_avg * x1 + b_avg).round(2)
+    data1 = duplicate_j_data
+    data1["x"] = [0,x0]
+    data1["y"] = [y0,y0]
+    @jtable[1]["Rds_L"] << data1
+    data2 = duplicate_j_data
+    data2["x"] = [x0,x0]
+    data2["y"] = [0,y0]
+    @jtable[1]["Rds_L"] << data2
+    
   end
 
-  ### [step3-3-2] LINT & RDSW estimate Id-Vgs directly
-  def step3_estimate_lint_rdsw2 step: 0.1,from:2.0, to: 5.0
-    ddata = duplicate_data "measdata"
-    u0  =  (@model.get :U0).to_f
-    ua  =  (@model.get :UA).to_f
-    ub  =  (@model.get :UB).to_f
-    uc  =  (@model.get :UC).to_f
-    tox =  (@model.get :TOX).to_f
-    lint = (@model.get :LINT).to_f.round(8)
-    #lint = 0.01e-6
-    rdsw = (@model.get :RDSW).to_f.round(0)
-    rdsw = 200
-    vsat = (@model.get :VSAT).to_f
-    wint = (@model.get :WINT).to_f
-    cox = Eox * E0 / tox
-    data = []
-    for i in 0..ddata.size - 1 do
-      jmax          = ddata[0]["x"].index { |v| v >= to }
-      jmin          = ddata[0]["x"].index { |v| v >= from }
-      data[i] = duplicate_hash ddata[i]
-      data[i]["x"] = []
-      data[i]["y"] = []
-      data[i]["z"] = []
-      for j in jmin..jmax do
-        data[i]["x"] << ddata[i]["x"][j]
-        data[i]["y"] << ddata[i]["y"][j]
-      end
-    end
-    abulk = 1.0
-    @jtable[1]["test"] = [] 
-    calc = step3_calc_id_vds data: data, lint: lint,rdsw: rdsw,wint: wint,u0: u0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-    stdv0 = step3_calc_stdv ori: data,calc: calc
-    p "Initial LINT = #{lint.round(9)}  RDSW = #{rdsw} :: STDV = #{stdv0}"
-    
-    ### stdv  > 1e-6 loop
-    dlint = 1e-7
-    drdsw = 100   
-    calc_lp = step3_calc_id_vds data: data, lint: lint+dlint,rdsw: rdsw,wint: wint,u0: u0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-    stdv_lp = step3_calc_stdv ori: data,calc: calc_lp
-    calc_lm = step3_calc_id_vds data: data, lint: lint-dlint,rdsw: rdsw,wint: wint,u0: u0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-    stdv_lm = step3_calc_stdv ori: data,calc: calc_lm
-    if stdv_lp > stdv_lm then
-      dlint = - dlint
-    end
-    calc_rp = step3_calc_id_vds data: data, lint: lint,rdsw: rdsw+drdsw,wint: wint,u0: u0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-    stdv_rp = step3_calc_stdv ori: data,calc: calc_rp
-    calc_rm = step3_calc_id_vds data: data, lint: lint,rdsw: rdsw-drdsw,wint: wint,u0: u0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-    stdv_rm = step3_calc_stdv ori: data,calc: calc_rm
-    if stdv_rp > stdv_rm then
-      drdsw =  -drdsw
+  #### [STEP4-1] Transform Id-Vgs-L => Gds-W
+  def step4_estimate_wint(step: 0.5,flg: false ,from: 3.0, to: 5.0)  
+    p [from,to]    
+    id   = change_step step: step
+
+    input = id
+    vds = input[0]["vds"]
+
+    # W の一覧
+    ws = input.map { |e| e["w"] }
+
+    # 元の Vgs 配列
+    vgs_all = input.first["x"]
+
+    # 範囲抽出
+    vgs_list = vgs_all.select { |v| v >= from && v <= to }
+
+    result = []
+    zz = { "x" => [], "y" => [] }
+
+    vgs_list.each do |vgs|
+      # ★ 元の Vgs 配列での index を取得（ここが最重要）
+      idx = vgs_all.index(vgs)
+
+      # 各 W の y(vgs) を取り出す（正しい Vgs の点）
+      y_values = input.map { |entry| entry["y"][idx] }
+
+      rr = duplicate_hash(input[0])
+      rr["x"] = ws
+      rr["y"] = y_values
+      rr["vds"] = vds
+      rr["vgs"] = vgs
+      rr["sweep"] = "w"
+      rr["meas"] = true
+      rr["name"] = "vgs=#{vgs}"
+
+      # ここで z を作る
+      z = { "x" => rr["x"], "y" => rr["y"] }
+
+      # すべての x,y を zz に追加
+      zz["x"] += z["x"]
+      zz["y"] += z["y"]
+
+      result << duplicate_hash(rr)
     end
 
-    i = 0
-    while(stdv0 >1.0e-4 && dlint.abs >= 1e-10 )  do
-      calc = step3_calc_id_vds data: data, lint: lint+dlint,rdsw: rdsw,wint: wint,u0: u0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-      stdv = step3_calc_stdv ori: data,calc: calc
   
-      p "N= #{i} LINT = #{(lint+dlint).round(9)}  RDSW = #{rdsw} STDV = #{stdv.round(12)} DLINT = #{dlint.round(9)} "
+    y = determine_1st zz["x"] ,zz["y"]
+    # 1次近似結果
+    a = y[1]
+    b = y[2]
 
-      if (stdv < stdv0) then 
-        stdv0 =stdv
-        lint += dlint
-      else
-      #  stdv0 =stdv
-        dlint = -dlint/10
-      end
-      i += 1
-    end
-
-    i = 0
-    while(stdv0 >1.0e-4 && drdsw.abs >=0.01)  do
-      calc = step3_calc_id_vds data: data, lint: lint+dlint,rdsw: rdsw,wint: wint,u0: u0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-      stdv = step3_calc_stdv ori: data,calc: calc
-  
-      p "N= #{i} LINT = #{(lint).round(9)}  RDSW = #{rdsw+drdsw} STDV = #{stdv.round(12)} DRDSW = #{drdsw.round(0)} "
-
-      if (stdv < stdv0) then 
-        stdv0 =stdv
-        rdsw += drdsw
-      else
-        drdsw = -drdsw/10
-      end
-      i += 1
-    end
-  
-    du0 = 0.001
-    i = 0
-    while(stdv0 >1.0e-4 && du0.abs >=1e-7)  do
-      calc = step3_calc_id_vds data: data, lint: lint+dlint,rdsw: rdsw,wint: wint,u0: u0+du0, ua: ua,ub: ub,uc: uc,cox: cox,vsat: vsat,tox: tox,abulk: abulk
-      stdv = step3_calc_stdv ori: data,calc: calc
-  
-      p "N= #{i} LINT = #{(lint).round(9)}  RDSW = #{rdsw} STDV = #{stdv.round(12)} U0 = #{(u0 +du0).round(10)} "
-
-      if (stdv < stdv0) then 
-        stdv0 =stdv
-        u0 += du0
-      else
-        du0 = -du0/10
-      end
-      i += 1
-    end
-
-    @jtable[1]["test"] = []
-    for i in 0..calc.size - 1 do  
-      @jtable[1]["test"] << data[i].dup
-      @jtable[1]["test"] << calc[i].dup
-    end
-    @model.set :LINT => lint.round(10)
-    @model.set :RDSW => rdsw.round(3)
-    @model.set :U0   => u0.round(10)
+    # WINT
+    wint = sig_round(b / (a * 2),4)
+    @model.set :WINT => wint
     @model.save
-    p "Final LINT = #{lint.round(10)}, RDSW = #{rdsw.round(3)}, U0 = #{u0.round(10)}"
+    # プロット用データのテンプレート
+    data_a = duplicate_hash(result[0])
+
+    # --- ここが誓さんがやりたい部分 ---
+    # Ruby 的に配列の先頭に WINT を追加する
+    data_a["x"].unshift(wint)
+
+    # y = a*x + b を計算して新しい y 配列を作る
+    data_a["y"] = data_a["x"].map { |x| a*x + b }
+
+    # 追加情報
+    data_a["name"]  = "Gds-W linear fit"
+    data_a["sweep"] = "w"
+    data_a["meas"]  = false   # 計算結果なので meas=false
+
+    p " a=#{a} b=#{b} wint =#{wint}"
+    
+    @jtable[1]["Gds_W"] =  duplicate_hash(result) 
+    @jtable[1]["Gds_W"] << duplicate_hash(data_a)
   end
 
   ### Calculate stdv between meas & calc  ###
@@ -1892,7 +1951,7 @@ class Bsim3Fit < ModelFit
     ddata = []
     for i in 0..data.size - 1 do
       leff = data[i]["l"] - 2 * lint
-      weff = data[i]["w"] + 2 * wint
+      weff = data[i]["w"] - 2 * wint
       rds  = rdsw /(weff * 1.0e6)
       vds  = data[i]["vds"]
 
@@ -1985,7 +2044,7 @@ class Bsim3Fit < ModelFit
     dvt2w  =  (model.get:DVT2W).to_f
  
     leff   =  l - 2.0 * lint
-    weff   =  w + 2.0 * wint
+    weff   =  w - 2.0 * wint
     # parameters
     phis  = @phis
     phiss = Math.sqrt(phis)
@@ -2047,435 +2106,255 @@ class Bsim3Fit < ModelFit
     return out
   end
 
-  ### [STEP6-3] extract Dsub,Eta0
-  def step6_calculate_dsub_eta0 ddata: [],vds: 0.95,vbs: 0,dsub: 0.56,eta0: 0.0,etab: 0.0,w: 60e-6
-  data =[]  
-  data = duplicate_data ddata
+  def convert_json_to_data(j_data, file: "data.json", calc_file: "ruby/vth_calc.rb",process:"MinimalFab",optimize:["u0"],bounds:nil,meta:nil)
+    entries = j_data.map do |e|
+    sweep = e["sweep"]   # "l", "w", "vgs", "vbs", "vds"
+    xvals = e["x"]       # sweep 軸の値
+    n = xvals.size
+
+    # sweep 軸以外の値を配列化
+    w   = sweep == "w"   ? xvals : Array.new(n, e["w"])
+    l   = sweep == "l"   ? xvals : Array.new(n, e["l"])
+    vgs = sweep == "vgs" ? xvals : Array.new(n, e["vgs"])
+    vds = sweep == "vds" ? xvals : Array.new(n, e["vds"])
+    vbs = sweep == "vbs" ? xvals : Array.new(n, e["vbs"])
+    vth = sweep == "vth" ? xvals : Array.new(n, e["vth"])
+
+    {
+      # ★ J_data の name/type をそのまま保存
+      "meta"      => meta,
+      "process"   => process,
+      "name"      => e["name"],
+      "type"      => e["type"],
+      "sweep"     => e["sweep"],
+      # ★ 最適化設定（誓さんが後で編集）
+      "optimize"  => optimize,
+      "optimizer" => {
+        "method" => "Nelder-Mead"
+   #     "bounds" => bounds
+      },
+
+      # ★ 計算エンジンを引数で指定
+      "calc_file" => calc_file,
+
+      # ★ sweep 展開後のデータ
+      "l"         => l,
+      "w"         => w,
+      "vgs"       => vgs,
+      "vds"       => vds,
+      "vbs"       => vbs,
+      "vth"       => vth,
+
+      # ★ 測定値（J_data の y）
+      "meas"      => e["y"],
+      "calc"      => Array.new(n, 0),
     
-    lint   =  (model.get:LINT).to_f 
-    wint   =  (model.get:WINT).to_f 
-    tox    =  (model.get:TOX).to_f 
-    nch    =  (model.get:NCH).to_f
-    if (model.get:NSUB).nil? then
-      nsub   =  6.0E16
-    else
-      nsub   =  (model.get:NSUB).to_f
-    end
-    vth0   =  (model.get:VTH0).to_f
-    k1     =  (model.get:K1).to_f
-    k2     =  (model.get:K2).to_f
-    k3     =  (model.get:K3).to_f
-    k3b    =  (model.get:K3B).to_f
-    nlx    =  (model.get:NLX).to_f
-    w0     =  (model.get:W0).to_f
-    dvt0   =  (model.get:DVT0).to_f
-    dvt1   =  (model.get:DVT1).to_f
-    dvt2   =  (model.get:DVT2).to_f
-    #dsub   =  (model.get:DSUB).to_f
-    #eta0   =  (model.get:ETA0).to_f
-    etab   =  (model.get:ETAB).to_f
-    dvt0w  =  (model.get:DVT0W).to_f
-    dvt1w  =  (model.get:DVT1W).to_f
-    dvt2w  =  (model.get:DVT2W).to_f
-   
-  #  leff   =  l - 2.0 * lint
-    weff   =  w + 2.0 * wint
-    # parameters
-    phis  = @phis
-    phiss = Math.sqrt(phis)
-    vbi   = Vt * Math.log(nch  * NDS / (Ni**2))
-
-    xdep  = Math.sqrt(2.0 * ESi * E0 * (phis - vbs)/(Q * nch))
-    xdep0 = Math.sqrt(2.0 * ESi * E0 * phis/(Q * nch))    
-    lt    = Math.sqrt(ESi * xdep * tox / Eox) * (1.0 + dvt2 * vbs)
-    lt0   = Math.sqrt(ESi * xdep0 * tox / Eox)
-    ltw   = Math.sqrt(ESi * xdep * tox / Eox) * (1.0 + dvt2w * vbs)
-
-    #p "phis=#{phis.round(6)},vbi=#{vbi.round(6)},xdep=#{xdep.round(6)},xdep0=#{xdep0.round(6)},lt=#{lt.round(6)},lt0=#{lt0.round(6)},ltw=#{ltw.round(6)}"
-    out = []
-
-    for i in 0..0 do
-      out[i] = duplicate_j_data
-      out[i]["meas"] = false
-      out[i]["w"]    = w
-      out[i]["l"]    = 0
-      out[i]["vds"]  = vds
-      out[i]["vbs"]  = vbs
-      out[i]["name"] = "VTH(D2)"
-    end
-    for i in 0..data[0]["x"].size - 1 do
-        leff = data[0]["x"][i] - 2 * lint
-        #delta20  = - dvt0 * (Math.exp(-dvt1 * leff / (2.0 * lt )) + 2.0 * Math.exp(- dvt1 * leff / lt ))* (vbi - phis)
-        #p "dleat20 =#{delta20.round(5)} DVT0=#{dvt0.round(5)} DVT1=#{dvt1.round(5)} (vbi - phis)=#{(vbi - phis).round(5)} AA = #{(Math.exp(-dvt1 * leff / (2.0 * lt )) + 2.0 * Math.exp(- dvt1 * leff / lt )).round(5)}"
-
-        #delta10  = k1 * (Math.sqrt(1.0 + nlx/leff) - 1.0)
-        #delta11  =( k3 + k3b * vbs) * tox/(weff + w0) * phis
-        #delta20  = - dvt0 * (Math.exp(-dvt1 * leff / (2.0 * lt )) + 2.0 * Math.exp(- dvt1 * leff / lt ))* (vbi - phis)
-        delta30  = -        (Math.exp(-dsub * leff / (2.0 * lt0)) + 2.0 * Math.exp(- dsub * leff / lt0))* (eta0 + etab * vbs) * vds
-        #delta40  = dvt0w * (Math.exp(-dvt1w * (weff * leff)  / (2.0 * ltw)) + 2.0 * Math.exp(- dvt1w * (weff * leff) / ltw))*(vbi - phis)
-      
-        out[0]["x"] << data[0]["x"][i]
-        out[0]["y"] << delta30
-    end
-
-    return out
-  end
-
-  def initialize_params_vth_l
-    params = {
-      "TOX"  => (@model.get :TOX).to_f,
-      "NCH"  => (@model.get :NCH).to_f,
-      "VTH0" => (@model.get :VTH0).to_f ,
-      "K1"   => (@model.get :K1).to_f ,
-      "K2"   => (@model.get :K2).to_f,
-      "PHI"  => @phis ,
-
-      "DVT0" => (@model.get :DVT0).to_f,
-      "DVT1" => (@model.get :DVT1).to_f,
-      "DVT2" => (@model.get :DVT2).to_f,
-      "LINT" => (@model.get :LINT).to_f,
-      "WINT" => (@model.get :WINT).to_f,
-      "DSUB" => (@model.get :DSUB).to_f,
-      "ETA0" => (@model.get :ETA0).to_f,
-      "LT0" =>  1e-7,
-      "ETAB" => (@model.get :ETAB).to_f,
-      "NFACTOR" => (@model.get :NFACTOR).to_f
+      # ★ 重み
+      "weights"   => Array.new(n, 1)
     }
+    end
 
-    xdep0 = Math.sqrt(2.0 * ESi * E0 * @phis/(Q * params["NCH"]))    
-    params["LT0"]   = Math.sqrt(ESi * xdep0 * params["TOX"] / Eox)
-    p params
-    p "Xdep0 = #{xdep0}"    
-    return params
+    File.write(file, JSON.pretty_generate(entries))
+    puts "Converted to #{file}"
+    entries
   end
 
-  def calc_xdep0(params)
+  def calc_l0
+    xj  =(@model.get :XJ).to_f
+    tox =(@model.get :TOX).to_f
+    l0 = Math.sqrt(ESi/Eox * xj * tox)
+    return l0
+  end
+
+  def get_params_vgid(file:"params_vgid.json")
+    u0  =  (@model.get :U0).to_f
+    ua  =  (@model.get :UA).to_f
+    ub  =  (@model.get :UB).to_f
+    uc  =  (@model.get :UC).to_f
+    tox =  (@model.get :TOX).to_f
+    lint = (@model.get :LINT).to_f
+    rdsw = (@model.get :RDSW).to_f
+    vsat = (@model.get :VSAT).to_f
+    wint = (@model.get :WINT).to_f
+    cox = Eox * E0 / tox
+    abulk = 1.0
+    params =
+    {
+      "U0" => u0,
+      "UA" => ua,
+      "UB" => ub,
+      "UC" => uc,
+      "TOX" => tox,
+      "LINT" => lint,
+      "RDSW" => rdsw,
+      "VSAT" => vsat,
+      "WINT" => wint,
+      "COX"  => cox,
+      "ABULK" => abulk
+    }
+    File.open(file, "w") do |f|
+      f.write(JSON.pretty_generate(params))
+    end
+    p "params_file to #{file}"
+  end
+
+  def get_params_vdid(file:"params_vdid.json")
+    tox = (@model.get :TOX).to_f 
+    cox = Eox * E0 / tox
+    abulk = 1.0
+    xdep0 = calc_xdep0
+    lt0 = calc_lt0()
+    l0  = calc_l0() 
+    params =
+    {
+      "LINT"  => (@model.get :LINT).to_f,
+      "RDSW"  => (@model.get :RDSW).to_f,
+      "WINT"  => (@model.get :WINT).to_f,
+      "U0"    => (@model.get :U0).to_f,
+      "UA"    => (@model.get :UA).to_f,
+      "UB"    => (@model.get :UB).to_f,
+      "UC"    => (@model.get :UC).to_f,
+      "VSAT"  => (@model.get :VSAT).to_f,
+      "TOX"   => tox,
+      "K1"    => (@model.get :K1).to_f,
+      "PHI"   =>  @phis,
+      "A0"    => (@model.get :A0).to_f,
+      "AGS"   => (@model.get :AGS).to_f,      
+      "B0"    => (@model.get :B0).to_f,
+      "B1"    => (@model.get :B1).to_f,     
+      "KETA"  => (@model.get :KETA).to_f,
+      "XJ"    => (@model.get :XJ).to_f,     
+      "COX"   => cox,
+      "XDEP"   => xdep0,
+      "PCLM"    => (@model.get :PCLM).to_f,
+      "PDIBLC1" => (@model.get :PDIBLC1).to_f,
+      "PDIBLC2" => (@model.get :PDIBLC2).to_f,
+      "PDIBLCB" => (@model.get :PDIBLCB).to_f,
+      "PSCBE1"  => (@model.get :PSCBE1).to_f,
+      "PSCBE2"  => (@model.get :PSCBE2).to_f,
+      "DROUT"   => (@model.get :DROUT).to_f,
+      "PAVG"    => (@model.get :PAVG).to_f,
+      "DELTA"   => (@model.get :DELTA).to_f,
+      "LT"      => lt0,
+      "VT"      => Vt , 
+      "ABULK"   => abulk,
+      "L0"      => l0
+    }
+    File.open(file, "w") do |f|
+      f.write(JSON.pretty_generate(params))
+    end
+    p "params_file to #{file}"
+  end
+
+  def get_params_sat(file:"params_sat.json")
+    tox = (@model.get :TOX).to_f 
+    cox = Eox * E0 / tox
+    abulk = 1.0
+    xdep0 = calc_xdep0
+    params =
+    {
+      "LINT"  => (@model.get :LINT).to_f,
+      "PCLM"    => (@model.get :PCLM).to_f,
+      "PDIBLC1" => (@model.get :PDIBLC1).to_f,
+      "PDIBLC2" => (@model.get :PDIBLC2).to_f,
+      "PDIBLCB" => (@model.get :PDIBLCB).to_f,
+      "PSCBE1"  => (@model.get :PSCBE1).to_f,
+      "PSCBE2"  => (@model.get :PSCBE2).to_f,
+      "DROUT"   => (@model.get :DROUT).to_f,
+      "PAVG"    => (@model.get :PAVG).to_f,
+      "DELTA"   => (@model.get :DELTA).to_f,
+      "ABULK" => abulk
+    }
+    File.open(file, "w") do |f|
+      f.write(JSON.pretty_generate(params))
+    end
+    p "params_file to #{file}"
+  end
+
+  def get_params_vth(file:"params_vth.json")
+    params = {
+      "DVT0W"    => (model.get :DVT0W).to_f,           ##// 幅方向短チャネル効果の強さ
+      "DVTNW"    => (model.get :DVT1W).to_f,           ##// 幅方向短チャネル効果の指数減衰係数
+      "LNW"      => 1e-7,     ##// 幅方向の特性長（UCB式で使用）
+      "VBI"      => @vbi,     ##// 内部電位差 (Vbi - Φs) の基準値
+      "PHI"      => @phis,
+      "TOX"      => (@model.get :TOX).to_f,
+      "NCH"      => (@model.get :NCH).to_f,
+      "VTH0"     => (@model.get :VTH0).to_f,
+      "K1"       => (@model.get :K1).to_f,
+      "K2"       => (@model.get :K2).to_f,
+      "DVT0"     => (@model.get :DVT0).to_f,
+      "DVT1"     => (@model.get :DVT1).to_f,
+      "DVT2"     => (@model.get :DVT2).to_f,
+      "LINT"     => (@model.get :LINT).to_f,
+      "WINT"     => (@model.get :WINT).to_f,
+      "DSUB"     => (@model.get :DSUB).to_f,
+      "ETA0"     => (@model.get :ETA0).to_f,
+      "ETAB"     => (@model.get :ETAB).to_f,
+      "NFACTOR"  => (@model.get :NFACTOR).to_f,
+      "NLX"      => (@model.get :NLX).to_f,
+      "K3"       => (@model.get :K3).to_f,
+      "K3B"      => (@model.get :K3B).to_f,
+      "W0"       => (@model.get :W0).to_f,
+      "Q"        => Q,
+      "E0"       => E0,
+      "ESI"      => ESi,
+      "Eox"      => Eox,
+      "T"        => T,
+      "K"        => K,
+      "NI"       => Ni,
+      "Vt"       => Vt,
+      "NDS"      => NDS,
+      "ALW"      => 0.0,
+      "BL"       => 1.0,
+      "BW"       => 1.0,
+      "MAG_NLX"  => 1.0,
+      "MAG_SCE"  => 0.6887,
+      "MAG_SCE2" => 69.242,
+      "MAG_DIBL"  => 1.0,
+      "MAG_DIBL2" => 1.0,
+      "MAG_W"     => 1.0,
+      "DELTA_VTH" => 0.0,
+      "vth_model" => "ltspice"
+    }
+    #ltw   = Math.sqrt(ESi * xdep * tox / Eox) * (1.0 + dvt2w * 0.0)
+    #p params
+    File.open(file, "w") do |f|
+      f.write(JSON.pretty_generate(params))
+    end
+    p "params_file to #{file}"
+    params
+  end
+
+  def get_params_all
+    get_params_vgid
+    get_params_vdid
+    get_params_vth
+    get_params_sat
+  end
+
+  def calc_xdep0()
     esi  = ESi    ##params["ESI"]   # シリコン誘電率
     e0   = E0     ##params["E0"]    # 真空誘電率
     phi  = @phis  ##params["PHI"]   # 表面ポテンシャル
-    nch  = params["NCH"]   # チャネルドーピング
+    nch  = (@model.get :NCH).to_f   #params["NCH"]   # チャネルドーピング
     q    = Q      ##params["Q"]     # 電荷量
 
     xdep0 = Math.sqrt(2.0 * esi * e0 * phi / (q * nch))
     return xdep0
   end  
 
-  def calc_lt0(params)
+  def calc_lt0()
     esi   = ESi  ##params["ESI"]
     eox   = Eox  ##params["EOX"]
-    tox   = params["TOX"]
-    xdep0 = calc_xdep0(params)
+    tox   = (@model.get :TOX).to_f ##params["TOX"]
+    xdep0 = calc_xdep0()
 
     lt0 = Math.sqrt(esi * xdep0 * tox / eox)
     return lt0
   end
  
-
-
-  def vth_long(params, vbs)
-    vth0 = params["VTH0"]
-    k1   = params["K1"]
-    k2   = params["K2"]
-    phi  = params["PHI"]
-
-    sqrt_term = Math.sqrt(phi - vbs) - Math.sqrt(phi)
-
-    vth = vth0 + k1 * sqrt_term - k2 * vbs
-    return vth
-  end
-
-  def vth_sce(params, l, vbs)
-    dvt0 = params["DVT0"]
-    dvt1 = params["DVT1"]
-    dvt2 = params["DVT2"]
-    phi  = params["PHI"]
-    lint = params["LINT"]
-
-    leff = l - 2.0 * lint
-
-    theta = dvt0 * Math.exp(-dvt1 * leff / (2.0 * Math.sqrt(phi - vbs)))
-    delta = theta * (phi - vbs) + dvt2 * vbs
-
-    return delta
-  end
-
-  def dvth_dibl(params, l, vds, vbs)
-    dsub = params["DSUB"]
-    eta0 = params["ETA0"]
-    etab = params["ETAB"]
-    lt0  = params["LT0"]
-    lint = params["LINT"]
-
-    leff = l - 2.0 * lint
-
-    dibl_coeff =
-      dsub * Math.exp(-leff / lt0) +
-      eta0 +
-      etab * vbs
-
-    dvth = - dibl_coeff * vds
-    return dvth
-  end
-
-
-  def dvth_dibl(params, l, vds, vbs)
-    dsub = params["DSUB"]
-    eta0 = params["ETA0"]
-    etab = params["ETAB"]
-    lint = params["LINT"]
-
-    lt0  = calc_lt0(params)
-    leff = l - 2.0 * lint
-
-    dibl_coeff =
-      dsub * Math.exp(-leff / lt0) +
-      eta0 +
-      etab * vbs
-
-    return -dibl_coeff * vds
-  end
-
-
-  def bsim_vth(params, vds, vbs, l)
-    # 1. 長チャネルしきい値
-    vth = vth_long(params, vbs)
-
-    # 2. 短チャネル効果（SCE）
-    vth -= vth_sce(params, l, vbs)
-
-    # 3. DIBL（物理モデル）
-    vth += dvth_dibl(params, l, vds, vbs)
-
-    return vth
-  end
-
-  def step6_estimate_dsub_eta0 ori: []
-    data = duplicate_data ori # measured data
-    tox  = (@model.get :TOX ).to_f.round(12)
-    nch  = (model.get:NCH).to_f
-    lint = (@model.get :LINT).to_f.round(9)
-    dsub = (@model.get :DSUB).to_f.round(8)
-    eta0 = (@model.get :ETA0).to_f.round(8)
-    etab = (@model.get :ETAB).to_f.round(8)
-
-    # parameters
-    #cox = Eox * E0 / tox
-    phis  = @phis
-    #xdep  = Math.sqrt(2.0 * ESi * E0 * (phis - vbs)/(Q * nch))
-    xdep0 = Math.sqrt(2.0 * ESi * E0 * phis/(Q * nch))    
-    #lt    = Math.sqrt(ESi * xdep * tox / Eox) * (1.0 + dvt2 * vbs)
-    lt0   = Math.sqrt(ESi * xdep0 * tox / Eox)
-    p "Initial DSUB = #{dsub}  ETA0 = #{eta0} ETAB = #{etab}"
-
-    cal = duplicate_j_data # {"x" => [],"y" => [],"z" => [],"vgs"=> 0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"gmax"=>[],"name" =>"","mode" =>"lines","meas"=>true}
-    out = duplicate_j_data # {"x" => [],"y" => [],"z" => [],"vgs"=> 0.0,"vds"=>0.0,"vbs" =>0.0,"vth" =>0.0,"l"=>0.0,"w"=>0.0,"gmax"=>[],"name" =>"","mode" =>"lines","meas"=>true}
-    ### estimate routine
-    for i in 0.data[0]["x"].size - 1 do
-      cal["x"][i] = data[0]["x"][i] ### L ###
-      cal["y"][i] = data[1]["y"][i] - data[0]["y"][i]
-      out["x"][i] = data[0]["x"][i] ### L ###
-    end
-    cal["vds"] = data[1]["vds"] - data[0]["vds"] ###deltaVds( 1 - 0.05)
-    out["vds"] = cal["vds"] 
-    for i in 0..out["x"].size - 1 do
-      out["y"] = dvth_dibl l:l ,vds:out["vds"] ,vbs: 0.0,dsub: dsub,eta0: eta0,etab: etab,lt0: lt0, lint: lint 
-    end
-
-
-    ### end estimate
-  
-   
-    @model.set :DSUB => dsub.round(4)
-    @model.set :ETA0 => eta0.round(4)
-    @model.save
-
-    p "final DSUB = #{dsub.round(2)}, ETA0 = #{eta0.round(2)}, STDV =#{stdv0.round(6)}"
-  end
-
-  ### [STEP6-5] Caliculate VTH[4] ###
-  def step6_calculate_dvt0_dvt1 ddata: [] ,vds: 0.05,vbs: 0,dvt0: 2.2,dvt1: 0.53,dvt2: -0.032,w: 60e-6
-    data =[]  
-    data = duplicate_data ddata
-    
-    lint   =  (model.get:LINT).to_f 
-    wint   =  (model.get:WINT).to_f 
-    tox    =  (model.get:TOX).to_f 
-    nch    =  (model.get:NCH).to_f
-    if (model.get:NSUB).nil? then
-      nsub   =  6.0E16
-    else
-      nsub   =  (model.get:NSUB).to_f
-    end
-    vth0   =  (model.get:VTH0).to_f
-    #k1     =  (model.get:K1).to_f
-    #k2     =  (model.get:K2).to_f
-    #k3     =  (model.get:K3).to_f
-    #k3b    =  (model.get:K3B).to_f
-    #nlx    =  (model.get:NLX).to_f
-    #w0     =  (model.get:W0).to_f
-    #dvt1   =  (model.get:DVT1).to_f
-    #dvt2   =  (model.get:DVT2).to_f
-    dsub   =  (model.get:DSUB).to_f
-    eta0   =  (model.get:ETA0).to_f
-    #etab   =  (model.get:ETAB).to_f
-    #dvt0w  =  (model.get:DVT0W).to_f
-    #dvt1w  =  (model.get:DVT1W).to_f
-    #dvt2w  =  (model.get:DVT2W).to_f
-   
-    weff   =  w + 2.0 * wint
-    # parameters
-    phis  = @phis
-    phiss = Math.sqrt(phis)
-    vbi   = Vt * Math.log(nch  * NDS / (Ni**2))
-
-    xdep  = Math.sqrt(2.0 * ESi * E0 * (phis - vbs)/(Q * nch))
-    xdep0 = Math.sqrt(2.0 * ESi * E0 * phis/(Q * nch))    
-    lt    = Math.sqrt(ESi * xdep * tox / Eox) * (1.0 + dvt2 * vbs)
-    lt0   = Math.sqrt(ESi * xdep0 * tox / Eox)
-    #ltw   = Math.sqrt(ESi * xdep * tox / Eox) * (1.0 + dvt2w * vbs)
-
-    #p "phis=#{phis.round(6)},vbi=#{vbi.round(6)},xdep=#{xdep.round(6)},xdep0=#{xdep0.round(6)},lt=#{lt.round(6)},lt0=#{lt0.round(6)},ltw=#{ltw.round(6)}"
-    out = []
-
-    for i in 0..0 do
-      out[i] = duplicate_j_data
-      out[i]["meas"] = false
-      out[i]["w"]    = w
-      out[i]["l"]    = 0
-      out[i]["vds"]  = vds
-      out[i]["vbs"]  = vbs
-      out[i]["name"] = "VTH(D4)"
-    end
-    for i in 0..data[0]["x"].size - 1 do
-        leff = data[0]["x"][i] - 2 * lint
-        #delta20  = - dvt0 * (Math.exp(-dvt1 * leff / (2.0 * lt )) + 2.0 * Math.exp(- dvt1 * leff / lt ))* (vbi - phis)
-        #p "dleat20 =#{delta20.round(5)} DVT0=#{dvt0.round(5)} DVT1=#{dvt1.round(5)} (vbi - phis)=#{(vbi - phis).round(5)} AA = #{(Math.exp(-dvt1 * leff / (2.0 * lt )) + 2.0 * Math.exp(- dvt1 * leff / lt )).round(5)}"
-
-        #delta10  = k1 * (Math.sqrt(1.0 + nlx/leff) - 1.0)
-        #delta11  =( k3 + k3b * vbs) * tox/(weff + w0) * phis
-        delta20  = - dvt0 * (Math.exp(-dvt1 * leff / (2.0 * lt )) + 2.0 * Math.exp(- dvt1 * leff / lt ))* (vbi - phis)
-        #delta30  = -        (Math.exp(-dsub * leff / (2.0 * lt0)) + 2.0 * Math.exp(- dsub * leff / lt0))* (eta0 + etab * vbs) * vds
-        #delta40  = dvt0w * (Math.exp(-dvt1w * (weff * leff)  / (2.0 * ltw)) + 2.0 * Math.exp(- dvt1w * (weff * leff) / ltw))*(vbi - phis)
-      
-        out[0]["x"] << data[0]["x"][i]
-        out[0]["y"] << delta20
-    end
-  p "dvt0=#{dvt0} dvt1=#{dvt1} dsub=#{dsub} eta0=#{eta0}"
-    return out
-  end
-  
-  ### [STEP6-6] Estimate Dvt0 , Dvt1 ###
-  
-  def step6_estimate_dvt0_dvt1 ori: []
-    data = duplicate_data ori
-    tox  = (@model.get :TOX ).to_f.round(12)
-    lint = (@model.get :LINT).to_f.round(9)
-    wint = (@model.get :WINT).to_f.round(9)
-    dvt0 = (@model_org.get :DVT0).to_f.round(8)
-    dvt1 = (@model_org.get :DVT1).to_f.round(8)
-    dvt2 = (@model.get :DVT2).to_f.round(8)
-    cox = Eox * E0 / tox
-    @jtable[1]["test"] = [] 
-    dvt1 = 1.0
-    vds = 0.05
-    calc  = step6_calculate_dvt0_dvt1 ddata: data ,vds: vds,vbs: 0,dvt0: dvt0,dvt1: dvt1,dvt2: dvt2,w: 60e-6
-    stdv0 = step6_calc_stdv ori: data,calc: calc
-    p "Initial DVT0 = #{dvt0}  DVT1 = #{dvt1} DVT2 = #{dvt2}:: STDV = #{stdv0}"
-    
-    ddvt0 = 0.1
-
-    ddvt1 = 0.01
-
-    calc_dp = step6_calculate_dvt0_dvt1 ddata: data ,vds: vds,vbs: 0,dvt0: (dvt0 + ddvt0),dvt1: dvt1,dvt2: dvt2,w: 60e-6
-    stdv_dp = step6_calc_stdv ori: data,calc: calc_dp
-    calc_dm = step6_calculate_dvt0_dvt1 ddata: data ,vds: vds,vbs: 0,dvt0: (dvt0 - ddvt0),dvt1: dvt1,dvt2: dvt2,w: 60e-6
-    stdv_dm = step6_calc_stdv ori: data,calc: calc_dm
-    if stdv_dp > stdv_dm then
-      ddvt0 = - ddvt0
-    end
-
-    calc_ep = step6_calculate_dvt0_dvt1 ddata: data ,vds: vds,vbs: 0,dvt0: dvt0,dvt1: (dvt1 + ddvt1),dvt2: dvt2,w: 60e-6
-    stdv_ep = step6_calc_stdv ori: data,calc: calc_ep
-    calc_em = step6_calculate_dvt0_dvt1 ddata: data ,vds: vds,vbs: 0,dvt0: dvt0,dvt1: (dvt1 - ddvt1),dvt2: dvt2,w: 60e-6
-    stdv_em = step6_calc_stdv ori: data,calc: calc_em
-    if stdv_ep > stdv_em then
-      ddvt1 = - ddvt1
-    end
  
-  ### stdv  > 1e-6 loop
-    i = 0
-    isdvt0 = true
-
-    while(i < 20 && stdv0 >1.0e-4 && ddvt0.abs >= 1e-4 && ddvt1.abs >= 1e-4 )  do
-      calc_d = step6_calculate_dvt0_dvt1 ddata: data ,vds: vds,vbs: 0,dvt0: (dvt0 + ddvt0),dvt1: dvt1,dvt2: dvt2,w: 60e-6
-      stdv_d = step6_calc_stdv ori: data,calc: calc_d
-      calc_e = step6_calculate_dvt0_dvt1 ddata: data ,vds: vds,vbs: 0,dvt0: dvt0,dvt1: (dvt1 + ddvt1),dvt2: dvt2,w: 60e-6
-      stdv_e = step6_calc_stdv ori: data,calc: calc_e
-
-      if (stdv_d < stdv_e) then 
-        p "N= #{i} DVT0 = #{(dvt0+ddvt0).round(6)}  DVT1 = #{dvt1.round(6)} STDV = #{stdv_d.round(12)} DDVT0 = #{ddvt0.round(6)} "
-        if (stdv_d < stdv0) then
-          stdv0 =stdv_d
-          dvt0 += ddvt0
-          isdvt0 =true
-        else
-          #stdv0 =stdv_d
-          dddvt0 = -ddvt0/2
-          dvt0 += ddvt0
-          isdvt0 = true
-        end
-      else
-        p "N= #{i} DVT0 = #{(dvt0).round(6)}  DVT1 = #{(dvt1 + ddvt1).round(6)} STDV = #{stdv_e.round(12)} DDVT1 = #{ddvt1.round(6)} "
-        if (stdv_e < stdv0) then
-          stdv0  = stdv_e
-          dvt1  += ddvt1
-          isdvt0 = false
-        else
-          #stdv0 =stdv_d
-          dvt1 = -ddvt1/10
-          dvt1 += ddvt1
-          isdvt0 =false
-        end
-      end
-  
-      i += 1
-    end
-
-    @jtable[1]["DVT0_DVT1"] = []
-    for i in 0..calc.size - 1 do  
-      @jtable[1]["DVT0_DVT1"] << data[i].dup
-      if isdvt0 then
-        @jtable[1]["DVT0_DVT1"] << calc_d[i].dup
-      else
-        @jtable[1]["DVT0_DVT1"] << calc_e[i].dup
-      end
-    end
-
-    @model.set :DVT0 => dvt0.round(4)
-    @model.set :DVT1 => dvt1.round(4)
-    @model.save
-
-    p "final DVT0 = #{dvt0.round(2)}, DVT1 = #{dvt1.round(2)}, STDV =#{stdv0.round(6)}"
-  end
-
-  ### [STEP6-7] Calculate stdv between meas & calc  ###
-  def step6_calc_stdv ori: [],calc: []
-    tmp = 0
-    num = 0
-    for i in 0..ori.size - 1 do
-      num += ori[i]["x"].size
-      imax = ori[i]["x"].size - 1
-      origin = ori[i]["y"][imax]
-      for j in 0..ori[i]["x"].size - 2 do
-        tmp += ((calc[i]["y"][j]  - ori[i]["y"][j])/ori[i]["y"][j])**2
-      end
-        tmp += ((calc[i]["y"][imax] - ori[i]["y"][imax]))**2*1e3
-        num += 1
-    end
-    result = Math.sqrt(tmp)/num
-    return result
-  end
-
   ### 2nd-order least squares method y = Ax^2 + Bx + C
   def determine_2nd x  , y
 
@@ -2544,805 +2423,53 @@ class Bsim3Fit < ModelFit
     [0 , a , b]
   end
   
+  # Vds-Id の減少領域をカットする
+  def cut_decreasing(xs, ys, tol)
+    data = xs.zip(ys)
+    data.reject! { |x, y| x.nil? || y.nil? }
+
+    cleaned = []
+    last_y = -Float::INFINITY
+    data.each do |x, y|
+      break if y < last_y * (1 - tol)  # tolerance分の減少を許容
+      cleaned << [x, y]
+      last_y = y
+    end
+    cleaned
+  end
+
+
+  # measdata を破壊的に書き換える
+  def process_measdata!(data,tol)
+    data.each do |entry|
+      xs = entry["x"]
+      ys = entry["y"]
+      next unless xs && ys
+
+      cleaned = cut_decreasing(xs, ys,tol)
+
+      # 破壊的に上書き
+      entry["x"] = cleaned.map { |p| p[0] }
+      entry["y"] = cleaned.map { |p| p[1] }
+    end
+  end
+
+  ### NULL/NIL data cut
+  def clean_data(xs, ys)
+  data = xs.zip(ys)
+  data.reject! { |x, y| x.nil? || y.nil? }
+  cleaned = []
+  last_x = -Float::INFINITY
+  data.each do |x, y|
+    break if x < last_x
+    cleaned << [x, y]
+    last_x = x
+  end
+  cleaned
+end
+
+
 end   # end of Bsim3Fit < ModelFit
 
-if $0 == __FILE__
-  $:.unshift('.')
-  $:.unshift('./ade_express')
-  #load 'j_pack.rb'
-
-  Dir.chdir     'C:\Users\swear\Documents\Seafile\My Library\bsim3'
-  puts          "DIR=#{Dir.pwd}"   
-  
-  # model lists & datas
-  params = {
-    wdir:       'kitayama/nmos/',
-    model:       'models/test.lib',
-    model_org:   "models/test_org.lib",
-  
-    jtable_l:   "meas_l.json",
-    jtable_w:   "meas_w.json",
-    ll:           [[3e-6,60e-6],[4e-6,60e-6],[5e-6,60e-6],[6e-6,60e-6],[10e-6,60e-6]],
-    lname:        ["l=3u","l=4u","l=5u","l=6u","l=10u"],
-    ww:           [[10e-6,60e-6],[10e-6,36e-6],[10e-6,12e-6]],
-    wname:        ["w=60u","w=36u","w=12u"]
-          } 
-  ###  mos parameter calc ###
-  #### Simulation process data ###
-=begin
-  files = [{"process"=>"DEFAULT",  "model"=> params[:model] ,  "jtable"=>params[:jtable_l], "size"=> 1.0e-6,"num"=> 501,
-              "lw"=>[[1e-6,100e-6],[2e-6,100e-6],[4e-6,100e-6],[10e-6,100e-6],[20e-6,100e-6],[40e-6,100e-6],[100e-6,100e-6]],"name"=> ["l=1u","l=2u","l=4u","l=10u","l=20u","l=40u","l=100u"]},
-           {"process"=>"PTS06",   "model"=> params[:model_pts] ,  "jtable"=>params[:jtable_pts], "size"=> 0.6e-6,"num"=> 501,
-             "lw"=>[[0.6e-6,100e-6],[1e-6,100e-6],[2e-6,100e-6],[4e-6,100e-6],[10e-6,100e-6],[20e-6,100e-6],[40e-6,100e-6],[100e-6,100e-6]],"name"=> ["l=0.6u","l=1u","l=2u","l=4u","l=10u","l=20u","l=40u","l=100u"]},
-           {"process"=>"ICPS",    "model"=> params[:model_icps] , "jtable"=>params[:jtable_icps], "size"=> 1.0e-6,"num"=> 501,
-             "lw"=>[[4e-6,100e-6],[6e-6,100e-6],[10e-6,100e-6],[20e-6,100e-6],[40e-6,100e-6],[100e-6,100e-6]],"name"=> ["l=4u","l=6u","l=10u","l=20u","l=40u","l=100u"]},
-           {"process"=>"Citizn",  "model"=> params[:model_ctzn] , "jtable"=>params[:jtable_ctzn], "size"=> 0.35e-6,"num"=> 501,
-             "lw"=>[[0.35e-6,100e-6],[0.6e-6,100e-6],[1e-6,100e-6],[2e-6,100e-6],[4e-6,100e-6],[10e-6,100e-6],[20e-6,100e-6],[40e-6,100e-6],[100e-6,100e-6]],"name"=>["l=0.35u","l=0.6u","l=1u","l=2u","l=4u","l=10u","l=20u","l=40u","l=100u"]},
-             {"process"=>"tias130", "model"=> params[:model_tias] , "jtable"=>params[:jtable_tias],  "size"=> 0.13e-6,"num"=> 301,
-             "lw"=>[[0.13e-6,100e-6],[0.6e-6,100e-6],[1e-6,100e-6],[2e-6,100e-6],[4e-6,100e-6],[10e-6,100e-6],[20e-6,100e-6],[40e-6,100e-6],[100e-6,100e-6]],"name"=>["l=0.13u","l=0.6u","l=1u","l=2u","l=4u","l=10u","l=20u","l=40u","l=100u"]}]
-=end
-
-  ### [STEP1] #### Estimate VTH0
-  ### [STEP2] Estimate U0,UA,UB,UC
-  #=begin
-  ### Bsim3Fit Class Create
-  mf = Bsim3Fit.new params[:model], params[:model_org]
-  mf.jtable[1]["Vds0_05"]     = []
-  mf.jtable[1]["Vds_1"]       = []
-  mf.jtable[1]["vth_vds"]     = []
-  
-  ### Read data.xls files and display Vgs-Id & VTH
-=begin
-  #files =["25R2JUN2_A1_NL6W12.xls",  "25R2JUN2_C1_NL6W12.xls",  "25R2JUN2_E1_NL6W12.xls",
-  #        "25R2JUN2_A3_NL6W12.xls",  "25R2JUN2_C3_NL6W12.xls",  "25R2JUN2_E3_NL6W12.xls",
-  #        "25R2JUN2_A5_NL6W12.xls",  "25R2JUN2_C5_NL6W12.xls",  "25R2JUN2_E5_NL6W12.xls"]
-=end
-
-  files =["25R2JUN2_C3_NL10W60.xls"]
-  dir = [params[:wdir],"IdVgs"].join("/")
-  l   = 10e-6
-  w   = 60e-6
-  vbs = 0.0
-  vths = []
-
-  mf.read_idvgs_xls dir: dir, files:files,graph:["Vds0_05","Vds_1"],is_lw: true,l:l,w:w,vbs: vbs
-  ## calculate VTH0 for 0.05
-  target = "Vds0_05"
-  vds = 0.05
-  mf.jtable[1]["measdata"] = mf.duplicate_data target
-  mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vbs: vbs ,vds: vds, mode: "lines" , lw: [l,w] , name: "Vds= #{vds.to_s}"
-  mf.jtable[1][target] = mf.duplicate_data "measdata"
-
-  ## calculate VTH0 for 1.0
-  target = "Vds_1"
-  mf.jtable[1]["measdata"] = mf.duplicate_data target
-  mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vbs: vbs ,vds: vds, mode: "lines" , lw: [l,w] , name:  "Vds= #{vds.to_s}"
-  mf.jtable[1][target] = mf.duplicate_data "measdata"
-
-  ### get vth-vgs curve
-  mf.jtable[1]["measdata"] = mf.duplicate_data "Vds0_05"
-  mf.add_graph source: "Vds_1",target: "measdata" 
-  vths = mf.convert_vth_lwvdvb param: 'vds',process: 'sweep Vds'
-  mf.jtable[1]["vth_vds"] << vths
-  
-  mf.step1_calc_simplemodel
-  mf.step1_calc_gmdata
-  p mf.list_graph
-
-  #table title access & save
-  mf.jtable[0]["basename"] = "nmos_id_vgs_L#{(l*1e6).to_s}W#{(w*1e6).to_s}"
-  mf.jtable[0]["dir"]  = [params[:wdir],"json/"].join("/")
-  mf.jtable[0]["step"] =>"STEP1"
-  mf.write_json
-
-  #plot Vds=0.05 & Vds=1.0 save
-  mf.plot_graph "Vds0_05"
-  mf.plot_graph "Vds_1"
-  mf.plot_graph "vth_vds"
-  mf.plot_graph "gmdata"
-  #mf.plot_graph ""
-  params = mf.initialize_params_vth_l
-  #p " NCH =#{params["NCH"]}"
-  #p " Xdep0 = #{mf.calc_xdep0(params)} Lt0 = #{mf.calc_lt0(params)}"
-
-  ### [STEP2] Estimate U0,UA,UB,UC err: 1e-5,mag: 3.0 ,isvbs: false
-  mf.copy_graph "Vds0_05","measdata",true
-  mf.step2_estimation_u0_ua_ub_uc mag: 1.2,err: 1.0e-6,isvbs: false 
-  p mf.list_graph
-  mf.step2_verification_ueff
-  mf.plot_graph "ver_ueff"
-
-
-  ### [STEP3][STEP5][STEP6][STEP6.5]
-=begin
-
-  ### Bsim3Fit Class Create
-  mf = Bsim3Fit.new params[:model], params[:model_org]
-  mf.jtable[0]["step"] = "STEP3"
-  mf.jtable[1]["Vds0_05"]     = []
-  mf.jtable[1]["Vds_1"]       = []
-  mf.jtable[1]["VTH_L"]       = []
-  mf.jtable[1]["Rds_L"]       = []
-  mf.jtable[1]["test"]       = []
-  
-  ### Read data.xls files and display Vgs-Id & VTH
-  
-  files =["25R2JUN2_C3_NL2W60.xls","25R2JUN2_C3_NL3W60.xls","25R2JUN2_C3_NL4W60.xls",
-          "25R2JUN2_C3_NL5W60.xls","25R2JUN2_C3_NL6W60.xls","25R2JUN2_C3_NL10W60.xls"
-        ]
-  files =["25R2JUN2_C3_NL3W60.xls","25R2JUN2_C3_NL4W60.xls",
-          "25R2JUN2_C3_NL5W60.xls","25R2JUN2_C3_NL6W60.xls","25R2JUN2_C3_NL10W60.xls"
-        ]
-
-  ### indidual xls-files read and act
-  files.each{|v| 
-    array = v.split( /(\w+)L([0-9]+).*W([0-9]+)/)
-
-    dname = array[1] + "_NL#{array[2]}W#{array[3]}"
-    dl    = array[2].to_f * 1e-6 
-    dw    = array[3].to_f * 1e-6 
-
-    # read xls file
-
-    s = Roo::Excel.new( params[:wdir] + 'IdVgs/' + v )
-    sheet = s.sheet(0)
-
-    ### for Vds = 0.05V
-    Vds0_05 = mf.duplicate_j_data
-    Vds0_05["name"] = dname
-    Vds0_05["l"] = dl
-    Vds0_05["w"] = dw
-    Vds0_05["vbs"] =0
-    Vds0_05["x"] = sheet.column(m_s["vgs1"]).dup        #copy vgs
-    Vds0_05["x"].shift()
-    for i in 0..Vds0_05["x"].size - 1 do
-      Vds0_05["x"][i] = Vds0_05["x"][i].round(4)        #rounding off at 1e-4
-    end
-    Vds0_05["y"]   = sheet.column(m_s["ids1"])          #copy ids
-    Vds0_05["y"].shift()
-    Vds0_05["vds"] = sheet.cell(m_s["vds1"],2).round(3) #rounding off at 1e-3
-    #mf.jtable[1]["Vds0_05"] << Vds0_05.dup
-    mf.jtable[1]["measdata"] << Vds0_05.dup
-  }
-
-  #table title access & save
-  ## calculate VTH0
-  mf.calculate_vth_l_relation flg: false, vgs: 0.0, vbs: 0 ,vds: 0.05, mode: "lines" , lw: params[:ll] , name: params[:lname]
-  mf.print_condition
-  ### get vth-vgs curve
-  vths = mf.convert_vth_lwvdvb param: 'l',process: 'Vds=50mV'
-  vths["meas"] = true
-  mf.jtable[1]["VTH_L"] << vths
-  mf.copy_graph "measdata" ,"Vds0_05"
-  mf.jtable[1]["measdata"] =[]
-  
-  # indidual xls-files read and act @Vds=1V
-  files.each{|v|
-    array = v.split( /(\w+)L([0-9]+).*W([0-9]+)/)
-
-    dname = array[1]+ "_NL#{array[2]}W#{array[3]}"
-    dl    = array[2].to_f * 1e-6 
-    dw    = array[3].to_f * 1e-6 
- 
-    # read xls file
-
-    s = Roo::Excel.new("kitayama/nmos/IdVgs/" + v)
-    sheet = s.sheet(0)
-
-    ### for Vds = 1V
-    Vds_1         = mf.duplicate_j_data
-    Vds_1["name"] = dname
-    Vds_1["l"]    = dl
-    Vds_1["w"]    = dw
-    Vds_1["vbs"]  = 0
-    Vds_1["x"]    = sheet.column(m_s["vgs2"]).dup     #copy vgs2
-    Vds_1["x"].shift()
-    for i in 0..Vds_1["x"].size - 1 do
-      Vds_1["x"][i] = Vds_1["x"][i].round(4)          #rounding off at 1e-4
-    end
-    Vds_1["y"]   = sheet.column(m_s["ids2"])          #copy ids2
-    Vds_1["y"].shift()
-    Vds_1["vds"] = sheet.cell(m_s["vds2"],2).round(3) #rounding off at 1e-3
-    #mf.jtable[1]["Vds_1"] << Vds_1.dup
-    mf.jtable[1]["measdata"] << Vds_1.dup
-    mf.jtable[0]["basename"] = "nmos_id_vgs_L#{array[2]}W#{array[3]}"
-  } #end of each
-
-  mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vbs: 0 ,vds: 1.0, mode: "lines" , lw: params[:ll] , name: params[:lname]
-  mf.print_condition
-  ### get vth-vgs curve
-  vths = mf.convert_vth_lwvdvb param: 'l',process: 'Vds=1.0V'
-  vths["meas"] = true
-  mf.jtable[1]["VTH_L"] << vths
-  mf.copy_graph "measdata","Vds_1"
-  mf.jtable[1]["measdata"] = []
-  #mf.copy_graph "Vds0_05","measdata",true  
-  mf.jtable[0]["basename"] = "nmos_id_vgs"
-  mf.jtable[0]["dir"]      = params[:wdir] + "json/"
-  mf.jtable[0]["step"]     ='STEP3'
-
-  mf.write_json
-  mf.plot_graph "Vds0_05"
-  mf.plot_graph "Vds_1"
-  mf.plot_graph "VTH_L"
-  
-  ### Calc Rds-L Curve
-  mf.copy_graph "Vds0_05","measdata",true
-  #mf.step3_transform_id_vgs_to_rd_l from: 3.0,to:5.0
-  mf.jtable[1]["measdata"].delete_at(0)
-  #  mf.jtable[1]["measdata"].delete_at(0)
-
-  mf.step3_estimate_lint_rdsw step: 0.5,from:1.0, to: 5.0
-  mf.step3_estimate_lint_rdsw2 from:1.0, to: 5.0
-
-  mf.jtable[1]["delta_vth"] = []
-  mf.jtable[1]["delta_vth"] = mf.step6_get_delta_vth "VTH_L"
-
-  ori  = []
-  ori  << mf.jtable[1]["delta_vth"][2]
-  calc = mf.step6_calculate_dsub_eta0 ddata: ori ,vds: 0.95,vbs: 0,dsub: 0.56,eta0: 0.08,etab: 0.0,w: 60e-6
-  mf.jtable[0]["step"] = 'STEP6'
-  mf.jtable[1]["plotdata"] = calc
-  mf.jtable[1]["measdata"] = ori
-  mf.write_json
-  mf.plot_graph "delta_vth"
-
-  ### [STEP6-4] Estimate Dsub & Eta0 ###
-  #ori.delete_at(1)
-  #ori[0]["y"].delete_at(0)
-  mf.step6_estimate_dsub_eta0 ori: ori
-  dsub = (mf.model.get :DSUB).to_f
-  eta0 = (mf.model.get :ETA0).to_f
-  calc = mf.step6_calculate_dsub_eta0 ddata: ori ,vds: 0.05,vbs: 0,dsub: dsub,eta0: eta0,etab: 0.0,w: 60e-6
-  calc[0]["name"] = '[D2] @Vds=0.05V'
-  calc[0]['meas'] = false
-  mf.jtable[1]["DSUB_ETA0"] << calc[0]
-  mf.plot_graph "DSUB_ETA0"
-  mf.write_json
-
-  ### [STEP6-5] Caliculate VTH[4] ###
-  ori  = []
-  ori  << mf.jtable[1]["delta_vth"][0]
-  dvt0 = (mf.model.get :DVT0).to_f
-  dvt1 = (mf.model.get :DVT1).to_f
-  #dvt0 =0.3
-  #dvt1 = 1.02
-  calc = mf.step6_calculate_dvt0_dvt1 ddata: ori ,vds: 0.05,vbs: 0,dvt0: dvt0,dvt1: dvt1,dvt2: -0.032,w: 60e-6
-  mf.jtable[0]["step"] = 'STEP6-5'
-  mf.jtable[1]["plotdata"] = calc
-  mf.jtable[1]["measdata"] = ori
-  mf.write_json
-
-  ### [STE6-6] Estimate DVT0 & DVT1  ###
-  #ori[0]["x"].delete_at(0)
-  #ori[0]["y"].delete_at(0)
-  mf.step6_estimate_dvt0_dvt1 ori: ori
-  dvt0 = (mf.model.get :DVT0).to_f
-  dvt1 = (mf.model.get :DVT1).to_f
-  calc = mf.step6_calculate_dvt0_dvt1 ddata: ori ,vds: 0.05,vbs: 0,dvt0: dvt0,dvt1: dvt1,dvt2: -0.032,w: 60e-6
-
-  calc[0]["name"] = '[D4] @Vds=0.05V'
-  calc[0]['meas'] = false
-
-  mf.jtable[1]["DVT0_DVT1"] << calc[0]
-  mf.plot_graph "DVT0_DVT1"
-  mf.write_json
-  
-  
-=end
-  ### [STEP6-7] Id-Vgs analysys ####
-=begin
-  ### Bsim3Fit Class Create
-  #mf = Bsim3Fit.new params[:model], params[:model_org]
-  ori_file ="Id_Vgs_L_0_05.json"
-  mf.read_table [params[:wdir] , "json",ori_file].join("/")
-  mf.data_cut num: 51          # data cut
-  p mf.list_graph
-  mf.jtable[0]["step"] = "STEP6-6"
-  mf.write_json
-  mf.copy_graph "plotdata","measdata",true
-  mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 0.05, vbs: 0.0, lw: [[3e-6,60e-6],[4e-6,60e-6],[5e-6,60e-6],[6e-6,60e-6],[10e-6,60e-6]], mode: "lines",name: params[:lname] 
-  p mf.print_condition
-  vths = mf.convert_vth_lwvdvb param: 'l',process: 'Vds=50mV'
-  vths["meas"] = false
-  mf.jtable[1]["VTH_L"][2] = vths
-  mf.save_json
-  mf.plot_graph "VTH_L"
-
-
-
-=end
-  ### ??? ###
-=begin    
-    ## Calculate Vth,avg,stdv
-    mf.copy_graph "Vds0_05","measdata",true       #"Vds0_05" =>"measdata" to calculate VTH
-    ### Check graph name
-    for i in 0..mf.jtable[1]["measdata"].size - 1 do
-      p "name(#{i}) = #{mf.jtable[1]["measdata"][i]["name"]}"
-    end
-    mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 0.05, vbs: [0,1,2] #,mode: "lines", lw: [6e-6,12e-6] #, name: ["0","1","2","3","4","5","6","7","8"]
-    #mf.set_condition l:6e-6,w:12e-6
-    mf.print_condition
-    data =(mf.convert_vth_lwvdvb param: "vbs",process: "ICPS").dup   # create VTH-Vbs(dummy)curve
-    data["name"] = "Vds=0.05V"
-    mf.jtable[1]["vth"] << data          #insert data to "vth" @vds=0.05V
-
-    #calc avg & STDV
-    datav = mf.duplicate_j_data         #initialize data datav {....} for avg & stdv
-    #datav = mf.duplicate_hash mf.duplicate_j_data
-    datav["meas"] = false               #set plotdata Mode
-    datav["x"] = data["x"].dup          #copy "x"
-    imax  = data["x"].size - 1
-    #datav["y"] = data["y"].dup          #copy "y"
-    dd         = mf.calc_avg_stdv data = data["y"].dup  #get dd["avg","stdv"]
-    avg  = dd["avg"]
-    stdv = dd["stdv"]
-    #p " avg = #{avg} stdv =#{stdv}" 
-    for i in 0..imax do               #make avg curve
-      datav["y"][i] = avg             #copy avg to "y"
-    end
-    datav["name"] = "Vds=0.05 avg(#{avg}),stdv(#{stdv})"
-    mf.jtable[1]["vth"] << datav.dup  #insert datav(avg & stdv) to "vth"
-=end
-=begin    
-    ### create VTH - avg graph
-    datadv = mf.duplicate_hash datav                 #copy data to datadv(vth-avg)
-    datadv["y"] = [].dup
-    datadv["name"] ="VTH-AVG(vds=0.05)"
-    for i in 0..imax do               #cal vth - avg
-      datadv["y"][i] = data[i] - avg
-    end
-    datadv["avg"]  = avg
-    datadv["stdv"] = stdv
-    datadv["meas"] = false
-    mf.jtable[1]["vth"] << datadv.dup  #insert datadv(vth - avg) to "vth"
-=end
-=begin
-    # calc Vds_1
-    mf.copy_graph "Vds_1","measdata",true
-    mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 1.0, vbs: [0,1,2],mode: "lines", lw: [6e-6,12e-6] #, name: ["0","1","2","3","4","5","6","7","8"]
-    #mf.set_condition l:6e-6,w:12e-6
-    mf.print_condition
-    data =(mf.convert_vth_lwvdvb param: "vbs",process: "ICPS").dup  # create VTH-Vbs(dummy)curve
-    data["name"] = "Vds=1.0V"
-    mf.jtable[1]["vth"] << data     #insert data to "vth" @vds=1.0V
-    
-    #clc avg & STDV
-    datav = mf.duplicate_j_data
-    datav["meas"] = false          #set plotdata Mode
-    datav["x"] = data["x"].dup
-    imax  = data["x"].size - 1
-    dd         = mf.calc_avg_stdv data = data["y"].dup
-    avg  = dd["avg"]
-    stdv = dd["stdv"]
-    
-    for i in 0..imax do
-      datav["y"][i] = avg
-    end
-    datav["name"] = "Vds=1.0 avg(#{avg}),stdv(#{stdv})"
-    mf.jtable[1]["vth"] << datav      #insert datav(avg & stdv)
-=end
-=begin
-    ### create VTH - avg graph
-    datadv = mf.duplicate_hash datav                 #copy data to datadv(vth-avg)
-    datadv["y"] = [].dup
-    datadv["name"] ="VTH-AVG(vds=0.05)"
-    for i in 0..imax do               #cal vth - avg
-      datadv["y"][i] = data[i] - avg
-    end
-    datadv["avg"]  = avg
-    datadv["stdv"] = stdv
-    datadv["meas"] = false
-    mf.jtable[1]["vth"] << datadv.dup  #insert datadv(vth - avg) to "vth"
-=end
-  
-
-  ### ModelPrameters for Vth ###
-=begin
-  ### lists is for Array(csv file) of model parameters ###
-  lists =[" process,tox,nch,nsub,lint,wint,vth0,nlx,k1, k2, k3,k3b,w0,dvt0,dvt1,dvt2,dsub,eta0,etab,dvt0w,dvt1w,dvt2w,phis,vbi,vbi2,xdep,xdep0,lt,lt0,ltw" ]
-
-  ### get spice parameters from some processes
-  files.each { |m|
-    m_process = m["process"]
-    m_model   = m["model"]
-    m_size    = m["size"]
-    m_lw      = m["lw"]
-    m_name    = m["name"]
-    m_table   = m["jtable"]
-    m_num     = m["num"]
-
-    p "#{m_table} is #{FileTest.exist?("json/original/" + m_table)}"
-    ### modeel parameters list create (sucsessfully!!)
-    mdl = CompactModel::new m_model  
-    mdl_list = mf.step0_get_vth_param mdl , m,vbs:0.0
-    lists << mdl_list.dup
-  }   
-  ### write CSV file 
-  File.open("csv/VTH_model.csv", "w") do |f|
-    lists.each { |s| f.puts(s) }
-  end
-=end
-
-  ### Vth-l Curve Mathmatically (Under Constructing)
-=begin  
-  data = (mf.step0_calculate_vth_l mdl,files[i],vbs: 0.0,vds: 0.05,l: 100e-6,w:100e-6).dup
-
-  mf.jtable[1] = data[1].dup
-  #p "mf ftom = #{mf.jtable[0]}"
-  #p "J_table = #{J_table[0]}"
- 
-  mf.jtable[0]["basename"] = "VTH_L"
-  mf.jtable[0]["dir"]      ="json/"
-  mf.jtable[0]["device"]   = files[i]["process"] 
- 
-  mf.write_json 
-  #p mf.jtable[1]["measdata"]
-
-
-  ###  PTS06 Vth-L Curve
-
-  mf1 = Bsim3Fit.new params[:model_org], params[:model_org]
-  ### [STEP0]::Id-Vgs Curve Reads ###
-  mf1.imitate_measdata File.join(params[:wdir], params[:jtable_pts])
-=end
-
-  ### Vth-L Curve from simulation
-=begin  
-  files.each { |m|
-    m_process = m["process"]
-    m_model   = m["model"]
-    m_size    = m["size"]
-    m_lw      = m["lw"]
-    m_name    = m["name"]
-    m_table   = m["jtable"]
-    m_num     = m["num"]
-
-    mdl = CompactModel::new m_model
-    vth0  = (mdl.get :VTH0).to_f
-    p "process =#{m_process}  vth0 = #{vth0}  Number of data =#{m_num}"
-    mf.jtable[1]["plotdata"] = []   # data Iitiialized ["plotdata"]
-    mf.jtable[1]["measdata"] = []   # data Initialized ["measdata"]
-    if !FileTest.exist?("json/" + m_table) then 
-      mf.imitate_measdata File.join("json/original", m_table)     # data read
-      mf.data_cut num: m_num          # data cut
-      mf.jtable[0]["basname"] = File.basename(m_name,".json")
-      p "process = #{m_process} basename = #{mf.jtable[0]["basename"]} dir = #{mf.jtable[0]["dir"]} Num of Data = #{mf.jtable[1]["measdata"][0].size}"
-      mf.save_json       ### save json/[process]_meas.json
-    else
-      mf.imitate_measdata File.join("json", m_table)     # data read
-    end
-    mf.jtable[0]["basename"] = File.basename(m_table,".json") 
-    mf.jtable[0]["dir"]      = "json/"
-    mf.jtable[0]["device"]   = m_process 
-    mf.jtable[0]["ver"]      = 1.0
-    
-    p "device = #{m_process}  => num of lw =#{m_lw.size} num of name = #{m_name.size} num of curve = #{mf.jtable[1]["measdata"].size}"
-        
-    ### [STEP1]:: VTH[V Calculation ( Vs. L)  for some process
-    mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 0.05, vbs: 0.0,mode: "lines", lw:   m_lw , name: m_name
-    mf.print_condition
-
-    data = (mf.convert_vth_lwvdvb param: "l",process: m_process).dup #VTH-L Curves
-    imax = data["y"].size - 1
-    vmax = data["y"][imax].dup
-    delta = data.dup
-    zdata = data.dup
-    data["name"] = data["name"]   + "(#{vth0.round(3)})".dup
-    delta["y"] = []
-    delta["name"] = delta["name"] + "(#{vth0.round(3)})".dup
-    zdata["y"] = []
-    zdata["name"] = zdata["name"] + "(#{vmax.round(3)})".dup
-
-    #Delta-VTH_L Curves
-    # change vth => (vth - vth0)
-    p "process = #{data["name"]} , imax =#{imax},vmax = #{vmax},  vth0 =#{vth0}"
-    for i in 0..imax do
-      delta["y"][i] = data["y"][i] - vth0
-      zdata["y"][i] = data["y"][i] - vmax
-    end
-
-    p "process = #{m_process}  name = #{data["name"]}"
-    #p data
-    mf.jtable[1]["VTH_L"] << data.dup
-    mf.jtable[1]["delta_vth"] << delta.dup
-    mf.jtable[1]["zero_vth"]  << zdata.dup
-    p " process = #{m_process} ,n= #{mf.jtable[1]["VTH_L"].size}"
-  }
-
-  for i in 0..mf.jtable[1]["measdata"].size - 1 do
-    p " @jtable[1][measdata][#{i}][name] = #{mf.jtable[1]["measdata"][i]["name"]}"
-  end  
-
-  #write whole graph
-  mf.jtable[0]["basename"] = "VTH_L_ALL"  
-  mf.jtable[0]["dir"]      = "json/"
-  mf.jtable[0]["device"]   = "ALL" 
-  mf.write_json
-
-  mf.plot_graph "VTH_L"
-  mf.jtable[0]["basename"] = "VTH_L_ALL"  
-  mf.jtable[0]["dir"]      = "json/"
-  mf.jtable[0]["device"]   = "vth-l" 
-  mf.write_json
-
-  mf.plot_graph "delta_vth"
-  #mf.jtable[0]["basename"] = "deltaVTH_L"  
-  #mf.jtable[0]["dir"]      = "json/"
-  #mf.jtable[0]["device"]   = "process" 
-  
-  mf.plot_graph "zero_vth"
-  #mf.jtable[0]["basename"] = "zeroVTH_L"
-  #=end
-
-  ### standard deviation
-  ##=begin
-  mf.copy_graph "zero_vth" ,"stdv_vth" , true
-  meas = mf.jtable[1]["stdv_vth"]
-  for i in 0..meas.size - 1 do
-    meas[i]["meas"] = true
-  end
-
-  ### setup avg & stdv graphs
-  meas << mf.duplicate_j_data   # for avg  meas[ii-1]
-  meas << mf.duplicate_j_data   # for stdv meas[ii]
-  ii = meas.size - 1
-  meas[ii - 1]["name"] ="avg"
-  meas[ii - 1]["meas"] =false
-  meas[ii]["name"] ="stdv"
-  meas[ii]["meas"] =false
-
-
-  stddata = {"x"=>0,"y"=>[],"avg"=> 0,"std"=>0}
-  stdlist =[]
-  xdata = [1e-6,2e-6,4e-6,10e-6,20e-6,40e-6,100e-6]
-  meas[ii - 1]["x"] = xdata.dup
-  meas[ii]["x"]     = xdata.dup
-
-  jmax = meas.size - 3
-  imax = xdata.size - 1
-  for i in 0..imax do #L-change
-    stddata["x"] = xdata[i]    #insert xdata[i] to stddata ["x"] 
-    stddata["y"] = [] #initialize stddata["y"]
-    for j in 0..jmax do
-      if (ij = meas[j]["x"].index(xdata[i]))  then # if meas[j]["x"] in xdata[i] 
-        stddata["y"] << meas[j]["y"][ij]
-      end
-    end
-    p " i = #{i} L = #{stddata["x"]}, vth = #{stddata["y"]} "
-    #    p stddata
-    mean =  stddata["y"].sum/stddata["y"].size
-    stds =  stddata["y"].map{|x| ((x - mean)**2)}.sum
-    stdv =  Math.sqrt(stds/stddata["y"].size)
-    stddata["avg"] = mean
-    stddata["std"] = stdv
-    stdlist << stddata.dup
-  end
-  p stdlist
-  i_avg  = ii-1  #for avg
-  i_stdv = ii    #for stdv
-  meas[i_avg]["x"]       = xdata.dup
-  for i in 0..imax do
-    meas[i_avg]["y"][i]  = stdlist[i]["avg"]
-  end
-
-  meas[i_stdv]["x"]      = xdata.dup
-  for i in 0..imax do
-    meas[i_stdv]["y"][i] = stdlist[i]["std"]
-  end
-  mf.write_json
-  mf.plot_graph "stdv_vth"
-=end
-
-
-  ### VTH_W Simulation
-=begin  
-  mf.jtable[1]["vth_w"]       = []
-  mf.jtable[1]["delta_vth_w"] = []
-  mf.jtable[1]["zero_vth_w"]  = []
-  mf.jtable[1]["stdv_vth_w"]  = []
-  mf.jtable[1]["calc_vth_w"]  = []
-
-  mf.jtable[0]["basename"] = "VTH_W"  
-  mf.jtable[0]["dir"]      = "json/"
-  mf.jtable[0]["device"]   = "" 
-  mf.jtable[0]["ext"]      = "json"
-
-  files = [{"process"=>"DEFAULT",  "model"=> params[:model_def] ,  "jtable"=>params[:jtable_def_w], "size"=> 1.0e-6,"num"=> 501,
-             "lw"=>params[:ww],"name"=> params[:wname]},
-           {"process"=>"PTS06",   "model"=> params[:model_pts] ,  "jtable"=>params[:jtable_pts_w], "size"=> 0.6e-6,"num"=> 501,
-             "lw"=>params[:ww],"name"=> params[:wname]},
-           {"process"=>"ICPS",    "model"=> params[:model_icps] , "jtable"=>params[:jtable_icps_w], "size"=> 1.0e-6,"num"=> 501,
-
-           "lw"=>params[:ww],"name"=> params[:wname]},
-           {"process"=>"Citizn",  "model"=> params[:model_ctzn] , "jtable"=>params[:jtable_ctzn_w], "size"=> 0.35e-6,"num"=> 501,
-             "lw"=>params[:ww],"name"=> params[:wname]},
-           {"process"=>"tias130", "model"=> params[:model_tias] , "jtable"=>params[:jtable_tias_w],  "size"=> 0.13e-6,"num"=> 301,
-             "lw"=>params[:ww],"name"=> params[:wname]}]
-
-  # Data read and calicurate VTH routine
-  files.each { |m|
-    m_process = m["process"]
-    m_model   = m["model"]
-    m_size    = m["size"]
-    m_lw      = m["lw"]
-    m_name    = m["name"]
-    m_table   = m["jtable"]
-    m_num     = m["num"]
-
-    mdl = CompactModel::new m_model
-    vth0  = (mdl.get :VTH0).to_f
-    p "process =#{m_process}  vth0 = #{vth0}  model =#{m_model}"
-
-    mf.jtable[1]["plotdata"] = []   # data Iitiialized ["plotdata"]
-    mf.jtable[1]["measdata"] = []   # data Initialized ["measdata"]
-    mf.jtable[0]["basename"] = File.basename(m_table,".json")  
-    mf.jtable[0]["dir"]      = "json/"
-    mf.jtable[0]["device"]   = "" 
-    if !FileTest.exist?("json/" + m_table) then 
-      ### if measurement data is not in json/ create json/original_data
-      p "There is not data json/#{m_table}. Create #{File.join("json/original", m_table)}"
-      mf.imitate_measdata File.join("json/original", m_table)     # data read
-      mf.data_cut num: m_num          # data cut
-      mf.jtable[0]["basname"] = File.basename(m_table,".json")
-      p "process = #{m_process} basename = #{mf.jtable[0]["basename"]} dir = #{mf.jtable[0]["dir"]} Num of Graphs = #{mf.jtable[1]["measdata"].size}"
-      mf.jtable[0]["basename"] = File.basename(m_table,".json")  
-      mf.save_json       ### save json/[process]_meas.json
-    else
-      p "There is json/#{m_table}. Read this file."
-      mf.imitate_measdata File.join("json", m_table)     # data read
-    end
-    
-    mf.jtable[0]["basename"] = "VTH_W" 
-    mf.jtable[0]["dir"]      = "json/"
-    mf.jtable[0]["device"]   = "" 
-    mf.jtable[0]["ver"]      = 1.0
-        
-    p "device = #{m_process}  => num of lw =#{m_lw.size} num of name = #{m_name.size} num of curve = #{mf.jtable[1]["measdata"].size}"
-        
-    ### [STEP1]:: VTH Calculation ( Vs. w)  for some process
-    mf.calculate_vth_vbs_relation flg: false, vgs: 0.0, vds: 0.05, vbs: 0.0,mode: "lines", lw:   m_lw , name: m_name
-    mf.print_condition
-
-    data = (mf.convert_vth_lwvdvb param: "w",process: m_process).dup #VTH-W Curves
-    imax = data["y"].size - 1
-    vmax = data["y"][imax].dup
-    delta = data.dup
-    zdata = data.dup
-    data["name"] =data["name"] + "(#{vth0.round(3)})".dup
-    delta["y"] = []
-    delta["name"] =delta["name"] + "(#{vth0.round(3)})".dup
-    zdata["y"] = []
-    zdata["name"] =zdata["name"] + "(#{vmax.round(3)})".dup
-
-    #Delta-VTH_w Curves
-    # change vth => (vth - vth0)
-    p "process = #{data["name"]} , imax =#{imax},vmax = #{vmax}"
-    for i in 0..imax do
-      delta["y"][i] = data["y"][i] - vth0
-      zdata["y"][i] = data["y"][i] - vmax
-    end
-
-    p "process = #{m_process}  name = #{data["name"]}"
-    #p data
-    mf.jtable[1]["vth_w"] << data.dup
-    mf.jtable[1]["delta_vth_w"] << delta.dup
-    mf.jtable[1]["zero_vth_w"]  << zdata.dup
-    p " process = #{m_process} , #{mf.jtable[1]["vth_w"].size}"
-  }
-
-  for i in 0..mf.jtable[1]["measdata"].size - 1 do
-    p " @jtable[1][measdata][#{i}][name] = #{mf.jtable[1]["measdata"][i]["name"]}"
-  end  
-  mf.jtable[0]["device"]  = "ALL"
-  mf.write_json
-
-  mf.plot_graph "vth_w"
-  mf.plot_graph "delta_vth_w"
-  mf.plot_graph "zero_vth_w"
- 
-  ### standard deviation
-
-  mf.copy_graph "zero_vth_w" ,"stdv_vth_w" , true
-  meas = mf.jtable[1]["stdv_vth_w"]
-  for i in 0..meas.size - 1 do
-    meas[i]["meas"] = true
-  end
-
-  ### setup avg & stdv graphs
-  meas << mf.duplicate_j_data   # for avg  meas[ii-1]
-  meas << mf.duplicate_j_data   # for stdv meas[ii]
-  ii = meas.size - 1
-  meas[ii - 1]["name"] ="avg"
-  meas[ii - 1]["meas"] =false
-  meas[ii]["name"] ="stdv"
-  meas[ii]["meas"] =false
-
-
-  stddata = {"x"=>0,"y"=>[],"avg"=> 0,"std"=>0}
-  stdlist =[]
-  xdata = [1e-6,2e-6,4e-6,10e-6,20e-6,40e-6,100e-6]
-  meas[ii - 1]["x"] = xdata.dup
-  meas[ii]["x"]     = xdata.dup
-
-  jmax = meas.size - 3
-  imax = xdata.size - 1
-  for i in 0..imax do #L-change
-    stddata["x"] = xdata[i]    #insert xdata[i] to stddata ["x"] 
-    stddata["y"] = [] #initialize stddata["y"]
-    for j in 0..jmax do
-      if (ij = meas[j]["x"].index(xdata[i]))  then # if meas[j]["x"] in xdata[i] 
-        stddata["y"] << meas[j]["y"][ij]
-      end
-    end
-    p " i = #{i} W = #{stddata["x"]}, vth = #{stddata["y"]} "
-    mean =  stddata["y"].sum/stddata["y"].size
-    stds =  stddata["y"].map{|x| ((x - mean)**2)}.sum
-    stdv =  Math.sqrt(stds/stddata["y"].size)
-    stddata["avg"] = mean
-    stddata["std"] = stdv
-    stdlist << stddata.dup
-  end
-  
-  i_avg  = ii-1  #for avg
-  i_stdv = ii    #for stdv
-  meas[i_avg]["x"]       = xdata.dup
-  for i in 0..imax do
-    meas[i_avg]["y"][i]  = stdlist[i]["avg"]
-  end
-
-  meas[i_stdv]["x"]      = xdata.dup
-  for i in 0..imax do
-    meas[i_stdv]["y"][i] = stdlist[i]["std"]
-  end
-  mf.write_json
-  mf.plot_graph "stdv_vth_w"
-
-  ### caliculate VTH - W  ####
-  mf.copy_graph "zero_vth_w","calc_vth_w"
-
-  files.each { |m|
-    m_process = m["process"]
-    m_model   = m["model"]
-    m_size    = m["size"]
-    m_lw      = m["lw"]
-    m_name    = m["name"]
-    m_table   = m["jtable"]
-    m_num     = m["num"]
-
-    mdl = CompactModel::new m_model
-    vth0  = (mdl.get :VTH0).to_f
-    p "process =#{m_process}  vth0 = #{vth0}  Number of data =#{m_num}"
-    tox = (mdl.get :TOX).to_f
-    k3  = (mdl.get :K3).to_f
-    w0 = (mdl.get :W0).to_f
-    if (mdl.get:NSUB).nil? then
-      nsub   =  6.0E16
-    else
-      nsub   =  (mdl.get:NSUB).to_f
-    end
-    phis  = 2.0*Vt*Math.log(nsub/Ni)
-    p "model = #{m_model} , phis = #{phis}"
-    xdata = [1e-6,2e-6,4e-6,10e-6,20e-6,40e-6,100e-6]
-    ddata  = mf.duplicate_j_data
-    ddata["meas"] = false
-    ddata["name"] = "#{m_process}(calc)"
-    for i in 0..xdata.size - 1 do
-      ddata["x"][i] = xdata[i].dup
-      xw = xdata[i]
-      ddata["y"][i] = k3 * tox/(xw + w0) * phis
-    end
-    p "procss =#{m_process} ,data =#{ddata["y"]}"
-    #p ddata
-    mf.jtable[1]["calc_vth_w"] << ddata.dup
-  }
-  mf.write_json
-  mf.plot_graph "calc_vth_w"
-=end
-
-=begin
-  mf.step1_estimate_vth_k1_k2
-  mf.step1_calc_vth_vbs
-  mf.plot_graph "vthdata"
-=end
-end
+# ここまでが class Bsim3Fit の定義
+# 以降は何も書かない（if $0 == __FILE__ を削除）
