@@ -185,7 +185,7 @@ class EEschemaControl < NgspiceControl
     puts "read_eeschema_sch reads #{file}"
     require 'sxp'
     elements = {}
-    @ckts[file.sub(/\.\S+/, '')] = elements if @ckts == {}
+    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
     name = type = value = value2 = flag_wire = flag_text = group = nil
     eescm = SXP.read(File.read(file).encode('UTF-8'))
     eescm[1..-1].each{|blk|
@@ -360,8 +360,9 @@ if $0 == __FILE__
   $: << './ade_express'
   puts "$: = #{$:}"
   #ckt = NgspiceControl.new file, true, true # test recursive
-  #file = File.join 'c:', ENV['HOMEPATH'], "Seafile/Citizen035/Op8_22/Citizen035/EEschema/op8_22_v2.kicad_sch"
-  file = File.join 'c:', ENV['HOMEPATH'], "work/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/EEschema/AND2_X1_tb.kicad_sch"
+  file = File.join 'c:', ENV['HOMEPATH'], "Seafile/Citizen035/Op8_22/Citizen035/EEschema/op8_22_v2.kicad_sch"
+  #file = File.join 'c:', ENV['HOMEPATH'], "Seafile\PTS06_2024_8\Op8_18\EEschema/op8_18_v2.kicad.sch"
+  #file = File.join 'c:', ENV['HOMEPATH'], "work/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/EEschema/AND2_X1_tb.kicad_sch"
   #Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035/EEschema')
   ckt = EEschemaControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect

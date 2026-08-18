@@ -208,7 +208,7 @@ EOF
     else
       lines = lines.split("\n")
     end
-    elements = @elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
+    elements = @elements[@file.sub(/\.\S+/, '')] || @elements
     result =pairs.map{|sym, val|
       value = val.to_s
       name = sym.to_s
