@@ -980,7 +980,7 @@ EOS
       number = number + 1
       
       pins.push [:pin, :input, :line, [:at, q2e(p[:xy][0]), -q2e(p[:xy][1]), p[:angle]||0],
-                        [:length, 0.635], [:hide, :yes], [:name, '~'], [:number, number.to_s]]
+                        [:length, 0.635], [:hide, :yes], [:name, p[:PinName]||'~'], [:number, number.to_s]]
     }
     # result << "ENDDRAW\n"
     [result, pins]
