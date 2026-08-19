@@ -1872,19 +1872,31 @@ pin_labels = {}
               end
             end
           else
-            if sym = @symbols[c[:name]]
-              model=sym.value if sym.value && sym
-              .value != ''
+            if sym = @symbols[component_name]
+              model=sym.value if sym.value && sym.value != ''
+              model ||= component_name # cdraw_symbol_in does not set sym.value
             end
           end
           if value2 = c[:symattr]['Value2'] 
             value2.sub!('L=', 'l=')
             value2.sub!('W=', 'w=')
+            symbol.push [:property, "Sim.Params",
+                         "#{model} #{value2}",
+                         [:at, x+q2e(label_x), y + q2e(label_y) + (mir == :y ? 2.54 : 1.27), 0], effects] #, [:uuid, SecureRandom.uuid]]
+          else
+            symbol.push [:property, "Sim.Params",
+                         model,
+                         [:at, x+q2e(label_x), y + q2e(label_y) + (mir == :y ? 2.54 : 1.27), 0], effects] #, [:uuid, SecureRandom.uuid]]
+            if inst_name.start_with? 'X'
+              subckt_pins = []
+              @symbols[component_name].portsyms.each{|a| subckt_pins[a[:SpiceOrder].to_i - 1]=a[:PinName]}
+              result.push [:text, 
+                           ".subckt #{component_name} #{subckt_pins.join(' ')}", 
+                           [:at, x+q2e(label_x), y + q2e(label_y), 0], 
+                           [:effects, [:font, [:size, 0.0635, 0.0635]]]]
+            end
           end
         end
-        symbol.push [:property, "Sim.Params",
-                     "#{model} #{c[:symattr]['Value2']}",
-                     [:at, x+q2e(label_x), y + q2e(label_y) + (mir == :y ? 2.54 : 1.27), 0], effects] #, [:uuid, SecureRandom.uuid]]
       end
       symbol.push [:instances, [:project, @cell, [:path, '/'+@root_uuid, [:reference, inst_name], [:unit, 1]]]]
       result.push symbol
@@ -2582,7 +2594,8 @@ if $0 == __FILE__
 =end
   #asc_dir = '/home/anagix/work/alb2/public/system/projects/amp_machida/cdraw'
   #asc_dir = 'c:/Users/seiji/Seafile/LSI_devel/IP62/OpAmp8_22'
-  asc_dir = File.join(ENV['HOMEPATH'] || ENV['HOME'], 'Seafile/Citizen035/Op8_16')
+  #asc_dir = File.join(ENV['HOMEPATH'] || ENV['HOME'], 'Seafile/Citizen035/Op8_16')
+  asc_dir = File.join(ENV['HOMEPATH'] || ENV['HOME'], 'Seafile/Op8_18')
   #asc_dir = File.join(ENV['HOMEPATH'], 'work/alta2_lt2xschm/LDIC_TEG3_DZ_LTspice250922_Appl')
   #asc_dir = File.join(ENV['HOME'], 'Seafile/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl')
   # asc_dir = 'c:/tmp/LTspiceLIB'
