@@ -421,71 +421,6 @@ class NgspiceControl < LTspiceControl
     [keys, values]
   end
 
-  def call_kicad_netlister kicad_file
-    file = kicad_file.sub('.kicad_sch', '.cir').gsub('\\', '/')
-    FileUtils.rm(file, force: true) if file && File.exist?(file)
-    start = Time.now
-    command = "sch export netlist --format spice --output #{file.gsub('\\', '/')}"
-    puts "command = #{command}"
-    kicad_cli command, kicad_file.gsub('\\', '/')
-    wait_for File.basename(file), start, 'due to some error'
-    #sleep 1 # weird but file is not available w/o sleep 1
-    #
-    pin_order, params, files = parse_kicad_file kicad_file
-    circuit = File.read(file).encode('UTF-8', invalid: :replace)
-    files.each{|f| 
-      call_kicad_netlister f + '.kicad_sch'
-    }
-    File.open(file, 'w'){|f| 
-      f.puts ".subcircuit #{file} #{pin_order}"
-      f.puts '*' + circuit # change title line to comment
-      f.puts ".ends #{file}"
-    }
-    [file, params]
-  end
-
-  def parse_kicad_file kicad_file
-    eescm = SXP.read(File.read(kicad_file).encode('UTF-8', invalid: :replace))
-    files = []
-    pin_order = nil
-    params = {}
-    eescm[1..-1].each{|blk|
-      inst = {}
-      case blk[0]
-      when :text
-        if blk[1] =~ /^pin_order +(.*)$/
-          pin_order = $1
-        elsif blk[1] =~ /\.par/
-          blk[1].scan(/(\S+) *= *(\S+)/).each{|a, b| params[a]=b}
-        end
-      when :symbol
-        blk[1..-1].each{|item|
-          case item[0]
-          when :property
-            inst[item[1]] = item[2] # item[1] == 'Reference'
-          when :lib_id
-            inst['lib_id'] = item[1]
-          end
-        }
-      end
-      if name = inst['Reference']
-        # elements[name] ||= {} 
-        if name =~ /^X/
-          #elements[name][:value] = inst['lib_id'] 
-          #if recursive
-            type = inst['lib_id'].split(':').last
-            files << type # + '.kicad_sch'
-            target = File.join(File.dirname(file), type + '.kicad_sch')
-            if File.exist? target
-              call_kicad_netlister target
-            end
-          #end
-        end
-      end
-    }
-    [pin_order, params, files]
-  end
-
   def parse file, analysis, comment_step=nil, params={}
     netlist = ''
     steps = []
@@ -606,34 +541,9 @@ class NgspiceControl < LTspiceControl
           netlist << l
         end
       }
-    elsif @file =~ /\.sch/ || @file =~ /\.kicad_sch/
+    elsif @file =~ /\.sch/ 
       $stderr.puts "sch_type(@file)=#{sch_type(@file)}"
-      if sch_type(@file) == 'eeschema'
-=begin
-        file = @file.sub('.kicad_sch', '.cir').gsub('\\', '/')
-        FileUtils.rm(file, force: true) if file && File.exist?(file)
-        start = Time.now
-        command = "sch export netlist --format spice --output #{file.gsub('\\', '/')}"
-        puts "command = #{command}"
-        kicad_cli command, @file.gsub('\\', '/')
-        wait_for File.basename(file), start, 'due to some error'
-        #sleep 1 # weird but file is not available w/o sleep 1
-=end
-        Dir.chdir(File.dirname @file) {
-          file, params = call_kicad_netlister @file
-          netlist, steps, control = parse(file, analysis, '^ *\.step', params)
-        }
-        #$stderr.puts "after parsing steps\n#{netlist}"
-        $stderr.puts "after parsing, steps ='#{steps}', control =", control, '---' 
-        #unless File.exist? file
-        #  raise "Error: #{file} does not exit -- please open #{@file}, create netlist and save in #{file}" 
-        #end  
-        $stderr.puts "#{@file}: #{File.mtime(@file)} vs. #{file}: #{File.mtime(file)}"
-        if File.mtime(@file) > File.mtime(file)
-          raise "Error: #{@file} is newer than #{file} -- please open #{@file}, create netlist and save in #{file}" 
-        end
-        # netlist, steps = super.parse(file, analysys)
-      elsif sch_type(@file) == 'xschem'
+      if sch_type(@file) == 'xschem'
         # Dir.chdir(File.dirname @file){
           pwd = Dir.pwd
           file = @file.sub '.sch', '.spice'
@@ -645,7 +555,7 @@ class NgspiceControl < LTspiceControl
             # xschem options:
             # -s: set netlist type to spice
             # -n: create netlist
-            # -i: do not load any xschemrc file
+            # -i: do not load any xschemrc fileb
             # -x: command mode (no X)
             # -q: quit after doing things 
             # -o: output directory
@@ -694,9 +604,7 @@ class NgspiceControl < LTspiceControl
           @models[model_name.to_s][1][key.to_s] = value
         } 
       }
-      unless @file =~ /\.kicad_sch/
-        fix_net File.basename(@file), analysis, extra_commands, models_update, variations
-      end
+      fix_net File.basename(@file), analysis, extra_commands, models_update, variations
 
       @step_results = [[], [], [], nil]
       node_list = variables[0] ? variables[0][:probes] : nil
