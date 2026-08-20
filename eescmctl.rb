@@ -201,52 +201,7 @@ class EEschemaControl < NgspiceControl
     end
   end
 
-  def translate a
-    unless @sheet.nil? || @sheet.empty? # variable need to be converted like '/sheet602621c0/out
-      b= (a=~/\(([^\(\)]+)\)/) ? $1 : a
-      c = b.split('/')
-      return b if c[0] == '' || c.size == 1
-      d = (c[0..-2].map{|e|
-             if e =~ /^#([0-9]+) *$/
-               @sheet.to_a[$1.to_i][1]['sheet_name'] || e
-             else
-               e
-             end
-           } + [c.last]).join('/')
-      a.sub! b, '/' + d
-    else
-      a
-    end
-  end
-  private :translate
-  
-  def node_list_to_variables node_list, get_active_traces=true
-    variables = [node_list[0]]
-    node_list[1..-1].each{|a|
-      a.strip!
-      if a =~ /#{pattern='[vV]*\(([^\)\("]*)\)'}/
-        a.gsub(/#{pattern}/){"\"#{translate $1}\""}
-      elsif (a=~ /#{pattern='\("([^()]+)"\)'}/) || (a=~ /#{pattern='\(([^()]+)\)'}/)
-        a.gsub(/#{pattern}/){"(\"#{translate $1}\")"} # change db(/sheet1/out1') ph(/in') -> db("/sheet1/out1") ph("/in")
-      #elsif a =~ /^[^"]\S*[+-\/]\S*/  # wrap with double quote if name is like: 'in-'
-      #  a = '"' + a + '"'        
-      elsif a=~ /#{pattern='(\S+)($| +[\*\/\-\+$])'}/
-        a.gsub(/#{pattern}/){"(\"#{translate $1}\")"}
-      else
-        "\"#{translate a}\""
-      end
-      if variables[0] == 'frequency' && get_active_traces
-        variables << "real(#{a})"
-        variables << "imag(#{a})"
-      else
-        variables << a
-      end
-    }
-    variables
-  end
-  private :node_list_to_variables  
-
- def simulate *variables
+  def simulate *variables
     keys = values = nil
     result = with_stringio{
       keys, values = simulate0 variables
@@ -323,6 +278,9 @@ class EEschemaControl < NgspiceControl
           subckt_name = $1
           subckt_pins = $2.split("\\n")[0]
           if netlist = inst['Subckt'][subckt_name]
+            subckt_pins.split.each{|pin|
+              netlist.gsub! '/'+pin, pin
+            }
             blk[1] = ".subckt #{subckt_name} #{subckt_pins}\n*" + netlist # note: fist line of netlist should be changed to comment
           end
         end
@@ -366,6 +324,8 @@ class EEschemaControl < NgspiceControl
         end
       elsif l =~ /^ *\.control/
         control = ''
+        netlist << l + "\n"
+      else
         netlist << l + "\n"
       end
     }
@@ -600,13 +560,13 @@ if $0 == __FILE__
   puts "$: = #{$:}"
   #ckt = NgspiceControl.new file, true, true # test recursive
   #file = File.join 'c:', ENV['HOMEPATH'], "Seafile/Citizen035/Op8_22/Citizen035/EEschema/op8_22_tb_direct_ac.kicad_sch"
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/Op8_18/cdraw/EEschema/op8_18_tb_direct_ac.kicad_sch'
-  #file = File.join 'c:', ENV['HOMEPATH'], "Seafile/PTS06_2024_8/Op8_18/EEschema/op8_18_v2.kicadsch"
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/Op8_18/cdraw/EEschema/op8_18_tb_direct_ac.kicad_sch'
+  file = File.join 'c:', ENV['HOMEPATH'], "Seafile/PTS06_2024_8/Op8_18/EEschema/op8_18_tb_direct_ac.kicad_sch"
   #file = File.join 'c:', ENV['HOMEPATH'], "work/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/EEschema/AND2_X1_tb.kicad_sch"
   #Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035/EEschema')
-  ckt = EEschemaControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
+  ckt = EEschemaControl.new file, true, true # false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
-  ckt.set({:V2=>"5.555"})
+  ckt.set({'op8_18_v2'=> {:V2=>"5.555"}})
   puts ckt.models.inspect
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]

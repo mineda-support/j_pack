@@ -127,8 +127,8 @@ class NgspiceControl < LTspiceControl
       
   def read_xschem_sch file, work_dir, recursive=false, caller=''
     elements = {}
-    # @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
-    @ckts[file.sub(/\.\S+/, '')] = elements if @ckts == {}
+    @ckts[File.basename(file).sub(/\.\S+/, '')] = elements if @ckts == {}
+    # @ckts[file.sub(/\.\S+/, '')] = elements if @ckts == {} # file with full path does harm when update is returned from ALTA2
     name = type = value = value2 = control = nil
     lineno = line1 = line2 = 0
     controls = []
@@ -190,7 +190,7 @@ class NgspiceControl < LTspiceControl
           else
             @ckts[type] = read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)
           end
-          @ckts[caller] = type
+          @ckts[caller] = type unless recursive
         end
       end
     }
@@ -412,6 +412,51 @@ class NgspiceControl < LTspiceControl
   end
 =end
 
+  def translate a
+    unless @sheet.nil? || @sheet.empty? # variable need to be converted like '/sheet602621c0/out
+      b= (a=~/\(([^\(\)]+)\)/) ? $1 : a
+      c = b.split('/')
+      return b if c[0] == '' || c.size == 1
+      d = (c[0..-2].map{|e|
+             if e =~ /^#([0-9]+) *$/
+               @sheet.to_a[$1.to_i][1]['sheet_name'] || e
+             else
+               e
+             end
+           } + [c.last]).join('/')
+      a.sub! b, '/' + d
+    else
+      a
+    end
+  end
+  private :translate
+  
+  def node_list_to_variables node_list, get_active_traces=true
+    variables = [node_list[0]]
+    node_list[1..-1].each{|a|
+      a.strip!
+      if a =~ /#{pattern='[vV]*\(([^\)\("]*)\)'}/
+        a.gsub(/#{pattern}/){"\"#{translate $1}\""}
+      elsif (a=~ /#{pattern='\("([^()]+)"\)'}/) || (a=~ /#{pattern='\(([^()]+)\)'}/)
+        a.gsub(/#{pattern}/){"(\"#{translate $1}\")"} # change db(/sheet1/out1') ph(/in') -> db("/sheet1/out1") ph("/in")
+      #elsif a =~ /^[^"]\S*[+-\/]\S*/  # wrap with double quote if name is like: 'in-'
+      #  a = '"' + a + '"'        
+      elsif a=~ /#{pattern='(\S+)($| +[\*\/\-\+$])'}/
+        a.gsub(/#{pattern}/){"(\"#{translate $1}\")"}
+      else
+        "\"#{translate a}\""
+      end
+      if variables[0] == 'frequency' && get_active_traces
+        variables << "real(#{a})"
+        variables << "imag(#{a})"
+      else
+        variables << a
+      end
+    }
+    variables
+  end
+  private :node_list_to_variables  
+
   def simulate *variables
     keys = values = nil
     result = with_stringio{
@@ -450,6 +495,8 @@ class NgspiceControl < LTspiceControl
         end
       elsif l =~ /^ *\.control/
         control = ''
+        netlist << l + "\n"
+      else
         netlist << l + "\n"
       end
     }

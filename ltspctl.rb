@@ -198,6 +198,7 @@ EOF
   end
   
   def set pairs
+    return if (pairs.empty? || @elements.nil?)
     read @file if File.mtime(@file) > @mtime
     lines = nil
     File.open(@file, @rcoding){|f|
@@ -385,7 +386,7 @@ EOF
   private :fix_net
 
   def print_models f, models       
-    models.each_pair{|model_name, contents|
+    models && models.each_pair{|model_name, contents|
       f.print words=".model #{model_name} #{contents[0]}"
       nwords = words.length
       contents[1].each_pair{|key, value| 
