@@ -21,7 +21,7 @@ class EEschemaControl < NgspiceControl
     @step_results = []
     @ckts = {}
     read ckt, ignore_cir, recursive
-    get_models e=@elements[@file.sub(/\.\S+/, '')] || @elements 
+    get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')] || @elements 
   end
   
   def read_subckt sheets
@@ -72,6 +72,7 @@ class EEschemaControl < NgspiceControl
     end
     @sheet = {ckt => @elements}
     read_subckt @elements['Sheets'] if @elements && @elements['Sheets']
+=begin
     cir = ckt.sub('.kicad_sch', '.cir')
     unless ignore_cir
       if !File.exist? cir
@@ -81,6 +82,7 @@ class EEschemaControl < NgspiceControl
       end
     end
     # @elements = read_net cir if File.exist? cir
+=end
     @elements
   end
 
@@ -152,7 +154,7 @@ class EEschemaControl < NgspiceControl
               @ckts[type] = read_eeschema_sch(target, true, caller)
               #@ckts['eescm'] ||= {}
               #@ckts['eescm'][type] = eescm
-              @ckts[caller] = type 
+              @ckts[caller] = type unless recursive
             end
           end
         else
@@ -163,42 +165,40 @@ class EEschemaControl < NgspiceControl
     elements
   end
 
-  def set pairs
-    if @sheet && !@sheet.empty?
-      @sheet.each_key{|file|
-        update_flag = false
-        eescm = SXP.read(File.read(file).encode('UTF-8'))
-        eescm[1..-1].each{|blk|
-          if blk[0] == :symbol
-            ref = nil
-            blk[1..-1].each{|item|
-              if item[0] == :property
-                ref = item[2] if item[1]=='Reference'
-                if item[1]=='Sim.Params'
-                  val = item[2] 
-                  pairs.each_pair{|p, v| # p is symbol
-                    if p.to_s.downcase == ref.downcase
-                      item[2] = v
-                      @elements[ref] = v
-                      update_flag = true
-                    end
-                  }
-                end
+  def set ckt_pairs
+    ckt_pairs.each{|file, pairs|
+      update_flag = false
+      eescm = SXP.read(File.read(file).encode('UTF-8'))
+      eescm[1..-1].each{|blk|
+        if blk[0] == :symbol
+          ref = nil
+          blk[1..-1].each{|item|
+            if item[0] == :property
+              ref = item[2] if item[1]=='Reference'
+              if item[1]=='Sim.Params'
+                val = item[2] 
+                pairs.each_pair{|p, v| # p is symbol
+                  if p.to_s.downcase == ref.downcase
+                    item[2] = v.to_s
+                    @elements[ref] = "\"#{v.to_s}\""
+                    update_flag = true
+                  end
+                }
               end
-            }
-          end
-        }
-        if update_flag
-          FileUtils.cp file, file+'_BKUP2'
-          File.open(file, 'w'){|f|
-            f.puts pretty_sexpr(eescm.to_sxp)
+            end
           }
-          true
-        else
-          false
         end
       }
-    end
+      if update_flag
+        FileUtils.cp file, file+'_BKUP2'
+        File.open(file, 'w'){|f|
+          f.puts pretty_sexpr(eescm.to_sxp)
+        }
+        true
+      else
+        false
+      end
+    }
   end
 
   def simulate *variables
@@ -217,7 +217,7 @@ class EEschemaControl < NgspiceControl
     command = "sch export netlist --format spice --output #{file.gsub('\\', '/')}"
     puts "command = #{command}"
     kicad_cli command, kicad_file.gsub('\\', '/')
-    wait_for File.basename(file), start, 'due to some error'
+    wait_for(File.basename(file), start, 'due to some error'){}
     #sleep 1 # weird but file is not available w/o sleep 1
     #
     netlist = File.read(file).encode('UTF-8', invalid: :replace)
@@ -228,6 +228,7 @@ class EEschemaControl < NgspiceControl
     files = []
     update_flag = false
     inst = {}
+    step_statement = nil
     eescm[1..-1].each{|blk|
       case blk[0]
       when :text
@@ -239,6 +240,8 @@ class EEschemaControl < NgspiceControl
           blk[1].scan(/(\S+) *= *(\S+)/).each{|a, b| params[a]=b}
         elsif blk[1] =~ /\.inc/
           blk[1].sub!('%HOMEPATH%', "$HOMEPATH\\")
+        elsif blk[1] =~ /^[^*]*\.step/  # because KiCad netlister ignores .step statement, pass step_statment to parse
+          step_statement = blk[1]
         end
       when :symbol
         blk[1..-1].each{|item|
@@ -291,10 +294,10 @@ class EEschemaControl < NgspiceControl
       f.puts pretty_sexpr(eescm.to_sxp)
     }
     call_kicad_netlister kicad_file
-    params
+    [params, step_statement]
   end
 
-  def parse file, analysis, comment_step=nil, params={}
+  def parse file, analysis, step_statement, params={}
     netlist = ''
     steps = []
     home = (ENV['HOMEPATH'] || ENV['HOME'])
@@ -311,10 +314,6 @@ class EEschemaControl < NgspiceControl
         analysis[:tran] = substitute_params($1, params)
       elsif l =~ /^ *\.*dc +(.*)/
         analysis[:dc] = substitute_params($1, params)
-      elsif comment_step && l =~ /#{comment_step}/
-        steps = step2params(l)
-        netlist << '*' + l + "\n"
-        $stderr.puts "commented: #{l}"
       elsif l =~ /^ *\.endc/
         cont_return = control.dup
         control = nil
@@ -325,6 +324,9 @@ class EEschemaControl < NgspiceControl
       elsif l =~ /^ *\.control/
         control = ''
         netlist << l + "\n"
+      elsif l =~/^ *\.end *$/ && step_statement
+        steps = step2params(step_statement)
+        netlist << '*' + step_statement + "\n.end\n"
       else
         netlist << l + "\n"
       end
@@ -404,8 +406,8 @@ class EEschemaControl < NgspiceControl
       file = @file.sub '.kicad_sch', '.cir'
       if sch_type(@file) == 'eeschema'
         Dir.chdir(File.dirname @file) {
-          parse_kicad_file @file, params
-          netlist, steps, control = parse(file, analysis, '^ *\.step', params)
+          params, step_statement = parse_kicad_file @file, params
+          netlist, steps, control = parse(file, analysis, step_statement, params)
         }
         $stderr.puts "after parsing, steps ='#{steps}', control =", control, '---' 
         $stderr.puts "#{@file}: #{File.mtime(@file)} vs. #{file}: #{File.mtime(file)}"
@@ -415,7 +417,7 @@ class EEschemaControl < NgspiceControl
         # netlist, steps = super.parse(file, analysys)
       end
     elsif @file =~ /\.cir|\.net|\.spi|\.spice/ 
-      netlist, steps, control = parse(@file, analysis, '^ *\.step')
+      netlist, steps, control = super.parse(@file, analysis, '^ *\.step')
     end
     $stderr.puts "netlist = #{netlist}"
     $stderr.puts "analysis = #{analysis}"
@@ -492,15 +494,17 @@ class EEschemaControl < NgspiceControl
             $stderr.puts "node_list = #{node_list}"
             # $stderr.puts "r=#{r.inspect}"
             # r[1][0][:name] = "#{steps[0]['name']}=#{v}" if r[1][0]
-            @step_results[0] = r[0]
-            r[1].each_with_index{|s, i|
-              @step_results[1] << s # r[1][0]
-              # r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
-              r[1][i][:name] = "#{steps[0]['name']}=#{v}" 
-            }
-            @step_results[2] ||= []
-            @step_results[2] << meas_result.values if meas_result
-            @step_results[3] ||= meas_result.keys if meas_result
+            if steps[0] != nil && node_list != nil && node_list != []
+              @step_results[0] = r[0]
+              r[1].each_with_index{|s, i|
+                @step_results[1] << s # r[1][0]
+                # r[1][i][:name] << "@#{steps[0]['name']}=#{v}"
+                r[1][i][:name] = "#{steps[0]['name']}=#{v}" 
+              }
+              @step_results[2] ||= []
+              @step_results[2] << meas_result.values if meas_result
+              @step_results[3] ||= meas_result.keys if meas_result
+            end
           }
         }
         $stderr.puts logs
@@ -564,9 +568,10 @@ if $0 == __FILE__
   file = File.join 'c:', ENV['HOMEPATH'], "Seafile/PTS06_2024_8/Op8_18/EEschema/op8_18_tb_direct_ac.kicad_sch"
   #file = File.join 'c:', ENV['HOMEPATH'], "work/alta2_lt2xschm/LDIC_TEG3_DZ4_240925_Digital_Appl/EEschema/AND2_X1_tb.kicad_sch"
   #Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/Citizen035/Op8_22/Citizen035/EEschema')
+  Dir.chdir(File.join 'c:', ENV['HOMEPATH'], "Seafile/PTS06_2024_8/Op8_18/EEschema/")
   ckt = EEschemaControl.new file, true, true # false # note: ckt.set (update) does not work with recursive=true
   puts ckt.elements.inspect
-  ckt.set({'op8_18_v2'=> {:V2=>"5.555"}})
+  ckt.set({'op8_18_v2.kicad_sch'=> {:V2=>"5.555"}})
   puts ckt.models.inspect
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
@@ -580,7 +585,12 @@ if $0 == __FILE__
   # r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-sweep', 'i(Vds)')
   #r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
-  ckt.simulate probes: ['time', 'v(clk)']
-  r = ckt.get_traces 'time', 'v(clk)'
+  ckt_pairs = {"op8_18_tb_direct_ac.kicad_sch"=>{"V3"=>1.8}}
+  ckt.set ckt_pairs
+
+  ckt.simulate # time', 'v(clk)']
+  #r = ckt.get_traces "frequency", "v(/out)/(v(net-_r3-b_)/v(net-_v3-+_))"
+  r = ckt.get_traces "frequency", "V(/out)/(V(net-_r3-b_)-V(net-_v3-+_)"
+  #r = ckt.get_traces 'time', 'v(clk)'
   puts 'sim end'
 end

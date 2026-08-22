@@ -112,7 +112,7 @@ EOF
         if recursive && name[0].downcase == 'x' && File.exist?(File.join(File.dirname(file), type+'.asc'))
             caller << '.' + name
             @ckts[type] ||= read_asc(File.join(File.dirname(file), type+'.asc'), true, caller)
-            @ckts[caller] = type
+            @ckts[caller] = type unless recursive
           end
         elsif l =~ /SYMBOL (\S+)/
           new_type = $1

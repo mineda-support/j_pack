@@ -26,7 +26,7 @@ class NgspiceControl < LTspiceControl
     @step_results = []
     @ckts = {}
     read ckt, ignore_cir, recursive
-    get_models e=@elements[@file.sub(/\.\S+/, '')] || @elements 
+    get_models e=@elements[File.basename(@file).sub(/\.\S+/, '')] || @elements 
   end
   
   def capture ckt=@file
@@ -186,6 +186,7 @@ class NgspiceControl < LTspiceControl
         if recursive && name[0].downcase == 'x'
           caller = '.' + name
           if @work_dir == work_dir
+            #require 'debug'; debugger
             @ckts[type] ||= read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)                        
           else
             @ckts[type] = read_xschem_sch(File.join(work_dir, type+'.sch'), work_dir, true, caller)
@@ -281,22 +282,20 @@ class NgspiceControl < LTspiceControl
   end
   private :read_net
 
-  def set pairs
-    if @file =~ /\.asc/
-      super pairs
-    else
-      file = @file
-      # e = @elements[File.basename(@file).sub(/\.\S+/, '')] || @elements
-      e = @elements[@file.sub(/\.\S+/, '')] || @elements 
-      lines, result = set0 pairs, file, e, @mtime
+  def set ckt_pairs
+    result = true
+    ckt_pairs.each{|file, pairs|
+      c = file.sub(/\.\S+/, '')
+      lines, r = set0 pairs, file, @elements[c], @mtime
       update(file, lines) 
-      result
-    end
+      result &= r
+    }
+    result
   end
 
   def set0 pairs, file, elements, mtime
     read file if File.mtime(file) > mtime
-    # puts "set0 '#{pairs}' in '#{file}' with elements:#{elements.inspect}"  
+    puts "set0 '#{pairs}' in '#{file}' with elements:#{elements.inspect}"  
     lines = File.read(file)
     if lines.include? "\r\n"
       lines = lines.split("\r\n")
@@ -308,15 +307,16 @@ class NgspiceControl < LTspiceControl
       # debugger if name == 'VD'
       value = val.to_s
       # puts "set #{name}: #{value}"
-      if elements[name] && elements[name].class == Array
-        elements[name].each{|elm|
-          set0_sub lines, elm, name, value
-        }
+      if elements[name] && elements[name].class == Hash
+        #elements[name].each{|elm|
+        #  set0_sub lines, elm, name, value
+        #}
+        set0_sub lines, elements[name], name, value
         true
       else
-        # puts "name=#{name} for file:#{file}"
+        puts "name=#{name} for file:#{file}"
         name =~ /(\S+)_(\d+)/ 
-        elm = ($1 && elements[$1]) ? elements[$1][$2.to_i-1] : elements[name] && elements[name][0]
+        elm = ($1 && elements[$1]) ? elements[$1][$2.to_i-1] : elements[name] ### && elements[name][0]  <= don't remember why [0]
         if elm && lineno = elm[:lineno]
           line = lines[lineno-1]
           # puts line
@@ -332,8 +332,7 @@ class NgspiceControl < LTspiceControl
             false
           end
         else
-          puts "Error: #{name} was not found in #{file}"
-          # puts "elements=#{elements.inspect}"
+          puts "Error: #{name} was not found in #{file}; elements=#{elements.inspect}"
           false
         end
       end
@@ -354,10 +353,10 @@ class NgspiceControl < LTspiceControl
        line =~ /(^ *[Mm]\S* +\S+ \S+ \S+ \S+ +\S+ +)(.*)( *)/ ||
        line =~ /(^ *[VvIiCcRr]\S* +\S+ +\S+ +)(.*)( *)/
       substr = $2
-      #puts "***before:'#{lines[lineno-1]}'"          
+      puts "***before:'#{lines[lineno-1]}'"          
       line.sub! line, "#{$1}#{value}#{$3}"
       (element[:value]||element[:control]).sub!(substr, value)
-      #puts "***after:'#{lines[lineno-1]}'"
+      puts "***after:'#{lines[lineno-1]}'"
     elsif line =~ /(^C {\S+.sym} +\S+ +\S+ +\S+ +\S+ {name=\S+ +)(.*)(})/
       substr = $2
       if value[0] == '-'
@@ -746,7 +745,7 @@ class NgspiceControl < LTspiceControl
     end  
     #sleep 1
     r = nil
-    if node_list.length > 1
+    if node_list && node_list.length > 1
       if node_list[0] == 'frequency'
         r = get_AC_traces *node_list
       else
@@ -839,7 +838,7 @@ class NgspiceControl < LTspiceControl
   def get_traces *node_list
     # require 'debug'; debugger
     return [[], []] if node_list.size <= 1
-    if @step_results && @step_results[0].size > 0
+    if @step_results && @step_results[0] && @step_results[0].size > 0
       [@step_results[0],  @step_results[1]] # should return [vals, r]
     else
       if node_list[0] == 'frequency'
@@ -867,7 +866,7 @@ class NgspiceControl < LTspiceControl
     $stderr.puts "variables=#{variables}"
     equations.each{|eq|
       variables[1..-1].each_with_index{|v, i|
-        val = v.sub(/\(/, '\(').sub(/\)/, '\)')
+        val = v.sub(/\(/, '\(').sub(/\)/, '\)').sub(/\+/, '\\\\+') # this worked for v(net-v3-+_)
         if eq =~ /[\*\+-\/\(]*#{val}[\*\+-\/\)]*/ 
           eq.gsub! v, "Complex(v_values[#{2*i+1}][j], v_values[#{2*i+2}][j])" 
         end
@@ -1056,12 +1055,16 @@ if $0 == __FILE__
   #file = 'c:/tmp/VTH_VBG1.sch'
 
   #ckt = NgspiceControl.new file, true, true # test recursive
-  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile\LSI_devel\LR_homework\LR-hasegawa\LR_hasegawa\LR_Work2\ring_oscillator.sch'
-  Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile\LSI_devel\LR_homework\LR-hasegawa\LR_hasegawa'){
-  ckt = NgspiceControl.new file, true, false # note: ckt.set (update) does not work with recursive=true
+  #file = File.join 'c:', ENV['HOMEPATH'], 'Seafile\LSI_devel\LR_homework\LR-hasegawa\LR_hasegawa\LR_Work2\ring_oscillator.sch'
+  #Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile\LSI_devel\LR_homework\LR-hasegawa\LR_hasegawa'){
+  file = File.join 'c:', ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/Xschem/op8_18_tb_direct_ac.sch'
+  Dir.chdir(File.join 'c:', ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/Xschem/'){
+  ckt = NgspiceControl.new [file,  ENV['HOMEPATH'], 'Seafile/PTS06_2024_8/Op8_18/Xschem/'], true, true
   puts ckt.elements.inspect
   #ckt.set({:VD=>"0.05"})
   puts ckt.models.inspect
+  ckt_pairs = {"op8_18_tb_direct_ac.sch"=>{"V3"=>1.8}}
+  ckt.set ckt_pairs
   #ckt.simulate probes: ['frequency', 'V(out)/(V(net1)-V(net3))']
   #r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-swe            ep', 'vds#branch')
@@ -1074,8 +1077,8 @@ if $0 == __FILE__
   # r = ckt.get_traces('frequency', 'V(out)/(V(net1)-V(net3))') # [1][0][:y]
   #r = ckt.get_traces('v-sweep', 'i(Vds)')
   #r = ckt.get_traces 'v-sweep', 'i(vm0)', 'i(vm1)', 'i(vm2)'
-  ckt.simulate probes: ['time', 'v(clk)']
-  r = ckt.get_traces 'time', 'v(clk)'
+  ckt.simulate probes: ['frequency', 'V(out)/(V(net3)-V(net1))']
+  r = ckt.get_traces 'frequency', 'V(out)/(V(net3)-V(net1))'
   puts 'sim end'
 }
 end
